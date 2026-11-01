@@ -12,9 +12,10 @@ fix:
   type: template
   template: lefthook
 references:
-  - name: OpenSSF Scorecard
-    url: https://github.com/ossf/scorecard/blob/main/docs/checks.md
-    section: Token-Permissions
+  - name: pre-commit framework
+    url: https://pre-commit.com/
+  - name: lefthook
+    url: https://github.com/evilmartians/lefthook
 rationale: >
   Pre-commit hooks catch formatting, lint, and secret issues before they are
   committed, shortening the feedback loop and keeping bad commits out of history.

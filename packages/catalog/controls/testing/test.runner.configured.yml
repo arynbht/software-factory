@@ -7,7 +7,7 @@ effort: small
 detect:
   - type: file-matches
     path: "package.json"
-    pattern: '"test"\s*:'
+    pattern: '"test"\s*:\s*"(?![^"]*no test specified)[^"]*\b(vitest|jest|mocha|ava|playwright|pytest|tox|go test|cargo test|node --test|c8|nyc|tap|jasmine|karma|bun test)\b'
 evidence: none
 fix:
   type: template
