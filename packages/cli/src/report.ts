@@ -164,6 +164,16 @@ function renderMarkdown(results: ControlResult[]): string {
   return lines.join("\n");
 }
 
+// GitHub workflow-command escaping: message data and property values must escape
+// %, CR, and LF (and property values additionally : and ,) or the command breaks /
+// can be spoofed.
+function escapeData(s: string): string {
+  return s.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+}
+function escapeProperty(s: string): string {
+  return escapeData(s).replace(/:/g, "%3A").replace(/,/g, "%2C");
+}
+
 /**
  * GitHub Actions workflow commands: one annotation per failing / needs-evidence
  * control, followed by a plain summary line.
@@ -172,10 +182,15 @@ function renderGithub(results: ControlResult[]): string {
   const lines: string[] = [];
   for (const r of results) {
     const first = r.detectors.find((d) => d.status !== "pass")?.message ?? "";
+    const title = escapeProperty(r.controlId);
     if (r.status === "fail") {
-      lines.push(`::error title=${r.controlId}::${r.title} — ${first}`);
+      lines.push(
+        `::error title=${title}::${escapeData(`${r.title} — ${first}`)}`,
+      );
     } else if (r.status === "needs-evidence") {
-      lines.push(`::warning title=${r.controlId}::${r.title} needs evidence`);
+      lines.push(
+        `::warning title=${title}::${escapeData(`${r.title} needs evidence`)}`,
+      );
     }
   }
   const s = summarize(results);
