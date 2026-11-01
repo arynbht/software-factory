@@ -47,24 +47,53 @@ function getRepo(gh: GitHubClient): Promise<RepoData> {
   });
 }
 
-/** Branch-protection style checks share a fetch; 404 means "unprotected". */
-async function getProtection(
-  gh: GitHubClient,
-): Promise<{ branch: string; protection: unknown | null }> {
-  const repo = await getRepo(gh);
-  try {
-    const { data } = await gh.octokit.rest.repos.getBranchProtection({
+interface BranchRule {
+  type: string;
+}
+
+interface ProtectionState {
+  branch: string;
+  /** Classic branch protection object, or null if none / not admin. */
+  classic: Record<string, unknown> | null;
+  /** Active repository-ruleset rules applying to the branch (needs only read). */
+  rules: BranchRule[];
+}
+
+/**
+ * Resolve how the default branch is protected, covering both classic branch
+ * protection (needs admin) and the newer repository rulesets (readable with just
+ * read access). Shared and cached across the branch-oriented checks.
+ */
+function getProtectionState(gh: GitHubClient): Promise<ProtectionState> {
+  return gh.cached("protection-state", async () => {
+    const branch = (await getRepo(gh)).default_branch;
+
+    let classic: Record<string, unknown> | null = null;
+    try {
+      const { data } = await gh.octokit.rest.repos.getBranchProtection({
+        owner: gh.owner,
+        repo: gh.repo,
+        branch,
+      });
+      classic = data as unknown as Record<string, unknown>;
+    } catch (err) {
+      // 404 = no classic protection; 403 = no admin. Either way, fall back to
+      // rulesets. Any other error bubbles up to the skip translation.
+      const status = statusOf(err);
+      if (status !== 404 && status !== 403) throw err;
+    }
+
+    // The rules endpoint needs only read access; let its errors bubble so a
+    // genuine permission problem surfaces as a skip rather than a false "fail".
+    const { data } = await gh.octokit.rest.repos.getBranchRules({
       owner: gh.owner,
       repo: gh.repo,
-      branch: repo.default_branch,
+      branch,
     });
-    return { branch: repo.default_branch, protection: data };
-  } catch (err) {
-    if (statusOf(err) === 404) {
-      return { branch: repo.default_branch, protection: null };
-    }
-    throw err;
-  }
+    const rules = (data as BranchRule[] | undefined) ?? [];
+
+    return { branch, classic, rules };
+  });
 }
 
 const checks: Partial<Record<GithubApiCheck, CheckFn>> = {
@@ -89,9 +118,9 @@ const checks: Partial<Record<GithubApiCheck, CheckFn>> = {
   },
 
   "branch-protection": async (gh) => {
-    const { branch, protection } = await getProtection(gh);
-    return protection
-      ? pass(`"${branch}" is protected`)
+    const { branch, classic, rules } = await getProtectionState(gh);
+    return classic || rules.length > 0
+      ? pass(`"${branch}" is protected${classic ? "" : " (ruleset)"}`)
       : fail(
           `"${branch}" has no branch protection`,
           `protect ${branch}: require a PR and status checks, block force-push`,
@@ -99,21 +128,19 @@ const checks: Partial<Record<GithubApiCheck, CheckFn>> = {
   },
 
   "required-pull-request": async (gh) => {
-    const { branch, protection } = await getProtection(gh);
-    if (!protection) return fail(`"${branch}" has no branch protection`);
-    const has = (protection as { required_pull_request_reviews?: unknown })
-      .required_pull_request_reviews;
-    return has
+    const { branch, classic, rules } = await getProtectionState(gh);
+    const hasClassic = Boolean(classic?.["required_pull_request_reviews"]);
+    const hasRule = rules.some((r) => r.type === "pull_request");
+    return hasClassic || hasRule
       ? pass(`pull request reviews required on "${branch}"`)
       : fail(`pull request reviews not required on "${branch}"`);
   },
 
   "required-status-checks": async (gh) => {
-    const { branch, protection } = await getProtection(gh);
-    if (!protection) return fail(`"${branch}" has no branch protection`);
-    const has = (protection as { required_status_checks?: unknown })
-      .required_status_checks;
-    return has
+    const { branch, classic, rules } = await getProtectionState(gh);
+    const hasClassic = Boolean(classic?.["required_status_checks"]);
+    const hasRule = rules.some((r) => r.type === "required_status_checks");
+    return hasClassic || hasRule
       ? pass(`status checks required on "${branch}"`)
       : fail(`status checks not required on "${branch}"`);
   },
