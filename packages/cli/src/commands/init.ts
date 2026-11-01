@@ -1,5 +1,5 @@
 import { access, mkdir, writeFile } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 
 import {
   FLAG_KEYS,
@@ -57,6 +57,22 @@ jobs:
           gate: ${phase}
           token: \${{ secrets.GITHUB_TOKEN }}
 `;
+}
+
+/** Write a file unless it already exists (so init never clobbers without --force). */
+async function writeIfAllowed(
+  path: string,
+  content: string,
+  force: boolean | undefined,
+): Promise<void> {
+  if (!force) {
+    const exists = await access(path)
+      .then(() => true)
+      .catch(() => false);
+    if (exists) return;
+  }
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, content, "utf8");
 }
 
 interface ProfileDraft {
@@ -191,15 +207,16 @@ export async function runInit(
   }
 
   const factoryDir = resolve(root, ".factory");
-  await writeFile(resolve(factoryDir, "waivers.yml"), "[]\n", "utf8");
-  await writeFile(resolve(factoryDir, "evidence.yml"), "[]\n", "utf8");
-
-  const workflowsDir = resolve(root, ".github", "workflows");
-  await mkdir(workflowsDir, { recursive: true });
-  await writeFile(
-    resolve(workflowsDir, "factory.yml"),
+  await writeIfAllowed(resolve(factoryDir, "waivers.yml"), "[]\n", flags.force);
+  await writeIfAllowed(
+    resolve(factoryDir, "evidence.yml"),
+    "[]\n",
+    flags.force,
+  );
+  await writeIfAllowed(
+    resolve(root, ".github", "workflows", "factory.yml"),
     buildWorkflow(draft.phase ?? "build"),
-    "utf8",
+    flags.force,
   );
 
   if (interactive) {

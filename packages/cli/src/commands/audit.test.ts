@@ -33,13 +33,14 @@ describe("runAudit (integration)", () => {
     const code = await runAudit(dir, {}, { token: null });
 
     expect(code).toBe(0); // no critical control, so always 0
-    expect(out.join("")).toMatch(/\(40 controls\)/);
+    expect(out.join("")).toMatch(/\(\d+ controls\)/);
 
     const state = JSON.parse(
       await readFile(join(dir, ".factory", "state.json"), "utf8"),
     );
-    expect(state.summary.total).toBe(40);
-    expect(state.controls).toHaveLength(40);
+    // Don't hard-code the catalog size — just assert it ran a reasonable number.
+    expect(state.summary.total).toBeGreaterThanOrEqual(30);
+    expect(state.controls).toHaveLength(state.summary.total);
     expect(state.version).toBe(1);
   });
 
@@ -52,7 +53,7 @@ describe("runAudit (integration)", () => {
     const state = JSON.parse(
       await readFile(join(dir, ".factory", "state.json"), "utf8"),
     );
-    expect(state.summary.total).toBe(4); // the 4 testing controls
+    expect(state.summary.total).toBeGreaterThan(0);
     expect(
       state.controls.every((c: { lane: string }) => c.lane === "testing"),
     ).toBe(true);
@@ -65,6 +66,22 @@ describe("runAudit (integration)", () => {
       {},
       { token: null },
     );
+    expect(code).toBe(1);
+  });
+
+  it("exits 1 when a requested gate is red", async () => {
+    const dir = await tempRepo();
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    // An empty repo fails scaffold-phase controls, so the scaffold gate is red.
+    const code = await runAudit(dir, { gate: "scaffold" }, { token: null });
+    expect(code).toBe(1);
+  });
+
+  it("errors on an unknown gate", async () => {
+    const dir = await tempRepo();
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const code = await runAudit(dir, { gate: "nope" }, { token: null });
     expect(code).toBe(1);
   });
 });

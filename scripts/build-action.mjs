@@ -1,14 +1,44 @@
 // Bundle the CLI into a single file for the composite GitHub Action, and copy the
 // catalog's controls/gates next to it so loadBundledCatalog resolves them at
 // runtime (`../controls` relative to dist/index.js). Run via `pnpm action:build`.
-import { cp, rm } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { cp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { build } from "esbuild";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const actionDir = resolve(root, "packages/action");
+
+/** Deterministic sha256 over the bundle's source inputs (platform-independent). */
+async function sourceHash() {
+  const roots = [
+    resolve(root, "packages/catalog/src"),
+    resolve(root, "packages/engine/src"),
+    resolve(root, "packages/cli/src"),
+    resolve(root, "packages/catalog/controls"),
+    resolve(root, "packages/catalog/gates"),
+  ];
+  const files = [];
+  async function walk(dir) {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const full = resolve(dir, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else if (!/\.(test|spec)\.ts$/.test(entry.name)) files.push(full);
+    }
+  }
+  for (const r of roots) await walk(r);
+  files.sort();
+  const hash = createHash("sha256");
+  for (const file of files) {
+    hash.update(relative(root, file).replace(/\\/g, "/"));
+    hash.update("\0");
+    hash.update((await readFile(file, "utf8")).replace(/\r\n/g, "\n"));
+    hash.update("\0");
+  }
+  return hash.digest("hex");
+}
 
 await rm(resolve(actionDir, "dist"), { recursive: true, force: true });
 await rm(resolve(actionDir, "controls"), { recursive: true, force: true });
@@ -42,4 +72,14 @@ await cp(resolve(root, "packages/catalog/gates"), resolve(actionDir, "gates"), {
   recursive: true,
 });
 
-console.log("Built packages/action/dist/index.js (+ controls, gates)");
+// A deterministic source hash CI can diff to catch a committed bundle that wasn't
+// rebuilt after a source change (the bundle bytes themselves vary by platform).
+await writeFile(
+  resolve(actionDir, "dist/SOURCE_SHA256"),
+  `${await sourceHash()}\n`,
+  "utf8",
+);
+
+console.log(
+  "Built packages/action/dist/index.js (+ controls, gates, SOURCE_SHA256)",
+);
