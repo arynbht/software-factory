@@ -9,6 +9,7 @@ export interface Summary {
   pass: number;
   fail: number;
   needsEvidence: number;
+  waived: number;
   skip: number;
   na: number;
   total: number;
@@ -19,6 +20,7 @@ export function summarize(results: ControlResult[]): Summary {
     pass: 0,
     fail: 0,
     needsEvidence: 0,
+    waived: 0,
     skip: 0,
     na: 0,
     total: results.length,
@@ -27,6 +29,7 @@ export function summarize(results: ControlResult[]): Summary {
     if (r.status === "pass") summary.pass++;
     else if (r.status === "fail") summary.fail++;
     else if (r.status === "needs-evidence") summary.needsEvidence++;
+    else if (r.status === "waived") summary.waived++;
     else if (r.status === "n/a") summary.na++;
     else summary.skip++;
   }
@@ -67,6 +70,7 @@ const SYMBOL: Record<ControlStatus, string> = {
   pass: "✓",
   fail: "✗",
   "needs-evidence": "?",
+  waived: "⊘",
   skip: "–",
   "n/a": "·",
 };
@@ -81,6 +85,8 @@ function paint(c: Colors, status: ControlStatus, text: string): string {
       return c.red(text);
     case "needs-evidence":
       return c.yellow(text);
+    case "waived":
+      return c.cyan(text);
     case "skip":
       return c.dim(text);
     case "n/a":
@@ -95,6 +101,7 @@ function renderSummaryLine(c: Colors, s: Summary): string {
     c.yellow(`${s.needsEvidence} need evidence`),
     c.dim(`${s.skip} skip`),
   ];
+  if (s.waived > 0) parts.push(c.cyan(`${s.waived} waived`));
   if (s.na > 0) parts.push(c.dim(`${s.na} n/a`));
   return `${parts.join(", ")}  (${s.total} control${s.total === 1 ? "" : "s"})`;
 }

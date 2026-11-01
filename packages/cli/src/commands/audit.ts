@@ -14,6 +14,8 @@ import {
   type GateResult,
   ProfileError,
   resolveToken,
+  WaiverError,
+  waiversExpiringWithin,
 } from "@arynbht/factory-engine";
 
 import { exitCodeFor, renderGate, renderReport, summarize } from "../report.js";
@@ -68,10 +70,12 @@ export async function runAudit(
   const ctx = buildContext(root, { token });
 
   let profile;
+  let waivers;
   try {
     profile = await ctx.profile();
+    waivers = await ctx.waivers();
   } catch (err) {
-    if (err instanceof ProfileError) {
+    if (err instanceof ProfileError || err instanceof WaiverError) {
       console.error(`factory audit: ${err.message}`);
       return 1;
     }
@@ -88,6 +92,7 @@ export async function runAudit(
   const results = await evaluateControls(selected, ctx, {
     now: options.now,
     profile,
+    waivers,
   });
 
   const format: "table" | "json" = flags.json
@@ -99,6 +104,19 @@ export async function runAudit(
     !process.env.NO_COLOR &&
     process.stdout.isTTY === true;
   process.stdout.write(`${renderReport(results, { format, color })}\n`);
+
+  const expiring = waiversExpiringWithin(
+    waivers,
+    30,
+    options.now ?? new Date(),
+  );
+  if (expiring.length > 0) {
+    process.stdout.write(
+      `\n⚠ ${expiring.length} waiver(s) expiring within 30 days: ${expiring
+        .map((w) => w.control)
+        .join(", ")}\n`,
+    );
+  }
 
   await writeState(ctx.repoPath, results);
 

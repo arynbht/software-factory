@@ -153,6 +153,45 @@ describe("evaluateControl", () => {
     expect(result.status).toBe("needs-evidence");
   });
 
+  it("turns a failing control into waived when an active waiver exists", async () => {
+    const ctx = buildContext(resolve(fixtures, "empty"));
+    const result = await evaluateControl(
+      control([{ type: "file-exists", path: "README.md" }]),
+      ctx,
+      {
+        now: NOW,
+        waivers: [
+          {
+            control: "repo.readme.present",
+            reason: "scratch",
+            expires: "2027-01-01",
+          },
+        ],
+      },
+    );
+    expect(result.status).toBe("waived");
+    expect(result.waiver?.reason).toBe("scratch");
+  });
+
+  it("does not waive when the waiver is expired", async () => {
+    const ctx = buildContext(resolve(fixtures, "empty"));
+    const result = await evaluateControl(
+      control([{ type: "file-exists", path: "README.md" }]),
+      ctx,
+      {
+        now: NOW,
+        waivers: [
+          {
+            control: "repo.readme.present",
+            reason: "old",
+            expires: "2020-01-01",
+          },
+        ],
+      },
+    );
+    expect(result.status).toBe("fail");
+  });
+
   it("fails when an automated detector fails even if evidence is valid", async () => {
     const ctx = buildContext(resolve(fixtures, "node-complete"));
     const result = await evaluateControl(
