@@ -200,6 +200,41 @@ export const PHASE_BY_KEY: Record<PhaseKey, PhaseDef> = Object.fromEntries(
 export const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 export type Severity = (typeof SEVERITIES)[number];
 
+/** Project types a profile can declare. */
+export const PROJECT_TYPES = [
+  "web-app",
+  "api",
+  "cli",
+  "library",
+  "mobile",
+  "desktop",
+  "data-pipeline",
+  "monorepo",
+] as const;
+export type ProjectType = (typeof PROJECT_TYPES)[number];
+
+/**
+ * The closed set of risk flags a profile may set. A closed set means a typo
+ * (`public_facing`, `handles-pci`) is rejected at load instead of silently making
+ * a control never apply — the gap the M1 review flagged.
+ */
+export const FLAG_KEYS = [
+  "public-facing",
+  "has-users",
+  "handles-pii",
+  "handles-payments",
+  "handles-health-data",
+  "serves-minors",
+  "eu-users",
+  "enterprise-customers",
+  "government-customers",
+  "uses-ai",
+  "open-source",
+  "distributes-binaries",
+  "multi-service",
+] as const;
+export type FlagKey = (typeof FLAG_KEYS)[number];
+
 /** Rough implementation effort tag (used for prioritisation; wired fully in M6). */
 export const EFFORTS = ["small", "medium", "large"] as const;
 export type Effort = (typeof EFFORTS)[number];

@@ -1,11 +1,12 @@
-import type { Control } from "@arynbht/factory-catalog";
+import type { Control, Profile } from "@arynbht/factory-catalog";
 
+import { appliesTo } from "./applicability.js";
 import type { AuditContext } from "./context.js";
 import { runDetector } from "./detectors/run.js";
 import type { DetectorResult } from "./detectors/types.js";
 import { findValidEvidence } from "./evidence.js";
 
-export type ControlStatus = "pass" | "fail" | "skip" | "needs-evidence";
+export type ControlStatus = "pass" | "fail" | "skip" | "needs-evidence" | "n/a";
 
 export interface ControlResult {
   controlId: string;
@@ -21,6 +22,8 @@ export interface ControlResult {
 export interface EvaluateOptions {
   /** Reference time for evidence expiry; defaults to now. */
   now?: Date | undefined;
+  /** Profile for applicability; null/undefined means every control applies. */
+  profile?: Profile | null | undefined;
 }
 
 /**
@@ -40,6 +43,19 @@ export async function evaluateControl(
 ): Promise<ControlResult> {
   const now = options.now ?? new Date();
   const start = performance.now();
+
+  if (!appliesTo(control, options.profile ?? null)) {
+    return {
+      controlId: control.id,
+      title: control.title,
+      lane: control.lane,
+      phase: control.phase,
+      severity: control.severity,
+      status: "n/a",
+      detectors: [],
+      durationMs: 0,
+    };
+  }
 
   const manualConfigs = control.detect.filter((c) => c.type === "manual");
   const autoConfigs = control.detect.filter((c) => c.type !== "manual");

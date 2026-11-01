@@ -1,4 +1,4 @@
-import type { Control } from "@arynbht/factory-catalog";
+import type { Control, Profile } from "@arynbht/factory-catalog";
 
 import type { AuditContext } from "./context.js";
 import { type ControlResult, evaluateControl } from "./evaluate.js";
@@ -8,6 +8,8 @@ export interface AuditOptions {
   concurrency?: number | undefined;
   /** Reference time for evidence expiry; defaults to now. */
   now?: Date | undefined;
+  /** Profile for applicability; if omitted, loaded from the context. */
+  profile?: Profile | null | undefined;
 }
 
 /**
@@ -20,6 +22,7 @@ export async function evaluateControls(
   options: AuditOptions = {},
 ): Promise<ControlResult[]> {
   const concurrency = Math.max(1, options.concurrency ?? 8);
+  const profile = options.profile ?? (await ctx.profile());
   const results: ControlResult[] = new Array<ControlResult>(controls.length);
   let next = 0;
 
@@ -30,6 +33,7 @@ export async function evaluateControls(
       if (!control) continue;
       results[index] = await evaluateControl(control, ctx, {
         now: options.now,
+        profile,
       });
     }
   }

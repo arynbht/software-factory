@@ -6,6 +6,7 @@ export interface Summary {
   fail: number;
   needsEvidence: number;
   skip: number;
+  na: number;
   total: number;
 }
 
@@ -15,12 +16,14 @@ export function summarize(results: ControlResult[]): Summary {
     fail: 0,
     needsEvidence: 0,
     skip: 0,
+    na: 0,
     total: results.length,
   };
   for (const r of results) {
     if (r.status === "pass") summary.pass++;
     else if (r.status === "fail") summary.fail++;
     else if (r.status === "needs-evidence") summary.needsEvidence++;
+    else if (r.status === "n/a") summary.na++;
     else summary.skip++;
   }
   return summary;
@@ -38,6 +41,7 @@ const SYMBOL: Record<ControlStatus, string> = {
   fail: "✗",
   "needs-evidence": "?",
   skip: "–",
+  "n/a": "·",
 };
 
 type Colors = ReturnType<typeof pc.createColors>;
@@ -52,6 +56,8 @@ function paint(c: Colors, status: ControlStatus, text: string): string {
       return c.yellow(text);
     case "skip":
       return c.dim(text);
+    case "n/a":
+      return c.dim(text);
   }
 }
 
@@ -62,6 +68,7 @@ function renderSummaryLine(c: Colors, s: Summary): string {
     c.yellow(`${s.needsEvidence} need evidence`),
     c.dim(`${s.skip} skip`),
   ];
+  if (s.na > 0) parts.push(c.dim(`${s.na} n/a`));
   return `${parts.join(", ")}  (${s.total} control${s.total === 1 ? "" : "s"})`;
 }
 

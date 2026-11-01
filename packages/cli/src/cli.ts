@@ -1,6 +1,7 @@
 import { Command, Option } from "commander";
 
 import { type AuditFlags, runAudit } from "./commands/audit.js";
+import { runProfileSet, runProfileShow } from "./commands/profile.js";
 
 export function buildProgram(): Command {
   const program = new Command();
@@ -25,6 +26,26 @@ export function buildProgram(): Command {
     .option("--no-color", "disable coloured output")
     .action(async (path: string, flags: AuditFlags) => {
       process.exitCode = await runAudit(path, flags);
+    });
+
+  const profile = program
+    .command("profile")
+    .description("Show or edit the repo's .factory/profile.yml");
+
+  profile
+    .command("show")
+    .argument("[path]", "path to the repo", ".")
+    .action(async (path: string) => {
+      process.exitCode = await runProfileShow(path);
+    });
+
+  profile
+    .command("set")
+    .argument("<key>", "profile key (e.g. type, phase, flags.handles-pii)")
+    .argument("<value>", "new value")
+    .argument("[path]", "path to the repo", ".")
+    .action(async (key: string, value: string, path: string) => {
+      process.exitCode = await runProfileSet(key, value, path);
     });
 
   return program;

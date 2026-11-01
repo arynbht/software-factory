@@ -4,12 +4,14 @@
 import { readFile as fsReadFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
+import type { Profile } from "@arynbht/factory-catalog";
 import { Octokit } from "@octokit/rest";
 import { simpleGit } from "simple-git";
 import { glob as tinyglob } from "tinyglobby";
 
 import { type EvidenceEntry, loadEvidence } from "./evidence.js";
 import { parseRepoSlug, type RepoSlug } from "./github/slug.js";
+import { loadProfile } from "./profile.js";
 
 export interface GitHubClient {
   readonly octokit: Octokit;
@@ -32,6 +34,8 @@ export interface AuditContext {
   github(): Promise<GitHubClient | null>;
   /** Human evidence entries from `.factory/evidence.yml` (loaded once per run). */
   evidence(): Promise<EvidenceEntry[]>;
+  /** The resolved profile from `.factory/profile.yml`, or null if none. */
+  profile(): Promise<Profile | null>;
 }
 
 export interface BuildContextOptions {
@@ -50,6 +54,7 @@ export function buildContext(
 
   let githubClient: Promise<GitHubClient | null> | undefined;
   let evidenceEntries: Promise<EvidenceEntry[]> | undefined;
+  let profileData: Promise<Profile | null> | undefined;
 
   return {
     repoPath: root,
@@ -94,6 +99,16 @@ export function buildContext(
         });
       }
       return evidenceEntries;
+    },
+
+    profile() {
+      if (!profileData) {
+        profileData = loadProfile(root).catch((err: unknown) => {
+          profileData = undefined; // don't cache a rejection
+          throw err;
+        });
+      }
+      return profileData;
     },
   };
 }

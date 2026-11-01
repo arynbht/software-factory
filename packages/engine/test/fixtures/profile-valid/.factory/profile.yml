@@ -1,0 +1,9 @@
+version: 1
+name: sample
+type: web-app
+stack: [typescript, react]
+phase: build
+flags:
+  public-facing: true
+  handles-pii: true
+severity-floor: medium

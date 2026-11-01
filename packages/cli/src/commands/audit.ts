@@ -1,11 +1,12 @@
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { loadBundledCatalog } from "@arynbht/factory-catalog";
+import { loadBundledCatalog, SEVERITIES } from "@arynbht/factory-catalog";
 import {
   buildContext,
   type ControlResult,
   evaluateControls,
+  ProfileError,
   resolveToken,
 } from "@arynbht/factory-engine";
 
@@ -53,16 +54,34 @@ export async function runAudit(
     return 1;
   }
 
-  const selected = flags.lane
-    ? controls.filter((c) => c.lane === flags.lane)
-    : controls;
-
   const token =
     options.token === null
       ? undefined
       : (options.token ?? resolveToken(flags.token));
   const ctx = buildContext(root, { token });
-  const results = await evaluateControls(selected, ctx, { now: options.now });
+
+  let profile;
+  try {
+    profile = await ctx.profile();
+  } catch (err) {
+    if (err instanceof ProfileError) {
+      console.error(`factory audit: ${err.message}`);
+      return 1;
+    }
+    throw err;
+  }
+
+  const floorRank = SEVERITIES.indexOf(profile?.["severity-floor"] ?? "low");
+  const selected = controls.filter(
+    (c) =>
+      (!flags.lane || c.lane === flags.lane) &&
+      SEVERITIES.indexOf(c.severity) <= floorRank,
+  );
+
+  const results = await evaluateControls(selected, ctx, {
+    now: options.now,
+    profile,
+  });
 
   const format: "table" | "json" = flags.json
     ? "json"

@@ -4,9 +4,11 @@ import { z } from "zod";
 
 import {
   EFFORTS,
+  FLAG_KEYS,
   LANE_BY_KEY,
   LANE_KEYS,
   PHASE_KEYS,
+  PROJECT_TYPES,
   SEVERITIES,
 } from "./taxonomy.js";
 
@@ -155,8 +157,8 @@ export const PredicateSchema = z.object({
   get not() {
     return PredicateSchema.optional();
   },
-  flag: z.string().optional(),
-  type: z.string().optional(),
+  flag: z.enum(FLAG_KEYS).optional(),
+  type: z.enum(PROJECT_TYPES).optional(),
   stack: z.string().optional(),
   "phase-at-least": z.enum(PHASE_KEYS).optional(),
 });

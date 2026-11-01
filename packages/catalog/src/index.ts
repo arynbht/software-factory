@@ -6,6 +6,7 @@ export const PACKAGE = "@arynbht/factory-catalog" as const;
 
 export * from "./taxonomy.js";
 export * from "./schema.js";
+export { ProfileSchema, type Profile } from "./profile.js";
 export { loadCatalog } from "./validate.js";
 export type { CatalogError, LoadResult } from "./validate.js";
 export { bundledControlsDir, loadBundledCatalog } from "./bundled.js";
