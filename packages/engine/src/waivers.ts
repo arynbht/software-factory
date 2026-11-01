@@ -1,12 +1,13 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { type Waiver, WaiversSchema } from "@arynbht/factory-catalog";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
-export class WaiverError extends Error {}
+import { DAY_MS, endOfDayMs } from "./dates.js";
+import { writeFileAtomic } from "./fs-atomic.js";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+export class WaiverError extends Error {}
 
 /** Load `.factory/waivers.yml` (missing → none; invalid → {@link WaiverError}). */
 export async function loadWaivers(repoPath: string): Promise<Waiver[]> {
@@ -38,11 +39,10 @@ export async function loadWaivers(repoPath: string): Promise<Waiver[]> {
   return result.data;
 }
 
-/** A waiver is active if its expiry date is valid and not in the past. */
+/** A waiver is active if its expiry (inclusive end of day) is valid and not past. */
 export function isWaiverActive(waiver: Waiver, now: Date): boolean {
-  const expiry = new Date(waiver.expires);
-  if (Number.isNaN(expiry.getTime())) return false;
-  return now.getTime() <= expiry.getTime();
+  const expiry = endOfDayMs(waiver.expires);
+  return expiry !== null && now.getTime() <= expiry;
 }
 
 /** The active waiver for a control, or null. */
@@ -65,10 +65,8 @@ export function waiversExpiringWithin(
 ): Waiver[] {
   const horizon = now.getTime() + days * DAY_MS;
   return waivers.filter((w) => {
-    const expiry = new Date(w.expires).getTime();
-    return (
-      !Number.isNaN(expiry) && expiry >= now.getTime() && expiry <= horizon
-    );
+    const expiry = endOfDayMs(w.expires);
+    return expiry !== null && expiry >= now.getTime() && expiry <= horizon;
   });
 }
 
@@ -86,12 +84,9 @@ export async function addWaiver(
   if (!result.success) {
     throw new WaiverError(`invalid waiver: ${result.error.issues[0]?.message}`);
   }
-  const dir = resolve(repoPath, ".factory");
-  await mkdir(dir, { recursive: true });
-  await writeFile(
-    resolve(dir, "waivers.yml"),
+  await writeFileAtomic(
+    resolve(repoPath, ".factory", "waivers.yml"),
     stringifyYaml(result.data),
-    "utf8",
   );
   return result.data;
 }

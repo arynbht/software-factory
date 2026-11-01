@@ -1,10 +1,15 @@
 // Reading `.factory/evidence.yml` and deciding whether a control's human evidence
 // is still valid. This is the M1 stub; the full add/attach workflow lands in M2.
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+
+import { DAY_MS, endOfDayMs } from "./dates.js";
+import { writeFileAtomic } from "./fs-atomic.js";
+
+export class EvidenceError extends Error {}
 
 export interface EvidenceEntry {
   control: string;
@@ -30,10 +35,15 @@ export async function loadEvidence(repoPath: string): Promise<EvidenceEntry[]> {
   let parsed: unknown;
   try {
     parsed = parseYaml(raw);
-  } catch {
-    return [];
+  } catch (err) {
+    throw new EvidenceError(
+      `evidence.yml is not valid YAML: ${(err as Error).message}`,
+    );
   }
-  if (!Array.isArray(parsed)) return [];
+  if (parsed == null) return [];
+  if (!Array.isArray(parsed)) {
+    throw new EvidenceError("evidence.yml must be a list of entries");
+  }
 
   return parsed.filter(
     (e): e is EvidenceEntry =>
@@ -58,13 +68,11 @@ export function parseDuration(value: string): number | null {
   }
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 /** An entry is valid if it is dated and (if `valid-for` is set) not yet expired. */
 export function isEvidenceValid(entry: EvidenceEntry, now: Date): boolean {
   if (!entry.date) return false;
-  const start = new Date(entry.date);
-  if (Number.isNaN(start.getTime())) return false;
+  const start = endOfDayMs(entry.date);
+  if (start === null) return false;
 
   const window = entry["valid-for"];
   if (!window) return true;
@@ -73,7 +81,7 @@ export function isEvidenceValid(entry: EvidenceEntry, now: Date): boolean {
   // evidence immortal — treat it as invalid rather than never-expiring.
   if (days === null) return false;
 
-  return now.getTime() <= start.getTime() + days * DAY_MS;
+  return now.getTime() <= start + days * DAY_MS;
 }
 
 /** The first valid evidence entry for a control, or null. */
@@ -98,9 +106,9 @@ export function evidenceExpiringWithin(
   return entries.filter((e) => {
     if (!isEvidenceValid(e, now) || !e.date || !e["valid-for"]) return false;
     const durationDays = parseDuration(e["valid-for"]);
-    if (durationDays === null) return false;
-    const expiry = new Date(e.date).getTime() + durationDays * DAY_MS;
-    return expiry <= horizon;
+    const start = endOfDayMs(e.date);
+    if (durationDays === null || start === null) return false;
+    return start + durationDays * DAY_MS <= horizon;
   });
 }
 
@@ -118,8 +126,9 @@ export async function addEvidence(
 ): Promise<EvidenceEntry[]> {
   const existing = await loadEvidence(repoPath);
   const next = [...existing.filter((e) => e.control !== entry.control), entry];
-  const dir = resolve(repoPath, ".factory");
-  await mkdir(dir, { recursive: true });
-  await writeFile(resolve(dir, "evidence.yml"), stringifyYaml(next), "utf8");
+  await writeFileAtomic(
+    resolve(repoPath, ".factory", "evidence.yml"),
+    stringifyYaml(next),
+  );
   return next;
 }

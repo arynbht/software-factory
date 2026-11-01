@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   addEvidence,
+  EvidenceError,
   evidenceExpiringWithin,
   findValidEvidence,
   isEvidenceValid,
@@ -85,6 +86,22 @@ describe("loadEvidence + findValidEvidence", () => {
 
   it("returns none for a repo without an evidence file", async () => {
     expect(await loadEvidence(resolve(fixtures, "empty"))).toEqual([]);
+  });
+
+  it("throws EvidenceError on a malformed (non-list) evidence file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "factory-evidence-bad-"));
+    try {
+      const { mkdir, writeFile } = await import("node:fs/promises");
+      await mkdir(join(dir, ".factory"), { recursive: true });
+      await writeFile(
+        join(dir, ".factory", "evidence.yml"),
+        "control: x\n",
+        "utf8",
+      );
+      await expect(loadEvidence(dir)).rejects.toBeInstanceOf(EvidenceError);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
 

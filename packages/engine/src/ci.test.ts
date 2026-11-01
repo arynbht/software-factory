@@ -67,7 +67,9 @@ describe("upsertStatusIssue", () => {
     let closedState: string | null = null;
     server.use(
       http.get(ISSUES, () =>
-        HttpResponse.json([{ number: 9, title: "Factory status" }]),
+        HttpResponse.json([
+          { number: 9, title: "Factory status", state: "open" },
+        ]),
       ),
       http.patch(`${ISSUES}/9`, async ({ request }) => {
         const body = (await request.json()) as { state?: string };

@@ -6,9 +6,9 @@ export const WaiverSchema = z.strictObject({
   control: z.string().min(1),
   reason: z.string().min(1),
   owner: z.string().optional(),
-  created: z.string().optional(),
+  created: z.iso.date().optional(),
   /** ISO date (YYYY-MM-DD) after which the waiver no longer applies. */
-  expires: z.string().min(1),
+  expires: z.iso.date(),
 });
 
 export const WaiversSchema = z.array(WaiverSchema);
