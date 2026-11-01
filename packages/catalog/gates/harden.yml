@@ -1,0 +1,6 @@
+phase: harden
+title: Harden gate
+select:
+  - phase: scaffold
+  - phase: build
+  - phase: harden

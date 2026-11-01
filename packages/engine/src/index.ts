@@ -17,6 +17,8 @@ export type {
 } from "./evaluate.js";
 export { evaluateControls } from "./audit.js";
 export type { AuditOptions } from "./audit.js";
+export { evaluateGate, selectForGate } from "./gates.js";
+export type { GateResult, GateStatus } from "./gates.js";
 export {
   findValidEvidence,
   isEvidenceValid,

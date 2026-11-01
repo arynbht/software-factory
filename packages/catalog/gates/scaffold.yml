@@ -1,0 +1,4 @@
+phase: scaffold
+title: Scaffold gate
+select:
+  - phase: scaffold
