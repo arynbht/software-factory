@@ -30,13 +30,11 @@ function control(detect: DetectorConfig[]): Control {
 }
 
 describe("runDetector", () => {
-  it("skips an unimplemented detector type", async () => {
+  it("skips an unknown detector type (defensive)", async () => {
     const ctx = buildContext(resolve(fixtures, "empty"));
-    // `command` lands in M1.5; until then it reports skip, not implemented.
     const result = await runDetector(ctx, {
-      type: "command",
-      run: "echo hi",
-    });
+      type: "not-a-real-detector",
+    } as unknown as DetectorConfig);
     expect(result.status).toBe("skip");
     expect(result.message).toMatch(/not implemented/i);
   });
