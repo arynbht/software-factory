@@ -90,6 +90,13 @@ describe("evaluateGate", () => {
     ).toBe("red");
   });
 
+  it("is amber (not green) when the selector matches nothing", () => {
+    expect(
+      evaluateGate(gate([{ id: "does.not.exist" }]), withStatuses(["pass"]))
+        .status,
+    ).toBe("amber");
+  });
+
   it("is amber when none fail but some need evidence or skip", () => {
     expect(
       evaluateGate(

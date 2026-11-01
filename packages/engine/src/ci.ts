@@ -13,7 +13,7 @@ export async function upsertStickyComment(
   body: string,
 ): Promise<void> {
   const marked = `${FACTORY_MARKER}\n${body}`;
-  const { data: comments } = await octokit.rest.issues.listComments({
+  const comments = await octokit.paginate(octokit.rest.issues.listComments, {
     owner,
     repo,
     issue_number: issueNumber,
@@ -48,10 +48,12 @@ export async function upsertStatusIssue(
   body: string,
   allGreen: boolean,
 ): Promise<void> {
-  const { data: issues } = await octokit.rest.issues.listForRepo({
+  // Search all states so a previously-closed status issue is reopened rather than
+  // duplicated, and so it's found even past the first page of issues.
+  const issues = await octokit.paginate(octokit.rest.issues.listForRepo, {
     owner,
     repo,
-    state: "open",
+    state: "all",
     per_page: 100,
   });
   const existing = issues.find(
@@ -60,7 +62,7 @@ export async function upsertStatusIssue(
   const marked = `${FACTORY_MARKER}\n${body}`;
 
   if (allGreen) {
-    if (existing) {
+    if (existing && existing.state === "open") {
       await octokit.rest.issues.update({
         owner,
         repo,

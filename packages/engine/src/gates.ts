@@ -50,7 +50,10 @@ export function selectForGate(
 export function evaluateGate(gate: Gate, results: ControlResult[]): GateResult {
   const controls = selectForGate(gate, results);
   let status: GateStatus = "green";
-  if (controls.some((c) => c.status === "fail")) {
+  if (controls.length === 0) {
+    // A gate that matches nothing (e.g. a typo'd selector) is not "passing".
+    status = "amber";
+  } else if (controls.some((c) => c.status === "fail")) {
     status = "red";
   } else if (
     controls.some((c) => c.status === "needs-evidence" || c.status === "skip")

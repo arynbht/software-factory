@@ -28,6 +28,13 @@ describe("isWaiverActive / findActiveWaiver", () => {
     expect(isWaiverActive(waiver({ expires: "2026-01-01" }), NOW)).toBe(false);
   });
 
+  it("stays active through the whole expiry day (not just until midnight)", () => {
+    const afternoon = new Date("2026-11-01T14:00:00Z");
+    expect(isWaiverActive(waiver({ expires: "2026-11-01" }), afternoon)).toBe(
+      true,
+    );
+  });
+
   it("is inactive for an unparseable expiry", () => {
     expect(isWaiverActive(waiver({ expires: "whenever" }), NOW)).toBe(false);
   });

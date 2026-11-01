@@ -34,6 +34,7 @@ export {
   evidenceExpiringWithin,
   hashFile,
   parseDuration,
+  EvidenceError,
 } from "./evidence.js";
 export type { EvidenceEntry } from "./evidence.js";
 export { parseRepoSlug } from "./github/slug.js";
