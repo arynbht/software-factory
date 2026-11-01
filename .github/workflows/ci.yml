@@ -50,10 +50,14 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Check action bundle builds and catalog copy is current
+      - name: Check action bundle is current
         run: |
           pnpm action:build
-          # The bundle itself is not byte-diffed (esbuild output varies by platform);
-          # we verify it builds and is non-empty, and that the copied catalog matches.
+          # The bundle bytes vary by platform, so we don't diff them directly;
+          # instead we diff the copied catalog and a deterministic source hash,
+          # which catches a committed bundle that wasn't rebuilt after a change.
           test -s packages/action/dist/index.js
-          git diff --exit-code -- packages/action/controls packages/action/gates
+          git diff --exit-code -- \
+            packages/action/controls \
+            packages/action/gates \
+            packages/action/dist/SOURCE_SHA256
