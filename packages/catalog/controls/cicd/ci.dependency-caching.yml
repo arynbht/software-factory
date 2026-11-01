@@ -7,7 +7,7 @@ effort: small
 detect:
   - type: file-matches
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
-    pattern: '(?i)(actions/cache|cache:\s|cache-dependency-path|setup-node[\s\S]*cache)'
+    pattern: '(?i)(actions/cache|cache:\s|cache-dependency-path)'
 evidence: none
 fix:
   type: merge-yaml

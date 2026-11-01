@@ -6,7 +6,7 @@ severity: low
 effort: small
 detect:
   - type: file-matches
-    path: "commitlint.config.js|commitlint.config.cjs|commitlint.config.mjs|commitlint.config.ts|.commitlintrc|.commitlintrc.json|.commitlintrc.js|.commitlintrc.yml|package.json"
+    path: "commitlint.config.js|commitlint.config.cjs|commitlint.config.mjs|commitlint.config.ts|.commitlintrc|.commitlintrc.json|.commitlintrc.js|.commitlintrc.yml|.commitlintrc.cjs"
     pattern: "(?i)(commitlint|conventional)"
 evidence: none
 fix:

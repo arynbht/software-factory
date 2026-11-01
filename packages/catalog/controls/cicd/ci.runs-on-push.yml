@@ -1,5 +1,5 @@
 id: ci.runs-on-push
-title: CI runs on the default branch
+title: CI runs on push
 lane: cicd
 phase: scaffold
 severity: medium
@@ -13,5 +13,6 @@ references:
   - name: GitHub Docs — Events that trigger workflows (push)
     url: https://docs.github.com/actions/using-workflows/events-that-trigger-workflows#push
 rationale: >
-  Running CI on pushes to the default branch catches breakage introduced by
-  merges and keeps the main line continuously verified.
+  A push trigger keeps the mainline continuously verified, catching breakage
+  introduced by merges. (This heuristic detects any push trigger; confirming it
+  targets the default branch specifically is left to a future structured check.)

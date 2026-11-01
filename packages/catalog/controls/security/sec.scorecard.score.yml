@@ -1,5 +1,5 @@
 id: sec.scorecard.score
-title: OpenSSF Scorecard above threshold
+title: OpenSSF Scorecard "Maintained" check above threshold
 lane: security
 phase: harden
 severity: low
@@ -13,5 +13,6 @@ references:
   - name: OpenSSF Scorecard
     url: https://github.com/ossf/scorecard
 rationale: >
-  OpenSSF Scorecard summarises a repo's security posture against community best
-  practice; tracking it gives a single, comparable signal over time.
+  OpenSSF Scorecard's "Maintained" check is a comparable signal that the project
+  is actively maintained (recent commits/releases), a strong proxy for whether
+  security issues will be addressed. Other checks can be gated as separate controls.
