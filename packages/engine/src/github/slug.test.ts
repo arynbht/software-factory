@@ -28,4 +28,10 @@ describe("parseRepoSlug", () => {
     expect(parseRepoSlug(undefined)).toBeNull();
     expect(parseRepoSlug("https://gitlab.com/a/b.git")).toBeNull();
   });
+
+  it("returns null for a non-bare URL with extra path segments", () => {
+    expect(
+      parseRepoSlug("https://github.com/arynbht/software-factory/tree/main"),
+    ).toBeNull();
+  });
 });

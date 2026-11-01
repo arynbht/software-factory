@@ -75,12 +75,24 @@ export function buildContext(
     },
 
     github() {
-      githubClient ??= createGitHubClient(root, options);
+      if (!githubClient) {
+        githubClient = createGitHubClient(root, options).catch(
+          (err: unknown) => {
+            githubClient = undefined; // don't cache a rejection
+            throw err;
+          },
+        );
+      }
       return githubClient;
     },
 
     evidence() {
-      evidenceEntries ??= loadEvidence(root);
+      if (!evidenceEntries) {
+        evidenceEntries = loadEvidence(root).catch((err: unknown) => {
+          evidenceEntries = undefined; // don't cache a rejection
+          throw err;
+        });
+      }
       return evidenceEntries;
     },
   };
@@ -105,7 +117,12 @@ async function createGitHubClient(
     cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
       const existing = cache.get(key);
       if (existing) return existing as Promise<T>;
-      const created = fn();
+      // Evict on rejection so a transient error retries and is not amplified
+      // across every control that shares the key.
+      const created = fn().catch((err: unknown) => {
+        cache.delete(key);
+        throw err;
+      });
       cache.set(key, created);
       return created;
     },

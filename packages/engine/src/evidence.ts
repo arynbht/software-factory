@@ -68,7 +68,9 @@ export function isEvidenceValid(entry: EvidenceEntry, now: Date): boolean {
   const window = entry["valid-for"];
   if (!window) return true;
   const days = parseDuration(window);
-  if (days === null) return true;
+  // Fail closed: an unparseable `valid-for` (a typo like "3m") must not make the
+  // evidence immortal — treat it as invalid rather than never-expiring.
+  if (days === null) return false;
 
   return now.getTime() <= start.getTime() + days * DAY_MS;
 }

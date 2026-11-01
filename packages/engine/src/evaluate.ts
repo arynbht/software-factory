@@ -52,7 +52,14 @@ export async function evaluateControl(
   let manualResult: DetectorResult | null = null;
   let evidenceMissing = false;
   if (manualConfigs.length > 0) {
-    const entry = findValidEvidence(await ctx.evidence(), control.id, now);
+    // A broken/unreadable evidence file must not crash the run — treat it as no
+    // evidence (needs-evidence) rather than letting the rejection escape.
+    let entry = null;
+    try {
+      entry = findValidEvidence(await ctx.evidence(), control.id, now);
+    } catch {
+      entry = null;
+    }
     if (entry) {
       manualResult = {
         status: "pass",
