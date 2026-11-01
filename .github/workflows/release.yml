@@ -1,0 +1,36 @@
+# Changesets release. Manually dispatched for now; promote to `push: [main]` once
+# "Allow GitHub Actions to create and approve pull requests" is enabled in repo
+# settings (Settings → Actions → General). Publishing to a registry is a follow-up
+# — the GitHub Action ships a committed bundle and needs no npm publish to work.
+name: release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Create or update the Version Packages PR
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset version
+          commit: "chore: version packages"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
