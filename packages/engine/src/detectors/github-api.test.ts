@@ -37,11 +37,13 @@ describe("githubApi", () => {
     expect(result.status).toBe("skip");
   });
 
-  it("skips an unimplemented-but-valid check gracefully", async () => {
-    // Every enum member is implemented; a 403 stands in for the generic skip path.
+  it("skips branch-protection when permission is denied for both endpoints", async () => {
     server.use(
       repoHandler({}),
       http.get(`${REPO}/branches/main/protection`, () =>
+        HttpResponse.json({ message: "Forbidden" }, { status: 403 }),
+      ),
+      http.get(`${REPO}/rules/branches/main`, () =>
         HttpResponse.json({ message: "Forbidden" }, { status: 403 }),
       ),
     );
@@ -63,12 +65,13 @@ describe("githubApi", () => {
     expect(result.status).toBe("pass");
   });
 
-  it("fails branch-protection on 404 (unprotected)", async () => {
+  it("fails branch-protection when neither classic protection nor rules exist", async () => {
     server.use(
       repoHandler({}),
       http.get(`${REPO}/branches/main/protection`, () =>
         HttpResponse.json({ message: "Branch not protected" }, { status: 404 }),
       ),
+      http.get(`${REPO}/rules/branches/main`, () => HttpResponse.json([])),
     );
     const result = await githubApi(ctx(), {
       type: "github-api",
@@ -77,16 +80,55 @@ describe("githubApi", () => {
     expect(result.status).toBe("fail");
   });
 
-  it("passes branch-protection when protection exists", async () => {
+  it("passes branch-protection via classic protection", async () => {
     server.use(
       repoHandler({}),
       http.get(`${REPO}/branches/main/protection`, () =>
         HttpResponse.json({ required_pull_request_reviews: {} }),
       ),
+      http.get(`${REPO}/rules/branches/main`, () => HttpResponse.json([])),
     );
     const result = await githubApi(ctx(), {
       type: "github-api",
       check: "branch-protection",
+    });
+    expect(result.status).toBe("pass");
+  });
+
+  it("passes branch-protection via a repository ruleset (no classic protection)", async () => {
+    server.use(
+      repoHandler({}),
+      http.get(`${REPO}/branches/main/protection`, () =>
+        HttpResponse.json({ message: "Branch not protected" }, { status: 404 }),
+      ),
+      http.get(`${REPO}/rules/branches/main`, () =>
+        HttpResponse.json([
+          { type: "pull_request" },
+          { type: "non_fast_forward" },
+        ]),
+      ),
+    );
+    const result = await githubApi(ctx(), {
+      type: "github-api",
+      check: "branch-protection",
+    });
+    expect(result.status).toBe("pass");
+    expect(result.message).toMatch(/ruleset/i);
+  });
+
+  it("passes required-pull-request via a ruleset", async () => {
+    server.use(
+      repoHandler({}),
+      http.get(`${REPO}/branches/main/protection`, () =>
+        HttpResponse.json({ message: "Branch not protected" }, { status: 404 }),
+      ),
+      http.get(`${REPO}/rules/branches/main`, () =>
+        HttpResponse.json([{ type: "pull_request" }]),
+      ),
+    );
+    const result = await githubApi(ctx(), {
+      type: "github-api",
+      check: "required-pull-request",
     });
     expect(result.status).toBe("pass");
   });
