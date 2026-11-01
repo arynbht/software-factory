@@ -1,0 +1,19 @@
+{
+  "name": "@arynbht/factory-catalog",
+  "version": "0.0.0",
+  "description": "Control catalog: YAML controls, gates, templates, prompts, and the zod schema that validates them.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {}
+}

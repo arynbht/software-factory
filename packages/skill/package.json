@@ -1,0 +1,14 @@
+{
+  "name": "@arynbht/factory-skill",
+  "version": "0.0.0",
+  "description": "Claude Code skill (SKILL.md + scripts) copied into target repos by factory init.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist",
+    "SKILL.md",
+    "scripts"
+  ],
+  "scripts": {}
+}

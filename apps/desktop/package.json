@@ -1,0 +1,15 @@
+{
+  "name": "@arynbht/factory-desktop",
+  "version": "0.0.0",
+  "description": "Electron desktop shell over the factory engine.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {},
+  "dependencies": {
+    "@arynbht/factory-engine": "workspace:*"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":semanticCommits",
+    ":dependencyDashboard"
+  ],
+  "timezone": "UTC",
+  "schedule": ["before 6am on monday"],
+  "packageRules": [
+    {
+      "description": "Group non-major updates into one weekly PR.",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "weekly non-major updates"
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  }
+}

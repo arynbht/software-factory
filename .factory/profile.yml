@@ -1,0 +1,25 @@
+# Factory profile for the factory repo itself — the first fixture.
+#
+# NOTE: written in Milestone 0 before the profile schema exists. It will not fully
+# validate until the schema lands in M1/M2; it is kept here deliberately as the
+# first fixture and as dogfooding (the factory audits itself). Values reflect the
+# decisions made so far (public + MIT, distributes Electron binaries, uses Claude).
+version: 1
+name: software-factory
+type: monorepo # headless engine + CLI + Action + Claude Code skill + Electron shell
+stack:
+  - typescript
+  - pnpm
+  - node
+  - electron
+phase: scaffold
+flags:
+  open-source: true
+  distributes-binaries: true
+  uses-ai: true
+  handles-pii: false
+  handles-payments: false
+  public-facing: false
+  has-users: false
+  multi-service: false
+severity-floor: medium

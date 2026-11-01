@@ -1,0 +1,13 @@
+# Git hooks, managed by lefthook. Installed via the root `prepare` script.
+pre-commit:
+  parallel: false
+  commands:
+    gitleaks:
+      run: gitleaks git --staged --redact --no-banner
+    lint-staged:
+      run: pnpm exec lint-staged
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}

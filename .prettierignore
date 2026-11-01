@@ -1,0 +1,10 @@
+**/dist/**
+**/node_modules/**
+**/coverage/**
+*.tsbuildinfo
+pnpm-lock.yaml
+CHANGELOG.md
+.changeset/*.md
+
+# Source-of-truth planning doc; keep as authored.
+software-factory-build-plan.md
