@@ -8,3 +8,9 @@ CHANGELOG.md
 
 # Source-of-truth planning doc; keep as authored.
 software-factory-build-plan.md
+
+# Generated from the zod schema via `pnpm schema:json`.
+packages/catalog/schema/*.json
+
+# Test fixtures are data, sometimes intentionally malformed.
+**/test/fixtures/**

@@ -41,6 +41,9 @@ jobs:
       - name: Format check
         run: pnpm format
 
+      - name: Validate catalog
+        run: pnpm catalog:validate
+
       - name: Test
         run: pnpm test
 

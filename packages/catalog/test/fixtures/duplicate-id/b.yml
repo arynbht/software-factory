@@ -1,0 +1,12 @@
+id: repo.readme.present
+title: README present (copy B)
+lane: hygiene
+phase: scaffold
+severity: medium
+detect:
+  - type: file-exists
+    path: "README.md"
+references:
+  - name: OpenSSF Scorecard
+    url: https://github.com/ossf/scorecard
+rationale: Duplicate-id fixture, copy B.

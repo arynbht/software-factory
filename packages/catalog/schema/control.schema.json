@@ -1,0 +1,503 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(\\.[a-z0-9-]+)+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lane": {
+      "type": "string",
+      "enum": [
+        "hygiene",
+        "development",
+        "testing",
+        "security",
+        "accessibility",
+        "legal",
+        "cloud",
+        "cicd",
+        "observability",
+        "data",
+        "performance",
+        "ux",
+        "documentation",
+        "product"
+      ]
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "discovery",
+        "requirements",
+        "architecture",
+        "design",
+        "scaffold",
+        "build",
+        "harden",
+        "launch",
+        "operate"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "effort": {
+      "type": "string",
+      "enum": [
+        "small",
+        "medium",
+        "large"
+      ]
+    },
+    "applies": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "detect": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "file-exists"
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Glob; passes if at least one file matches."
+              }
+            },
+            "required": [
+              "type",
+              "path"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "file-matches"
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Glob (may be `a|b|c`); files whose contents are searched."
+              },
+              "pattern": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Regex matched against file contents."
+              }
+            },
+            "required": [
+              "type",
+              "path",
+              "pattern"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "file-json-path"
+              },
+              "file": {
+                "type": "string",
+                "minLength": 1
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Dot/bracket path, e.g. compilerOptions.strict."
+              },
+              "equals": {
+                "description": "If set, the value at `path` must equal this."
+              },
+              "exists": {
+                "description": "If true, the path need only exist.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "file",
+              "path"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "file-yaml-path"
+              },
+              "file": {
+                "type": "string",
+                "minLength": 1
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Dot/bracket path into the YAML document."
+              },
+              "equals": {},
+              "exists": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "file",
+              "path"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "github-api"
+              },
+              "check": {
+                "type": "string",
+                "enum": [
+                  "branch-protection",
+                  "required-status-checks",
+                  "required-pull-request",
+                  "dependabot-security-updates",
+                  "vulnerability-alerts",
+                  "secret-scanning",
+                  "secret-scanning-push-protection",
+                  "default-branch",
+                  "visibility",
+                  "actions-permissions"
+                ],
+                "description": "Named repository check to query via the API."
+              },
+              "equals": {}
+            },
+            "required": [
+              "type",
+              "check"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "command"
+              },
+              "run": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Command line to execute in the repo root."
+              },
+              "expectExitCode": {
+                "description": "Pass only on this exit code (default 0).",
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "jsonPath": {
+                "description": "Path into JSON stdout to compare.",
+                "type": "string"
+              },
+              "equals": {}
+            },
+            "required": [
+              "type",
+              "run"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "scorecard"
+              },
+              "check": {
+                "type": "string",
+                "minLength": 1,
+                "description": "OpenSSF Scorecard check name, e.g. Token-Permissions."
+              },
+              "min": {
+                "description": "Minimum acceptable check score (0-10).",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+              }
+            },
+            "required": [
+              "type",
+              "check"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "manual"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "evidence": {
+      "default": "none",
+      "type": "string",
+      "enum": [
+        "none",
+        "optional",
+        "required"
+      ]
+    },
+    "fix": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "template"
+            },
+            "template": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "type",
+            "template"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "merge-yaml"
+            },
+            "file": {
+              "type": "string",
+              "minLength": 1
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {}
+          },
+          "required": [
+            "type",
+            "file",
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "merge-json"
+            },
+            "file": {
+              "type": "string",
+              "minLength": 1
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {}
+          },
+          "required": [
+            "type",
+            "file",
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "github-setting"
+            },
+            "setting": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "type",
+            "setting"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "command"
+            },
+            "run": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "type",
+            "run"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "claude"
+            },
+            "task": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "type",
+            "task"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "references": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "section": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "url"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "deprecated": {
+      "type": "boolean"
+    },
+    "replaced-by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "lane",
+    "phase",
+    "severity",
+    "detect",
+    "evidence",
+    "references",
+    "rationale"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "object",
+      "properties": {
+        "all": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        "any": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        "not": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "flag": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "stack": {
+          "type": "string"
+        },
+        "phase-at-least": {
+          "type": "string",
+          "enum": [
+            "discovery",
+            "requirements",
+            "architecture",
+            "design",
+            "scaffold",
+            "build",
+            "harden",
+            "launch",
+            "operate"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,10 @@
+id: repo.license.present
+title: LICENSE present
+lane: hygiene
+phase: scaffold
+severity: medium
+detect:
+  - type: file-exists
+    path: "LICENSE*"
+rationale: A license tells users what they may legally do with the code.
+# references intentionally omitted — this fixture must fail validation.
