@@ -12,6 +12,7 @@ import {
   evaluateControls,
   evaluateGate,
   type GateResult,
+  evidenceExpiringWithin,
   ProfileError,
   resolveToken,
   WaiverError,
@@ -105,15 +106,24 @@ export async function runAudit(
     process.stdout.isTTY === true;
   process.stdout.write(`${renderReport(results, { format, color })}\n`);
 
-  const expiring = waiversExpiringWithin(
-    waivers,
-    30,
-    options.now ?? new Date(),
-  );
-  if (expiring.length > 0) {
+  const asOf = options.now ?? new Date();
+  const expiringWaivers = waiversExpiringWithin(waivers, 30, asOf);
+  if (expiringWaivers.length > 0) {
     process.stdout.write(
-      `\n⚠ ${expiring.length} waiver(s) expiring within 30 days: ${expiring
+      `\n⚠ ${expiringWaivers.length} waiver(s) expiring within 30 days: ${expiringWaivers
         .map((w) => w.control)
+        .join(", ")}\n`,
+    );
+  }
+
+  const entries = await ctx.evidence().catch(() => []);
+  const expiringEvidence = evidenceExpiringWithin(entries, 30, asOf);
+  if (expiringEvidence.length > 0) {
+    process.stdout.write(
+      `\n⚠ ${expiringEvidence.length} evidence entr${
+        expiringEvidence.length === 1 ? "y" : "ies"
+      } expiring within 30 days: ${expiringEvidence
+        .map((e) => e.control)
         .join(", ")}\n`,
     );
   }

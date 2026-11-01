@@ -1,9 +1,13 @@
-import { dirname, resolve } from "node:path";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  addEvidence,
+  evidenceExpiringWithin,
   findValidEvidence,
   isEvidenceValid,
   loadEvidence,
@@ -81,5 +85,36 @@ describe("loadEvidence + findValidEvidence", () => {
 
   it("returns none for a repo without an evidence file", async () => {
     expect(await loadEvidence(resolve(fixtures, "empty"))).toEqual([]);
+  });
+});
+
+describe("evidenceExpiringWithin", () => {
+  it("returns valid evidence whose expiry is inside the window", () => {
+    const entries: EvidenceEntry[] = [
+      { control: "soon", date: "2026-10-20", "valid-for": "30d" }, // expires ~Nov 19
+      { control: "later", date: "2026-10-20", "valid-for": "365d" },
+      { control: "no-window", date: "2000-01-01" },
+    ];
+    expect(
+      evidenceExpiringWithin(entries, 30, NOW).map((e) => e.control),
+    ).toEqual(["soon"]);
+  });
+});
+
+describe("addEvidence", () => {
+  const made: string[] = [];
+  afterEach(async () => {
+    for (const d of made) await rm(d, { recursive: true, force: true });
+    made.length = 0;
+  });
+
+  it("adds an entry that round-trips, replacing the same control", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "factory-evidence-"));
+    made.push(dir);
+    await addEvidence(dir, { control: "sec.threat-model", url: "https://a" });
+    await addEvidence(dir, { control: "sec.threat-model", url: "https://b" });
+    const loaded = await loadEvidence(dir);
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0]?.url).toBe("https://b");
   });
 });

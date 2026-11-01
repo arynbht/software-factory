@@ -23,6 +23,9 @@ export {
   findValidEvidence,
   isEvidenceValid,
   loadEvidence,
+  addEvidence,
+  evidenceExpiringWithin,
+  hashFile,
   parseDuration,
 } from "./evidence.js";
 export type { EvidenceEntry } from "./evidence.js";
