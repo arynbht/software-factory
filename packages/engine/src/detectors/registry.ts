@@ -1,0 +1,16 @@
+import type { DetectorType } from "@arynbht/factory-catalog";
+
+import { fileExists } from "./file-exists.js";
+import { fileMatches } from "./file-matches.js";
+import type { DetectorFn } from "./types.js";
+
+/**
+ * Maps a detector type to its implementation. Partial while types are still being
+ * implemented across M1 — an unmapped type is reported as `skip` by runDetector.
+ * The per-detector casts are safe: runDetector only ever calls a function with a
+ * config whose `type` matches the key it was looked up under.
+ */
+export const registry: Partial<Record<DetectorType, DetectorFn>> = {
+  "file-exists": fileExists as DetectorFn,
+  "file-matches": fileMatches as DetectorFn,
+};
