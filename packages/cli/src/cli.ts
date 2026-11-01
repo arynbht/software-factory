@@ -1,6 +1,7 @@
 import { Command, Option } from "commander";
 
 import { type AuditFlags, runAudit } from "./commands/audit.js";
+import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
 import { runProfileSet, runProfileShow } from "./commands/profile.js";
 import { runWaive, type WaiveFlags } from "./commands/waive.js";
 
@@ -64,6 +65,24 @@ export function buildProgram(): Command {
     .action(async (control: string, path: string, flags: WaiveFlags) => {
       const today = new Date().toISOString().slice(0, 10);
       process.exitCode = await runWaive(control, flags, path, today);
+    });
+
+  const evidence = program
+    .command("evidence")
+    .description("Attach evidence for manual controls");
+
+  evidence
+    .command("add")
+    .argument("<control>", "control id the evidence is for")
+    .argument("[path]", "path to the repo", ".")
+    .option("--url <url>", "link to the evidence")
+    .option("--file <file>", "local file to hash (sha256) as evidence")
+    .option("--note <note>", "a short note")
+    .option("--reviewer <reviewer>", "who reviewed it")
+    .option("--valid-for <duration>", "age-out window, e.g. 365d")
+    .action(async (control: string, path: string, flags: EvidenceFlags) => {
+      const today = new Date().toISOString().slice(0, 10);
+      process.exitCode = await runEvidenceAdd(control, flags, path, today);
     });
 
   return program;

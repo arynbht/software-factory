@@ -1,9 +1,10 @@
 // Reading `.factory/evidence.yml` and deciding whether a control's human evidence
 // is still valid. This is the M1 stub; the full add/attach workflow lands in M2.
-import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { parse as parseYaml } from "yaml";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 export interface EvidenceEntry {
   control: string;
@@ -85,4 +86,40 @@ export function findValidEvidence(
     entries.find((e) => e.control === controlId && isEvidenceValid(e, now)) ??
     null
   );
+}
+
+/** Currently-valid evidence whose expiry falls within `days` of `now`. */
+export function evidenceExpiringWithin(
+  entries: EvidenceEntry[],
+  days: number,
+  now: Date,
+): EvidenceEntry[] {
+  const horizon = now.getTime() + days * DAY_MS;
+  return entries.filter((e) => {
+    if (!isEvidenceValid(e, now) || !e.date || !e["valid-for"]) return false;
+    const durationDays = parseDuration(e["valid-for"]);
+    if (durationDays === null) return false;
+    const expiry = new Date(e.date).getTime() + durationDays * DAY_MS;
+    return expiry <= horizon;
+  });
+}
+
+/** sha256 of a file, used to pin uploaded evidence. */
+export async function hashFile(path: string): Promise<string> {
+  return createHash("sha256")
+    .update(await readFile(path))
+    .digest("hex");
+}
+
+/** Add (or replace the same control's) evidence entry and write evidence.yml. */
+export async function addEvidence(
+  repoPath: string,
+  entry: EvidenceEntry,
+): Promise<EvidenceEntry[]> {
+  const existing = await loadEvidence(repoPath);
+  const next = [...existing.filter((e) => e.control !== entry.control), entry];
+  const dir = resolve(repoPath, ".factory");
+  await mkdir(dir, { recursive: true });
+  await writeFile(resolve(dir, "evidence.yml"), stringifyYaml(next), "utf8");
+  return next;
 }
