@@ -15,7 +15,10 @@ const fixtures = resolve(
   "fixtures",
 );
 
-function control(detect: DetectorConfig[]): Control {
+function control(
+  detect: DetectorConfig[],
+  overrides: Partial<Control> = {},
+): Control {
   return {
     id: "repo.readme.present",
     title: "README present",
@@ -26,8 +29,11 @@ function control(detect: DetectorConfig[]): Control {
     evidence: "none",
     references: [{ name: "ref", url: "https://example.com" }],
     rationale: "because",
+    ...overrides,
   } as Control;
 }
+
+const NOW = new Date("2026-11-01T00:00:00Z");
 
 describe("runDetector", () => {
   it("skips an unknown detector type (defensive)", async () => {
@@ -74,5 +80,41 @@ describe("evaluateControl", () => {
       ctx,
     );
     expect(result.status).toBe("skip");
+  });
+
+  it("needs-evidence for a manual control with no valid evidence", async () => {
+    const ctx = buildContext(resolve(fixtures, "node-complete"));
+    const result = await evaluateControl(
+      control([{ type: "manual" }], { id: "a11y.screen-reader-pass" }),
+      ctx,
+      { now: NOW },
+    );
+    expect(result.status).toBe("needs-evidence");
+  });
+
+  it("passes a manual control with valid evidence", async () => {
+    const ctx = buildContext(resolve(fixtures, "node-complete"));
+    const result = await evaluateControl(
+      control([{ type: "manual" }], {
+        id: "sec.threat-model",
+        lane: "security",
+      }),
+      ctx,
+      { now: NOW },
+    );
+    expect(result.status).toBe("pass");
+  });
+
+  it("fails when an automated detector fails even if evidence is valid", async () => {
+    const ctx = buildContext(resolve(fixtures, "node-complete"));
+    const result = await evaluateControl(
+      control([{ type: "manual" }, { type: "file-exists", path: "NOPE.md" }], {
+        id: "sec.threat-model",
+        lane: "security",
+      }),
+      ctx,
+      { now: NOW },
+    );
+    expect(result.status).toBe("fail");
   });
 });

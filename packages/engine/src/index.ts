@@ -10,7 +10,18 @@ export type {
   GitHubClient,
 } from "./context.js";
 export { evaluateControl } from "./evaluate.js";
-export type { ControlResult, ControlStatus } from "./evaluate.js";
+export type {
+  ControlResult,
+  ControlStatus,
+  EvaluateOptions,
+} from "./evaluate.js";
+export {
+  findValidEvidence,
+  isEvidenceValid,
+  loadEvidence,
+  parseDuration,
+} from "./evidence.js";
+export type { EvidenceEntry } from "./evidence.js";
 export { parseRepoSlug } from "./github/slug.js";
 export type { RepoSlug } from "./github/slug.js";
 export { resolveToken } from "./github/token.js";

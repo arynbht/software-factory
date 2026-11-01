@@ -8,6 +8,7 @@ import { Octokit } from "@octokit/rest";
 import { simpleGit } from "simple-git";
 import { glob as tinyglob } from "tinyglobby";
 
+import { type EvidenceEntry, loadEvidence } from "./evidence.js";
 import { parseRepoSlug, type RepoSlug } from "./github/slug.js";
 
 export interface GitHubClient {
@@ -29,6 +30,8 @@ export interface AuditContext {
   readFile(relPath: string): Promise<string | null>;
   /** The GitHub client, or null if there is no token or the slug is unknown. */
   github(): Promise<GitHubClient | null>;
+  /** Human evidence entries from `.factory/evidence.yml` (loaded once per run). */
+  evidence(): Promise<EvidenceEntry[]>;
 }
 
 export interface BuildContextOptions {
@@ -46,6 +49,7 @@ export function buildContext(
     : resolve(process.cwd(), repoPath);
 
   let githubClient: Promise<GitHubClient | null> | undefined;
+  let evidenceEntries: Promise<EvidenceEntry[]> | undefined;
 
   return {
     repoPath: root,
@@ -73,6 +77,11 @@ export function buildContext(
     github() {
       githubClient ??= createGitHubClient(root, options);
       return githubClient;
+    },
+
+    evidence() {
+      evidenceEntries ??= loadEvidence(root);
+      return evidenceEntries;
     },
   };
 }
