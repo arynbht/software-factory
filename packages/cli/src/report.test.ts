@@ -90,4 +90,19 @@ describe("renderReport", () => {
     expect(gh).toContain("::error title=sec.sast-ci::");
     expect(gh).toContain("::warning title=sec.threat-model::");
   });
+
+  it("escapes newlines/percent in github annotation data", () => {
+    const withMessage = [
+      result({
+        controlId: "x.y.z",
+        status: "fail",
+        detectors: [{ status: "fail", message: "line one\nline two 50% off" }],
+      }),
+    ];
+    const gh = renderReport(withMessage, { format: "github" });
+    const annotation = gh.split("\n")[0] ?? "";
+    expect(annotation).toContain("%0A"); // newline escaped
+    expect(annotation).toContain("%25"); // percent escaped
+    expect(annotation).not.toMatch(/::error[^\n]*\n[^\n]*line two/); // not split
+  });
 });
