@@ -18,9 +18,11 @@ await build({
   entryPoints: [resolve(root, "packages/cli/dist/bin.js")],
   outfile: resolve(actionDir, "dist/index.js"),
   bundle: true,
+  minify: true,
   platform: "node",
   format: "esm",
   target: "node22",
+  legalComments: "none",
   // Prefer each dependency's ESM build so esbuild can statically bundle it
   // (some UMD builds, e.g. jsonc-parser, use dynamic require()).
   mainFields: ["module", "main"],
