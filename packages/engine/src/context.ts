@@ -1,10 +1,22 @@
 // The audit context: everything a detector needs to inspect one repo. Built once
-// per run and passed to every detector. In M1 it exposes the local clone (fs +
-// glob) and carries an optional token; the GitHub client lands in M1.4.
+// per run and passed to every detector. It exposes the local clone (fs + glob)
+// and, when a token and repo slug are available, a cached GitHub client.
 import { readFile as fsReadFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
+import { Octokit } from "@octokit/rest";
+import { simpleGit } from "simple-git";
 import { glob as tinyglob } from "tinyglobby";
+
+import { parseRepoSlug, type RepoSlug } from "./github/slug.js";
+
+export interface GitHubClient {
+  readonly octokit: Octokit;
+  readonly owner: string;
+  readonly repo: string;
+  /** Memoise a request for the lifetime of the run so controls share responses. */
+  cached<T>(key: string, fn: () => Promise<T>): Promise<T>;
+}
 
 export interface AuditContext {
   /** Absolute path to the repo being audited. */
@@ -15,10 +27,14 @@ export interface AuditContext {
   glob(pattern: string | string[]): Promise<string[]>;
   /** Read a repo-relative file as UTF-8, or null if it does not exist. */
   readFile(relPath: string): Promise<string | null>;
+  /** The GitHub client, or null if there is no token or the slug is unknown. */
+  github(): Promise<GitHubClient | null>;
 }
 
 export interface BuildContextOptions {
   token?: string | undefined;
+  /** Override auto-detection of the repo's owner/repo (used in tests and CI). */
+  github?: RepoSlug | undefined;
 }
 
 export function buildContext(
@@ -28,6 +44,8 @@ export function buildContext(
   const root = isAbsolute(repoPath)
     ? repoPath
     : resolve(process.cwd(), repoPath);
+
+  let githubClient: Promise<GitHubClient | null> | undefined;
 
   return {
     repoPath: root,
@@ -39,7 +57,6 @@ export function buildContext(
         cwd: root,
         dot: true,
         onlyFiles: true,
-        // Never descend into dependencies or build output when auditing.
         ignore: ["**/node_modules/**", "**/dist/**", "**/.git/**"],
       });
     },
@@ -52,5 +69,46 @@ export function buildContext(
         throw err;
       }
     },
+
+    github() {
+      githubClient ??= createGitHubClient(root, options);
+      return githubClient;
+    },
   };
+}
+
+async function createGitHubClient(
+  root: string,
+  options: BuildContextOptions,
+): Promise<GitHubClient | null> {
+  if (!options.token) return null;
+
+  const slug = options.github ?? (await resolveRepoSlug(root));
+  if (!slug) return null;
+
+  const octokit = new Octokit({ auth: options.token });
+  const cache = new Map<string, Promise<unknown>>();
+
+  return {
+    octokit,
+    owner: slug.owner,
+    repo: slug.repo,
+    cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
+      const existing = cache.get(key);
+      if (existing) return existing as Promise<T>;
+      const created = fn();
+      cache.set(key, created);
+      return created;
+    },
+  };
+}
+
+async function resolveRepoSlug(root: string): Promise<RepoSlug | null> {
+  try {
+    const remotes = await simpleGit(root).getRemotes(true);
+    const origin = remotes.find((r) => r.name === "origin") ?? remotes[0];
+    return parseRepoSlug(origin?.refs.fetch);
+  } catch {
+    return null;
+  }
 }

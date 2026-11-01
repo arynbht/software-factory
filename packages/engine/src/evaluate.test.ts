@@ -32,9 +32,10 @@ function control(detect: DetectorConfig[]): Control {
 describe("runDetector", () => {
   it("skips an unimplemented detector type", async () => {
     const ctx = buildContext(resolve(fixtures, "empty"));
+    // `command` lands in M1.5; until then it reports skip, not implemented.
     const result = await runDetector(ctx, {
-      type: "github-api",
-      check: "branch-protection",
+      type: "command",
+      run: "echo hi",
     });
     expect(result.status).toBe("skip");
     expect(result.message).toMatch(/not implemented/i);
