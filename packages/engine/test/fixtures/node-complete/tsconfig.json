@@ -1,0 +1,8 @@
+{
+  // Strict mode is on — the file-json-path detector reads this despite the comment.
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2023",
+    "module": "NodeNext"
+  }
+}
