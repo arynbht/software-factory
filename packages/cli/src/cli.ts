@@ -2,8 +2,13 @@ import { Command, Option } from "commander";
 
 import { type AuditFlags, runAudit } from "./commands/audit.js";
 import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
+import { type InitFlags, runInit } from "./commands/init.js";
 import { runProfileSet, runProfileShow } from "./commands/profile.js";
 import { runWaive, type WaiveFlags } from "./commands/waive.js";
+
+function collect(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
 
 export function buildProgram(): Command {
   const program = new Command();
@@ -11,6 +16,27 @@ export function buildProgram(): Command {
   program
     .name("factory")
     .description("An auditor and scaffolder for GitHub repositories");
+
+  program
+    .command("init")
+    .description(
+      "Set up .factory config and a workflow, then run the first audit",
+    )
+    .argument("[path]", "path to the repo", ".")
+    .option("--type <type>", "project type (non-interactive)")
+    .option("--name <name>", "project name")
+    .option("--phase <phase>", "current lifecycle phase")
+    .option("--stack <csv>", "comma-separated stack")
+    .option("--flag <flag>", "risk flag that applies (repeatable)", collect, [])
+    .option(
+      "--severity-floor <severity>",
+      "ignore controls below this severity",
+    )
+    .option("--yes", "non-interactive; use flags and defaults")
+    .option("--force", "overwrite existing .factory config")
+    .action(async (path: string, flags: InitFlags) => {
+      process.exitCode = await runInit(path, flags);
+    });
 
   program
     .command("audit")
