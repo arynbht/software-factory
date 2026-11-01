@@ -21,6 +21,8 @@ export function buildProgram(): Command {
       new Option("--format <format>", "output format").choices([
         "table",
         "json",
+        "markdown",
+        "github",
       ]),
     )
     .option("--lane <lane>", "only run controls in this lane")

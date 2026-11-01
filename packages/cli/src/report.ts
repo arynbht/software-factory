@@ -106,8 +106,10 @@ function renderSummaryLine(c: Colors, s: Summary): string {
   return `${parts.join(", ")}  (${s.total} control${s.total === 1 ? "" : "s"})`;
 }
 
+export type ReportFormat = "table" | "json" | "markdown" | "github";
+
 export interface RenderOptions {
-  format?: "table" | "json";
+  format?: ReportFormat;
   color?: boolean;
 }
 
@@ -115,8 +117,72 @@ export function renderReport(
   results: ControlResult[],
   options: RenderOptions = {},
 ): string {
-  if (options.format === "json") return renderJson(results);
-  return renderTable(results, options.color ?? true);
+  switch (options.format) {
+    case "json":
+      return renderJson(results);
+    case "markdown":
+      return renderMarkdown(results);
+    case "github":
+      return renderGithub(results);
+    default:
+      return renderTable(results, options.color ?? true);
+  }
+}
+
+const MARKDOWN_SYMBOL: Record<ControlStatus, string> = {
+  pass: "✅",
+  fail: "❌",
+  "needs-evidence": "📋",
+  waived: "🚫",
+  skip: "➖",
+  "n/a": "·",
+};
+
+/** A GitHub-flavoured Markdown report, suitable for a PR comment or job summary. */
+function renderMarkdown(results: ControlResult[]): string {
+  const s = summarize(results);
+  const lines = [
+    "## Factory audit",
+    "",
+    `**${s.pass} pass · ${s.fail} fail · ${s.needsEvidence} need evidence · ${s.waived} waived · ${s.skip} skip · ${s.na} n/a** (${s.total} controls)`,
+    "",
+  ];
+
+  const blocking = results.filter(
+    (r) => r.status === "fail" || r.status === "needs-evidence",
+  );
+  if (blocking.length > 0) {
+    lines.push("| | Control | Lane | Severity |", "| --- | --- | --- | --- |");
+    for (const r of blocking) {
+      lines.push(
+        `| ${MARKDOWN_SYMBOL[r.status]} | \`${r.controlId}\` | ${r.lane} | ${r.severity} |`,
+      );
+    }
+  } else {
+    lines.push("All applicable controls pass. 🎉");
+  }
+  return lines.join("\n");
+}
+
+/**
+ * GitHub Actions workflow commands: one annotation per failing / needs-evidence
+ * control, followed by a plain summary line.
+ */
+function renderGithub(results: ControlResult[]): string {
+  const lines: string[] = [];
+  for (const r of results) {
+    const first = r.detectors.find((d) => d.status !== "pass")?.message ?? "";
+    if (r.status === "fail") {
+      lines.push(`::error title=${r.controlId}::${r.title} — ${first}`);
+    } else if (r.status === "needs-evidence") {
+      lines.push(`::warning title=${r.controlId}::${r.title} needs evidence`);
+    }
+  }
+  const s = summarize(results);
+  lines.push(
+    `${s.pass} pass, ${s.fail} fail, ${s.needsEvidence} need evidence, ${s.waived} waived, ${s.skip} skip, ${s.na} n/a (${s.total} controls)`,
+  );
+  return lines.join("\n");
 }
 
 function renderJson(results: ControlResult[]): string {
