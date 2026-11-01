@@ -35,6 +35,7 @@ describe("summarize", () => {
       fail: 1,
       needsEvidence: 1,
       skip: 1,
+      na: 0,
       total: 4,
     });
   });

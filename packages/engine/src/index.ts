@@ -27,4 +27,6 @@ export type { EvidenceEntry } from "./evidence.js";
 export { parseRepoSlug } from "./github/slug.js";
 export type { RepoSlug } from "./github/slug.js";
 export { resolveToken } from "./github/token.js";
+export { loadProfile, saveProfile, ProfileError } from "./profile.js";
+export { appliesTo, evaluatePredicate } from "./applicability.js";
 export * from "./detectors/index.js";

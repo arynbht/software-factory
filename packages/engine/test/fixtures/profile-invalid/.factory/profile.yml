@@ -1,0 +1,5 @@
+version: 1
+name: bad
+type: web-app
+flags:
+  not-a-real-flag: true

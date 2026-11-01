@@ -1,7 +1,11 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { Control, DetectorConfig } from "@arynbht/factory-catalog";
+import type {
+  Control,
+  DetectorConfig,
+  Profile,
+} from "@arynbht/factory-catalog";
 import { describe, expect, it } from "vitest";
 
 import type { AuditContext } from "./context.js";
@@ -81,6 +85,27 @@ describe("evaluateControl", () => {
       ctx,
     );
     expect(result.status).toBe("skip");
+  });
+
+  it("marks a non-applicable control n/a without running detectors", async () => {
+    const ctx = buildContext(resolve(fixtures, "empty"));
+    const profile = {
+      version: 1,
+      name: "x",
+      type: "cli",
+      stack: [],
+      flags: { "handles-pii": false },
+      "severity-floor": "low",
+    } as unknown as Profile;
+    const result = await evaluateControl(
+      control([{ type: "file-exists", path: "README.md" }], {
+        applies: { flag: "handles-pii" },
+      }),
+      ctx,
+      { profile },
+    );
+    expect(result.status).toBe("n/a");
+    expect(result.detectors).toHaveLength(0);
   });
 
   it("needs-evidence for a manual control with no valid evidence", async () => {
