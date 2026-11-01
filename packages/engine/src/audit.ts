@@ -5,9 +5,9 @@ import { type ControlResult, evaluateControl } from "./evaluate.js";
 
 export interface AuditOptions {
   /** Max controls evaluated concurrently (detectors within a control are serial). */
-  concurrency?: number;
+  concurrency?: number | undefined;
   /** Reference time for evidence expiry; defaults to now. */
-  now?: Date;
+  now?: Date | undefined;
 }
 
 /**
