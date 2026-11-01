@@ -1,0 +1,16 @@
+id: repo.readme.present
+title: README present with a setup section
+lane: hygiene
+phase: scaffold
+severity: medium
+detect:
+  - type: file-matches
+    path: "README.md|readme.md"
+    pattern: "(?i)##\\s+(setup|installation|getting started)"
+references:
+  - name: OpenSSF Scorecard
+    url: https://github.com/ossf/scorecard/blob/main/docs/checks.md
+    section: Maintained
+rationale: >
+  A README with setup steps is the first thing a new contributor needs; its
+  absence signals an unmaintained or hard-to-onboard repository.
