@@ -1,0 +1,19 @@
+id: repo.codeowners.present
+title: CODEOWNERS present
+lane: hygiene
+phase: scaffold
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: "CODEOWNERS|.github/CODEOWNERS|docs/CODEOWNERS"
+evidence: none
+fix:
+  type: template
+  template: codeowners
+references:
+  - name: GitHub Docs — About code owners
+    url: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+rationale: >
+  A CODEOWNERS file routes review requests to the people responsible for each
+  path, so changes are not merged without an accountable reviewer.

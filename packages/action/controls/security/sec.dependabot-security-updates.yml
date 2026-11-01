@@ -1,0 +1,19 @@
+id: sec.dependabot-security-updates
+title: Dependabot security updates enabled
+lane: security
+phase: harden
+severity: medium
+effort: small
+detect:
+  - type: github-api
+    check: dependabot-security-updates
+evidence: none
+fix:
+  type: github-setting
+  setting: dependabot-security-updates
+references:
+  - name: GitHub Docs — About Dependabot security updates
+    url: https://docs.github.com/code-security/dependabot/dependabot-security-updates/about-dependabot-security-updates
+rationale: >
+  Dependabot security updates open PRs that bump vulnerable dependencies to a
+  patched version automatically, closing known CVEs without manual tracking.

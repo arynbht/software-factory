@@ -1,0 +1,19 @@
+id: ci.workflow.present
+title: CI workflow present
+lane: cicd
+phase: scaffold
+severity: high
+effort: small
+detect:
+  - type: file-exists
+    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
+evidence: none
+fix:
+  type: template
+  template: ci-workflow
+references:
+  - name: DORA — Continuous integration
+    url: https://dora.dev/capabilities/continuous-integration/
+rationale: >
+  A CI workflow is the foundation for every automated gate; without one, nothing
+  (tests, lint, security scans) is enforced on changes.

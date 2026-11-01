@@ -49,3 +49,8 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Check action bundle is current
+        run: |
+          pnpm action:build
+          git diff --exit-code -- packages/action/dist packages/action/controls packages/action/gates

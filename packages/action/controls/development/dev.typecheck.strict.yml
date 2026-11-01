@@ -1,0 +1,26 @@
+id: dev.typecheck.strict
+title: TypeScript strict mode enabled
+lane: development
+phase: scaffold
+severity: medium
+effort: small
+applies:
+  all:
+    - stack: typescript
+detect:
+  - type: file-json-path
+    file: "tsconfig.json|tsconfig.base.json"
+    path: compilerOptions.strict
+    equals: true
+evidence: none
+fix:
+  type: merge-json
+  file: tsconfig.json
+  path: compilerOptions.strict
+  value: true
+references:
+  - name: TypeScript Handbook — Strictness
+    url: https://www.typescriptlang.org/tsconfig/#strict
+rationale: >
+  Strict mode turns the compiler into a real safety net (null checks, implicit
+  any, and more); without it much of TypeScript's value is lost.

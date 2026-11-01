@@ -1,0 +1,22 @@
+id: dev.code-review-required
+title: Code review required before merge
+lane: development
+phase: build
+severity: high
+effort: small
+detect:
+  - type: github-api
+    check: required-pull-request
+evidence: none
+fix:
+  type: github-setting
+  setting: required-pull-request
+references:
+  - name: OpenSSF Scorecard
+    url: https://github.com/ossf/scorecard/blob/main/docs/checks.md
+    section: Code-Review
+  - name: DORA — Code review
+    url: https://dora.dev/capabilities/code-review/
+rationale: >
+  Requiring a pull request review before merge catches defects early and ensures
+  no change reaches the default branch without a second set of eyes.

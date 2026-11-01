@@ -1,0 +1,20 @@
+id: repo.readme.present
+title: README present
+lane: hygiene
+phase: scaffold
+severity: medium
+effort: small
+detect:
+  - type: file-exists
+    path: "README.md|README.rst|README.txt|readme.md"
+evidence: none
+fix:
+  type: template
+  template: readme
+references:
+  - name: OpenSSF Scorecard
+    url: https://github.com/ossf/scorecard/blob/main/docs/checks.md
+    section: Maintained
+rationale: >
+  A README is the entry point for every reader of the repository; its absence is
+  the clearest signal of an unmaintained or hard-to-onboard project.

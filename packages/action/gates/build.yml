@@ -1,0 +1,5 @@
+phase: build
+title: Build gate
+select:
+  - phase: scaffold
+  - phase: build

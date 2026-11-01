@@ -1,0 +1,16 @@
+id: repo.toolchain-pinned
+title: Toolchain version pinned
+lane: hygiene
+phase: scaffold
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: ".nvmrc|.node-version|.tool-versions|rust-toolchain.toml|rust-toolchain|.python-version|.devcontainer/devcontainer.json"
+evidence: none
+references:
+  - name: Twelve-Factor App — Dependencies
+    url: https://12factor.net/dependencies
+rationale: >
+  Pinning the language/runtime version keeps local, CI, and teammate environments
+  identical and avoids "works on my machine" drift.
