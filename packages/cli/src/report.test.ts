@@ -77,4 +77,17 @@ describe("renderReport", () => {
     expect(table).toContain("No controls");
     expect(table).toContain("(0 controls)");
   });
+
+  it("renders markdown with a summary and a table of blocking controls", () => {
+    const md = renderReport(sample, { format: "markdown" });
+    expect(md).toContain("## Factory audit");
+    expect(md).toContain("`sec.sast-ci`");
+    expect(md).toContain("(4 controls)");
+  });
+
+  it("renders github annotations for failing and needs-evidence controls", () => {
+    const gh = renderReport(sample, { format: "github" });
+    expect(gh).toContain("::error title=sec.sast-ci::");
+    expect(gh).toContain("::warning title=sec.threat-model::");
+  });
 });

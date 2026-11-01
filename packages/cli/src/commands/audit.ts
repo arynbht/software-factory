@@ -19,11 +19,17 @@ import {
   waiversExpiringWithin,
 } from "@arynbht/factory-engine";
 
-import { exitCodeFor, renderGate, renderReport, summarize } from "../report.js";
+import {
+  exitCodeFor,
+  renderGate,
+  renderReport,
+  type ReportFormat,
+  summarize,
+} from "../report.js";
 
 export interface AuditFlags {
   json?: boolean;
-  format?: "table" | "json";
+  format?: ReportFormat;
   lane?: string;
   token?: string;
   color?: boolean;
@@ -96,9 +102,7 @@ export async function runAudit(
     waivers,
   });
 
-  const format: "table" | "json" = flags.json
-    ? "json"
-    : (flags.format ?? "table");
+  const format: ReportFormat = flags.json ? "json" : (flags.format ?? "table");
   // Honour --no-color, NO_COLOR, and non-TTY output; otherwise colourise.
   const color =
     flags.color !== false &&
