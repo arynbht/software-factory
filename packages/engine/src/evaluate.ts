@@ -3,6 +3,7 @@ import type { Control } from "@arynbht/factory-catalog";
 import type { AuditContext } from "./context.js";
 import { runDetector } from "./detectors/run.js";
 import type { DetectorResult } from "./detectors/types.js";
+import { findValidEvidence } from "./evidence.js";
 
 export type ControlStatus = "pass" | "fail" | "skip" | "needs-evidence";
 
@@ -16,37 +17,77 @@ export interface ControlResult {
   durationMs: number;
 }
 
+export interface EvaluateOptions {
+  /** Reference time for evidence expiry; defaults to now. */
+  now?: Date;
+}
+
 /**
- * Run every detector of a control and aggregate a single status.
+ * Run a control's detectors and aggregate a single status.
  *
- * Precedence: a single failing detector fails the control; otherwise a skipped
- * detector leaves it `skip` (undetermined); otherwise it passes. The
- * `needs-evidence` state is wired in when the `manual` detector lands (M1.6).
+ * `manual` detectors are satisfied by human evidence (`.factory/evidence.yml`)
+ * rather than an automated check: a valid, unexpired entry for the control passes
+ * it; otherwise the control is `needs-evidence`.
+ *
+ * Precedence: a failing automated detector → `fail`; else unmet evidence →
+ * `needs-evidence`; else any `skip` → `skip`; else `pass`.
  */
 export async function evaluateControl(
   control: Control,
   ctx: AuditContext,
+  options: EvaluateOptions = {},
 ): Promise<ControlResult> {
+  const now = options.now ?? new Date();
   const start = performance.now();
 
-  const detectors: DetectorResult[] = [];
-  for (const config of control.detect) {
-    detectors.push(await runDetector(ctx, config));
+  const manualConfigs = control.detect.filter((c) => c.type === "manual");
+  const autoConfigs = control.detect.filter((c) => c.type !== "manual");
+
+  const autoResults: DetectorResult[] = [];
+  for (const config of autoConfigs) {
+    autoResults.push(await runDetector(ctx, config));
   }
+
+  let manualResult: DetectorResult | null = null;
+  let evidenceMissing = false;
+  if (manualConfigs.length > 0) {
+    const entry = findValidEvidence(await ctx.evidence(), control.id, now);
+    if (entry) {
+      manualResult = {
+        status: "pass",
+        message: `evidence by ${entry.reviewer ?? "unknown"}${
+          entry.date ? ` on ${entry.date}` : ""
+        }`,
+      };
+    } else {
+      evidenceMissing = true;
+      manualResult = {
+        status: "skip",
+        message: "awaiting human evidence (.factory/evidence.yml)",
+      };
+    }
+  }
+
+  const detectors = manualResult ? [...autoResults, manualResult] : autoResults;
 
   return {
     controlId: control.id,
     lane: control.lane,
     phase: control.phase,
     severity: control.severity,
-    status: aggregate(detectors),
+    status: aggregate(autoResults, evidenceMissing, detectors),
     detectors,
     durationMs: Math.round(performance.now() - start),
   };
 }
 
-function aggregate(results: DetectorResult[]): ControlStatus {
-  if (results.some((r) => r.status === "fail")) return "fail";
-  if (results.some((r) => r.status === "skip")) return "skip";
+function aggregate(
+  autoResults: DetectorResult[],
+  evidenceMissing: boolean,
+  allResults: DetectorResult[],
+): ControlStatus {
+  if (autoResults.some((r) => r.status === "fail")) return "fail";
+  if (evidenceMissing) return "needs-evidence";
+  if (allResults.some((r) => r.status === "skip")) return "skip";
   return "pass";
 }

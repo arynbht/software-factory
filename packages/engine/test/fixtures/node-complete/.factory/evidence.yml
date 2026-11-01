@@ -1,0 +1,12 @@
+# Evidence fixture: one current entry and one expired entry.
+- control: sec.threat-model
+  url: https://example.com/threat-model
+  reviewer: dev@example.com
+  date: 2026-10-01
+  valid-for: 365d
+  note: STRIDE model reviewed
+- control: a11y.screen-reader-pass
+  reviewer: dev@example.com
+  date: 2020-01-01
+  valid-for: 30d
+  note: Long expired
