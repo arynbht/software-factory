@@ -18,6 +18,11 @@ export function bundledGatesDir(): string {
   return fileURLToPath(new URL("../gates", import.meta.url));
 }
 
+/** Absolute path to the generator templates shipped with this package. */
+export function bundledTemplatesDir(): string {
+  return fileURLToPath(new URL("../templates", import.meta.url));
+}
+
 /** Load and validate the gates shipped with this package. */
 export function loadBundledGates(): Promise<GateLoadResult> {
   return loadGates(bundledGatesDir());

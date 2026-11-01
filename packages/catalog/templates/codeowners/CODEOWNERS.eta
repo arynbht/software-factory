@@ -1,0 +1,4 @@
+# Code owners for <%= it.name %>.
+# Replace OWNER with the GitHub username or team responsible for review.
+
+* @OWNER

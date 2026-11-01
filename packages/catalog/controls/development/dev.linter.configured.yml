@@ -10,7 +10,7 @@ detect:
 evidence: none
 fix:
   type: template
-  template: eslint
+  template: linter
 references:
   - name: Twelve-Factor App — Dev/prod parity
     url: https://12factor.net/dev-prod-parity

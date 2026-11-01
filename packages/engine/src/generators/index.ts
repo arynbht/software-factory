@@ -7,3 +7,9 @@ export {
 } from "./apply.js";
 export { generators } from "./registry.js";
 export { planControl, planControls } from "./run.js";
+export {
+  renderTemplate,
+  templateGenerator,
+  templateVars,
+  type TemplateVars,
+} from "./template.js";

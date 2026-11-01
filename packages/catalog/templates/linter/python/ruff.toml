@@ -1,0 +1,5 @@
+# Ruff linter + formatter configuration.
+line-length = 100
+
+[lint]
+select = ["E", "F", "I", "UP", "B"]

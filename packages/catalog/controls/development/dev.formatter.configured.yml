@@ -10,7 +10,7 @@ detect:
 evidence: none
 fix:
   type: template
-  template: prettier
+  template: formatter
 references:
   - name: Prettier — Why Prettier?
     url: https://prettier.io/docs/why-prettier

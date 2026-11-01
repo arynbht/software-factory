@@ -1,5 +1,6 @@
 import type { FixConfig } from "@arynbht/factory-catalog";
 
+import { templateGenerator } from "./template.js";
 import type { Generator } from "./types.js";
 
 type FixType = FixConfig["type"];
@@ -9,4 +10,6 @@ type FixType = FixConfig["type"];
  * across M3; an unmapped type (or a control with no `fix`) simply produces no
  * changes. `claude` is intentionally absent until M4.
  */
-export const generators: Partial<Record<FixType, Generator>> = {};
+export const generators: Partial<Record<FixType, Generator>> = {
+  template: templateGenerator,
+};
