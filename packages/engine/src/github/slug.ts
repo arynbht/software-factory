@@ -10,7 +10,9 @@ export interface RepoSlug {
  */
 export function parseRepoSlug(url: string | undefined): RepoSlug | null {
   if (!url) return null;
-  const match = /github\.com[:/]([^/]+)\/(.+?)(?:\.git)?\/?$/.exec(url);
+  // Both owner and repo are single path segments; a trailing /tree/... etc. is
+  // not a bare remote and should not be mistaken for the repo name.
+  const match = /github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?\/?$/.exec(url);
   if (!match) return null;
   const [, owner, repo] = match;
   if (!owner || !repo) return null;

@@ -116,6 +116,23 @@ describe("githubApi", () => {
     expect(result.message).toMatch(/ruleset/i);
   });
 
+  it("fails branch-protection when the ruleset has only non-gating rules", async () => {
+    server.use(
+      repoHandler({}),
+      http.get(`${REPO}/branches/main/protection`, () =>
+        HttpResponse.json({ message: "Branch not protected" }, { status: 404 }),
+      ),
+      http.get(`${REPO}/rules/branches/main`, () =>
+        HttpResponse.json([{ type: "non_fast_forward" }, { type: "deletion" }]),
+      ),
+    );
+    const result = await githubApi(ctx(), {
+      type: "github-api",
+      check: "branch-protection",
+    });
+    expect(result.status).toBe("fail");
+  });
+
   it("passes required-pull-request via a ruleset", async () => {
     server.use(
       repoHandler({}),

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { Control, DetectorConfig } from "@arynbht/factory-catalog";
 import { describe, expect, it } from "vitest";
 
+import type { AuditContext } from "./context.js";
 import { buildContext } from "./context.js";
 import { runDetector } from "./detectors/run.js";
 import { evaluateControl } from "./evaluate.js";
@@ -103,6 +104,28 @@ describe("evaluateControl", () => {
       { now: NOW },
     );
     expect(result.status).toBe("pass");
+  });
+
+  it("treats an unreadable evidence file as needs-evidence, not a crash", async () => {
+    const brokenCtx: AuditContext = {
+      repoPath: "/virtual",
+      token: undefined,
+      glob: async () => [],
+      readFile: async () => null,
+      github: async () => null,
+      evidence: async () => {
+        throw new Error("evidence.yml unreadable");
+      },
+    };
+    const result = await evaluateControl(
+      control([{ type: "manual" }], {
+        id: "sec.threat-model",
+        lane: "security",
+      }),
+      brokenCtx,
+      { now: NOW },
+    );
+    expect(result.status).toBe("needs-evidence");
   });
 
   it("fails when an automated detector fails even if evidence is valid", async () => {

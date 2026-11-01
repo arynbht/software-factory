@@ -119,7 +119,12 @@ const checks: Partial<Record<GithubApiCheck, CheckFn>> = {
 
   "branch-protection": async (gh) => {
     const { branch, classic, rules } = await getProtectionState(gh);
-    return classic || rules.length > 0
+    // A ruleset only counts as "protected" if it gates merges; a lone
+    // non_fast_forward / deletion / creation rule is not meaningful protection.
+    const meaningfulRule = rules.some(
+      (r) => r.type === "pull_request" || r.type === "required_status_checks",
+    );
+    return classic || meaningfulRule
       ? pass(`"${branch}" is protected${classic ? "" : " (ruleset)"}`)
       : fail(
           `"${branch}" has no branch protection`,

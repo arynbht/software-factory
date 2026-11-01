@@ -14,18 +14,29 @@ export interface PathLookup {
   value: unknown;
 }
 
-/** Walk a dot/bracket path into a parsed document. */
+/**
+ * Walk a dot/bracket path into a parsed document. Only own data properties count:
+ * inherited/prototype keys (`toString`, `constructor`, `__proto__`) and array
+ * members other than in-range numeric indices (`length`, `map`) are "not found",
+ * so a control never passes on a key the file did not actually set.
+ */
 export function getByPath(root: unknown, path: string): PathLookup {
   let current: unknown = root;
   for (const token of tokenizePath(path)) {
+    if (Array.isArray(current)) {
+      if (!/^\d+$/.test(token) || Number(token) >= current.length) {
+        return { found: false, value: undefined };
+      }
+      current = current[Number(token)];
+      continue;
+    }
     if (current === null || typeof current !== "object") {
       return { found: false, value: undefined };
     }
-    const container = current as Record<string, unknown>;
-    if (!(token in container)) {
+    if (!Object.prototype.hasOwnProperty.call(current, token)) {
       return { found: false, value: undefined };
     }
-    current = container[token];
+    current = (current as Record<string, unknown>)[token];
   }
   return { found: true, value: current };
 }

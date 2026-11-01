@@ -27,6 +27,19 @@ describe("getByPath", () => {
   it("returns not-found when walking through a non-object", () => {
     expect(getByPath(doc, "flag.nope").found).toBe(false);
   });
+
+  it("does not match inherited/prototype keys", () => {
+    expect(getByPath(doc, "constructor").found).toBe(false);
+    expect(getByPath(doc, "toString").found).toBe(false);
+    expect(getByPath(doc, "a.hasOwnProperty").found).toBe(false);
+  });
+
+  it("only matches in-range numeric array indices, not length/methods", () => {
+    expect(getByPath(doc, "a.b.length").found).toBe(false);
+    expect(getByPath(doc, "a.b.map").found).toBe(false);
+    expect(getByPath(doc, "a.b[5]").found).toBe(false);
+    expect(getByPath(doc, "a.b[0].c")).toEqual({ found: true, value: 1 });
+  });
 });
 
 describe("deepEqual", () => {

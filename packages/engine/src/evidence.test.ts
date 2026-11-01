@@ -57,6 +57,15 @@ describe("isEvidenceValid", () => {
   it("never expires without a valid-for window", () => {
     expect(isEvidenceValid(entry({ date: "2000-01-01" }), NOW)).toBe(true);
   });
+
+  it("fails closed on an unparseable valid-for (no immortal evidence)", () => {
+    expect(
+      isEvidenceValid(
+        entry({ date: "2026-10-01", "valid-for": "3 months" }),
+        NOW,
+      ),
+    ).toBe(false);
+  });
 });
 
 describe("loadEvidence + findValidEvidence", () => {
