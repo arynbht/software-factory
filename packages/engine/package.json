@@ -17,6 +17,7 @@
   ],
   "scripts": {},
   "dependencies": {
-    "@arynbht/factory-catalog": "workspace:*"
+    "@arynbht/factory-catalog": "workspace:*",
+    "tinyglobby": "^0.2.17"
   }
 }
