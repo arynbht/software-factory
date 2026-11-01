@@ -19,6 +19,9 @@ export { evaluateControls } from "./audit.js";
 export type { AuditOptions } from "./audit.js";
 export { evaluateGate, selectForGate } from "./gates.js";
 export type { GateResult, GateStatus } from "./gates.js";
+export { loadState, saveState, managedFileUnchanged, sha256 } from "./state.js";
+export type { FactoryState } from "./state.js";
+export * from "./generators/index.js";
 export {
   upsertStickyComment,
   upsertStatusIssue,
