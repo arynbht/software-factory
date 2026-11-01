@@ -1,4 +1,4 @@
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import {
@@ -13,8 +13,10 @@ import {
   evaluateGate,
   type GateResult,
   evidenceExpiringWithin,
+  loadState,
   ProfileError,
   resolveToken,
+  saveState,
   WaiverError,
   waiversExpiringWithin,
 } from "@arynbht/factory-engine";
@@ -182,23 +184,17 @@ async function writeState(
   repoPath: string,
   results: ControlResult[],
 ): Promise<void> {
-  const dir = resolve(repoPath, ".factory");
-  await mkdir(dir, { recursive: true });
-  const state = {
-    version: 1,
-    generatedAt: new Date().toISOString(),
-    summary: summarize(results),
-    controls: results.map((r) => ({
-      id: r.controlId,
-      status: r.status,
-      lane: r.lane,
-      phase: r.phase,
-      severity: r.severity,
-    })),
-  };
-  await writeFile(
-    resolve(dir, "state.json"),
-    `${JSON.stringify(state, null, 2)}\n`,
-    "utf8",
-  );
+  // Preserve the managed-file hash registry (written by `factory fix`) across audits.
+  const state = await loadState(repoPath);
+  state.version = 1;
+  state.generatedAt = new Date().toISOString();
+  state.summary = summarize(results);
+  state.controls = results.map((r) => ({
+    id: r.controlId,
+    status: r.status,
+    lane: r.lane,
+    phase: r.phase,
+    severity: r.severity,
+  }));
+  await saveState(repoPath, state);
 }
