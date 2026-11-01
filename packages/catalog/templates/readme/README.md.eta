@@ -1,0 +1,13 @@
+# <%= it.name %>
+
+<!-- TODO: a one-paragraph description of what this project does and for whom. -->
+
+## Setup
+
+```bash
+# TODO: how to install dependencies and run the project
+```
+
+## License
+
+[<%= it.license %>](./LICENSE)

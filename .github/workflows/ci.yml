@@ -60,4 +60,5 @@ jobs:
           git diff --exit-code -- \
             packages/action/controls \
             packages/action/gates \
+            packages/action/templates \
             packages/action/dist/SOURCE_SHA256

@@ -1,0 +1,15 @@
+# Contributing to <%= it.name %>
+
+Thanks for your interest in contributing!
+
+## Getting started
+
+```bash
+# TODO: install dependencies and run the tests
+```
+
+## Pull requests
+
+- Keep PRs small and focused.
+- Make sure the test suite and linters pass before requesting review.
+- Follow the commit conventions (see `commitlint.config.js` if present).
