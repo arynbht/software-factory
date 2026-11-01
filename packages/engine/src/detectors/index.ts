@@ -1,6 +1,9 @@
 export type { DetectorFn, DetectorResult, DetectorStatus } from "./types.js";
 export { fileExists } from "./file-exists.js";
+export { fileJsonPath } from "./file-json-path.js";
 export { fileMatches } from "./file-matches.js";
+export { fileYamlPath } from "./file-yaml-path.js";
+export { deepEqual, getByPath, tokenizePath } from "./path.js";
 export { registry } from "./registry.js";
 export { runDetector } from "./run.js";
 export { compileRegex, splitGlobs } from "./util.js";

@@ -1,7 +1,9 @@
 import type { DetectorType } from "@arynbht/factory-catalog";
 
 import { fileExists } from "./file-exists.js";
+import { fileJsonPath } from "./file-json-path.js";
 import { fileMatches } from "./file-matches.js";
+import { fileYamlPath } from "./file-yaml-path.js";
 import type { DetectorFn } from "./types.js";
 
 /**
@@ -13,4 +15,6 @@ import type { DetectorFn } from "./types.js";
 export const registry: Partial<Record<DetectorType, DetectorFn>> = {
   "file-exists": fileExists as DetectorFn,
   "file-matches": fileMatches as DetectorFn,
+  "file-json-path": fileJsonPath as DetectorFn,
+  "file-yaml-path": fileYamlPath as DetectorFn,
 };
