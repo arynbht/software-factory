@@ -1,0 +1,19 @@
+id: dev.formatter.configured
+title: Formatter configured
+lane: development
+phase: scaffold
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: ".prettierrc|.prettierrc.json|.prettierrc.js|.prettierrc.cjs|.prettierrc.yaml|prettier.config.js|prettier.config.cjs|prettier.config.mjs|biome.json|rustfmt.toml|.rustfmt.toml"
+evidence: none
+fix:
+  type: template
+  template: prettier
+references:
+  - name: Prettier — Why Prettier?
+    url: https://prettier.io/docs/why-prettier
+rationale: >
+  An enforced formatter ends style debates and keeps diffs focused on behavioural
+  changes rather than reformatting churn.

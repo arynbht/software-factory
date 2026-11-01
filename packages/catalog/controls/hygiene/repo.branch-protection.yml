@@ -1,0 +1,22 @@
+id: repo.branch-protection
+title: Default branch is protected
+lane: hygiene
+phase: scaffold
+severity: high
+effort: small
+detect:
+  - type: github-api
+    check: branch-protection
+evidence: none
+fix:
+  type: github-setting
+  setting: branch-protection
+references:
+  - name: OpenSSF Scorecard
+    url: https://github.com/ossf/scorecard/blob/main/docs/checks.md
+    section: Branch-Protection
+  - name: GitHub Docs — About protected branches
+    url: https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
+rationale: >
+  Protecting the default branch (requiring PRs and checks, blocking force-push)
+  prevents unreviewed or history-rewriting changes from landing on main.

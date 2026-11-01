@@ -1,0 +1,20 @@
+id: repo.security-policy.present
+title: SECURITY policy with a disclosure contact
+lane: hygiene
+phase: scaffold
+severity: medium
+effort: small
+detect:
+  - type: file-matches
+    path: "SECURITY.md|.github/SECURITY.md|docs/SECURITY.md"
+    pattern: "(?i)(report|disclos|vulnerabilit|security@|advisor|contact)"
+evidence: none
+fix:
+  type: template
+  template: security
+references:
+  - name: GitHub Docs — Adding a security policy to your repository
+    url: https://docs.github.com/code-security/getting-started/adding-a-security-policy-to-your-repository
+rationale: >
+  A SECURITY.md with a disclosure contact gives researchers a private channel to
+  report vulnerabilities instead of opening them publicly.

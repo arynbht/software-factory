@@ -1,0 +1,19 @@
+id: dev.linter.configured
+title: Linter configured
+lane: development
+phase: scaffold
+severity: medium
+effort: small
+detect:
+  - type: file-exists
+    path: "eslint.config.js|eslint.config.mjs|eslint.config.cjs|eslint.config.ts|.eslintrc|.eslintrc.json|.eslintrc.js|.eslintrc.cjs|biome.json|biome.jsonc|ruff.toml|.ruff.toml"
+evidence: none
+fix:
+  type: template
+  template: eslint
+references:
+  - name: Twelve-Factor App — Dev/prod parity
+    url: https://12factor.net/dev-prod-parity
+rationale: >
+  A configured linter catches a class of bugs and style drift before review,
+  keeping the codebase consistent as it and the team grow.

@@ -1,0 +1,17 @@
+id: test.coverage-config
+title: Test coverage configured
+lane: testing
+phase: build
+severity: low
+effort: small
+detect:
+  - type: file-matches
+    path: "vitest.config.ts|vitest.config.js|vitest.config.mjs|jest.config.js|jest.config.ts|package.json|.nycrc|.nycrc.json|pyproject.toml"
+    pattern: "(?i)coverage"
+evidence: none
+references:
+  - name: Google — Software Engineering at Google (Test Coverage)
+    url: https://abseil.io/resources/swe-book/html/ch11.html
+rationale: >
+  Configuring coverage reporting makes test gaps visible and is the prerequisite
+  for ratcheting a minimum coverage floor over time.

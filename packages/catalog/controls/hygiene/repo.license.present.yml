@@ -1,0 +1,21 @@
+id: repo.license.present
+title: LICENSE present
+lane: hygiene
+phase: scaffold
+severity: high
+effort: small
+detect:
+  - type: file-exists
+    path: "LICENSE|LICENSE.md|LICENSE.txt|COPYING|COPYING.md"
+evidence: none
+fix:
+  type: template
+  template: license
+references:
+  - name: SPDX License List
+    url: https://spdx.org/licenses/
+  - name: GitHub Docs — Licensing a repository
+    url: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository
+rationale: >
+  Without an explicit license, default copyright law leaves others with no right
+  to use, copy, or contribute to the code, blocking adoption and collaboration.

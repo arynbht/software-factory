@@ -1,0 +1,21 @@
+id: sec.threat-model
+title: Threat model documented and current
+lane: security
+phase: harden
+severity: high
+effort: large
+detect:
+  - type: manual
+evidence: required
+fix:
+  type: claude
+  task: threat-model
+references:
+  - name: OWASP — Threat Modeling
+    url: https://owasp.org/www-community/Threat_Modeling
+  - name: NIST SSDF
+    url: https://csrc.nist.gov/projects/ssdf
+rationale: >
+  A current threat model forces explicit thinking about how the system can be
+  attacked; it is human judgement, so it is satisfied by reviewed evidence rather
+  than an automated check and ages out via valid-for.

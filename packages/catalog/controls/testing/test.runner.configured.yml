@@ -1,0 +1,20 @@
+id: test.runner.configured
+title: Test runner configured
+lane: testing
+phase: build
+severity: medium
+effort: small
+detect:
+  - type: file-matches
+    path: "package.json"
+    pattern: '"test"\s*:'
+evidence: none
+fix:
+  type: template
+  template: vitest
+references:
+  - name: Google — Software Engineering at Google (Testing)
+    url: https://abseil.io/resources/swe-book/html/ch11.html
+rationale: >
+  A configured, runnable test suite is the baseline for changing code with
+  confidence; without one, every change is a guess.

@@ -1,0 +1,22 @@
+id: ci.workflow-permissions
+title: Workflow token permissions declared
+lane: cicd
+phase: harden
+severity: medium
+effort: small
+detect:
+  - type: file-matches
+    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
+    pattern: '(?im)^\s*permissions:'
+evidence: none
+fix:
+  type: merge-yaml
+  file: .github/workflows/ci.yml
+  path: permissions
+references:
+  - name: OpenSSF Scorecard
+    url: https://github.com/ossf/scorecard/blob/main/docs/checks.md
+    section: Token-Permissions
+rationale: >
+  An explicit permissions block scopes the workflow's GITHUB_TOKEN to least
+  privilege, limiting the blast radius if a step or dependency is compromised.

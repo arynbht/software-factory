@@ -1,0 +1,17 @@
+id: ci.runs-on-pr
+title: CI runs on pull requests
+lane: cicd
+phase: scaffold
+severity: high
+effort: small
+detect:
+  - type: file-matches
+    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
+    pattern: "(?i)pull_request"
+evidence: none
+references:
+  - name: GitHub Docs — Events that trigger workflows (pull_request)
+    url: https://docs.github.com/actions/using-workflows/events-that-trigger-workflows#pull_request
+rationale: >
+  Running CI on pull requests is what lets required checks block a merge; a
+  workflow that only runs on push cannot gate incoming changes.

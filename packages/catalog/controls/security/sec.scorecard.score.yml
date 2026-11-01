@@ -1,0 +1,17 @@
+id: sec.scorecard.score
+title: OpenSSF Scorecard above threshold
+lane: security
+phase: harden
+severity: low
+effort: medium
+detect:
+  - type: scorecard
+    check: Maintained
+    min: 5
+evidence: none
+references:
+  - name: OpenSSF Scorecard
+    url: https://github.com/ossf/scorecard
+rationale: >
+  OpenSSF Scorecard summarises a repo's security posture against community best
+  practice; tracking it gives a single, comparable signal over time.

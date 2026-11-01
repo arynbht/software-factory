@@ -1,0 +1,23 @@
+id: sec.sbom.ci
+title: SBOM generated in CI
+lane: security
+phase: harden
+severity: low
+effort: medium
+detect:
+  - type: file-matches
+    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
+    pattern: '(?i)(cyclonedx|\bsbom\b|anchore/sbom-action|syft)'
+evidence: none
+fix:
+  type: merge-yaml
+  file: .github/workflows/release.yml
+  path: jobs
+references:
+  - name: CycloneDX
+    url: https://cyclonedx.org/
+  - name: SLSA specification
+    url: https://slsa.dev/spec
+rationale: >
+  A per-build software bill of materials lets you answer "are we affected?" for a
+  new CVE in seconds instead of auditing the dependency tree by hand.
