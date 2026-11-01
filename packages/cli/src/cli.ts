@@ -2,6 +2,7 @@ import { Command, Option } from "commander";
 
 import { type AuditFlags, runAudit } from "./commands/audit.js";
 import { runProfileSet, runProfileShow } from "./commands/profile.js";
+import { runWaive, type WaiveFlags } from "./commands/waive.js";
 
 export function buildProgram(): Command {
   const program = new Command();
@@ -50,6 +51,19 @@ export function buildProgram(): Command {
     .argument("[path]", "path to the repo", ".")
     .action(async (key: string, value: string, path: string) => {
       process.exitCode = await runProfileSet(key, value, path);
+    });
+
+  program
+    .command("waive")
+    .description("Record a waiver for a control")
+    .argument("<control>", "control id to waive")
+    .argument("[path]", "path to the repo", ".")
+    .requiredOption("--reason <reason>", "why the control is waived")
+    .requiredOption("--expires <date>", "expiry date (YYYY-MM-DD)")
+    .option("--owner <owner>", "who owns this waiver")
+    .action(async (control: string, path: string, flags: WaiveFlags) => {
+      const today = new Date().toISOString().slice(0, 10);
+      process.exitCode = await runWaive(control, flags, path, today);
     });
 
   return program;

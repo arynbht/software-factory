@@ -1,4 +1,4 @@
-import type { Control, Profile } from "@arynbht/factory-catalog";
+import type { Control, Profile, Waiver } from "@arynbht/factory-catalog";
 
 import type { AuditContext } from "./context.js";
 import { type ControlResult, evaluateControl } from "./evaluate.js";
@@ -6,10 +6,12 @@ import { type ControlResult, evaluateControl } from "./evaluate.js";
 export interface AuditOptions {
   /** Max controls evaluated concurrently (detectors within a control are serial). */
   concurrency?: number | undefined;
-  /** Reference time for evidence expiry; defaults to now. */
+  /** Reference time for evidence/waiver expiry; defaults to now. */
   now?: Date | undefined;
   /** Profile for applicability; if omitted, loaded from the context. */
   profile?: Profile | null | undefined;
+  /** Active waivers; if omitted, loaded from the context. */
+  waivers?: Waiver[] | undefined;
 }
 
 /**
@@ -23,6 +25,7 @@ export async function evaluateControls(
 ): Promise<ControlResult[]> {
   const concurrency = Math.max(1, options.concurrency ?? 8);
   const profile = options.profile ?? (await ctx.profile());
+  const waivers = options.waivers ?? (await ctx.waivers());
   const results: ControlResult[] = new Array<ControlResult>(controls.length);
   let next = 0;
 
@@ -34,6 +37,7 @@ export async function evaluateControls(
       results[index] = await evaluateControl(control, ctx, {
         now: options.now,
         profile,
+        waivers,
       });
     }
   }

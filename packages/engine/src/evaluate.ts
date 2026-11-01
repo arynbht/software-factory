@@ -1,12 +1,14 @@
-import type { Control, Profile } from "@arynbht/factory-catalog";
+import type { Control, Profile, Waiver } from "@arynbht/factory-catalog";
 
 import { appliesTo } from "./applicability.js";
 import type { AuditContext } from "./context.js";
 import { runDetector } from "./detectors/run.js";
 import type { DetectorResult } from "./detectors/types.js";
 import { findValidEvidence } from "./evidence.js";
+import { findActiveWaiver } from "./waivers.js";
 
-export type ControlStatus = "pass" | "fail" | "skip" | "needs-evidence" | "n/a";
+export type ControlStatus =
+  "pass" | "fail" | "skip" | "needs-evidence" | "waived" | "n/a";
 
 export interface ControlResult {
   controlId: string;
@@ -17,13 +19,17 @@ export interface ControlResult {
   status: ControlStatus;
   detectors: DetectorResult[];
   durationMs: number;
+  /** The active waiver, when `status` is `waived`. */
+  waiver?: { reason: string; expires: string } | undefined;
 }
 
 export interface EvaluateOptions {
-  /** Reference time for evidence expiry; defaults to now. */
+  /** Reference time for evidence/waiver expiry; defaults to now. */
   now?: Date | undefined;
   /** Profile for applicability; null/undefined means every control applies. */
   profile?: Profile | null | undefined;
+  /** Active waivers; a matching one turns a non-passing control into `waived`. */
+  waivers?: Waiver[] | undefined;
 }
 
 /**
@@ -94,15 +100,28 @@ export async function evaluateControl(
 
   const detectors = manualResult ? [...autoResults, manualResult] : autoResults;
 
+  let status = aggregate(autoResults, evidenceMissing, detectors);
+
+  // An active waiver turns any non-passing control into `waived`.
+  let waiver: ControlResult["waiver"];
+  if (status !== "pass" && options.waivers) {
+    const active = findActiveWaiver(options.waivers, control.id, now);
+    if (active) {
+      status = "waived";
+      waiver = { reason: active.reason, expires: active.expires };
+    }
+  }
+
   return {
     controlId: control.id,
     title: control.title,
     lane: control.lane,
     phase: control.phase,
     severity: control.severity,
-    status: aggregate(autoResults, evidenceMissing, detectors),
+    status,
     detectors,
     durationMs: Math.round(performance.now() - start),
+    waiver,
   };
 }
 

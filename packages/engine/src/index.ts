@@ -31,4 +31,12 @@ export type { RepoSlug } from "./github/slug.js";
 export { resolveToken } from "./github/token.js";
 export { loadProfile, saveProfile, ProfileError } from "./profile.js";
 export { appliesTo, evaluatePredicate } from "./applicability.js";
+export {
+  loadWaivers,
+  addWaiver,
+  findActiveWaiver,
+  isWaiverActive,
+  waiversExpiringWithin,
+  WaiverError,
+} from "./waivers.js";
 export * from "./detectors/index.js";

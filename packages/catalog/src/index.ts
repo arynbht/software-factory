@@ -7,6 +7,7 @@ export const PACKAGE = "@arynbht/factory-catalog" as const;
 export * from "./taxonomy.js";
 export * from "./schema.js";
 export { ProfileSchema, type Profile } from "./profile.js";
+export { WaiverSchema, WaiversSchema, type Waiver } from "./waiver.js";
 export {
   GateSchema,
   GateSelectorSchema,

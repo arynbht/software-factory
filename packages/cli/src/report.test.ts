@@ -34,6 +34,7 @@ describe("summarize", () => {
       pass: 1,
       fail: 1,
       needsEvidence: 1,
+      waived: 0,
       skip: 1,
       na: 0,
       total: 4,

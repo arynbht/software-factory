@@ -4,7 +4,7 @@
 import { readFile as fsReadFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 
-import type { Profile } from "@arynbht/factory-catalog";
+import type { Profile, Waiver } from "@arynbht/factory-catalog";
 import { Octokit } from "@octokit/rest";
 import { simpleGit } from "simple-git";
 import { glob as tinyglob } from "tinyglobby";
@@ -12,6 +12,7 @@ import { glob as tinyglob } from "tinyglobby";
 import { type EvidenceEntry, loadEvidence } from "./evidence.js";
 import { parseRepoSlug, type RepoSlug } from "./github/slug.js";
 import { loadProfile } from "./profile.js";
+import { loadWaivers } from "./waivers.js";
 
 export interface GitHubClient {
   readonly octokit: Octokit;
@@ -36,6 +37,8 @@ export interface AuditContext {
   evidence(): Promise<EvidenceEntry[]>;
   /** The resolved profile from `.factory/profile.yml`, or null if none. */
   profile(): Promise<Profile | null>;
+  /** Waivers from `.factory/waivers.yml` (loaded once per run). */
+  waivers(): Promise<Waiver[]>;
 }
 
 export interface BuildContextOptions {
@@ -55,6 +58,7 @@ export function buildContext(
   let githubClient: Promise<GitHubClient | null> | undefined;
   let evidenceEntries: Promise<EvidenceEntry[]> | undefined;
   let profileData: Promise<Profile | null> | undefined;
+  let waiverData: Promise<Waiver[]> | undefined;
 
   return {
     repoPath: root,
@@ -109,6 +113,16 @@ export function buildContext(
         });
       }
       return profileData;
+    },
+
+    waivers() {
+      if (!waiverData) {
+        waiverData = loadWaivers(root).catch((err: unknown) => {
+          waiverData = undefined; // don't cache a rejection
+          throw err;
+        });
+      }
+      return waiverData;
     },
   };
 }
