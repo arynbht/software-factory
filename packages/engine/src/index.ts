@@ -15,6 +15,8 @@ export type {
   ControlStatus,
   EvaluateOptions,
 } from "./evaluate.js";
+export { evaluateControls } from "./audit.js";
+export type { AuditOptions } from "./audit.js";
 export {
   findValidEvidence,
   isEvidenceValid,

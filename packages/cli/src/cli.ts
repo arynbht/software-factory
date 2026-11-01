@@ -1,0 +1,30 @@
+import { Command } from "commander";
+
+import { type AuditFlags, runAudit } from "./commands/audit.js";
+
+export function buildProgram(): Command {
+  const program = new Command();
+
+  program
+    .name("factory")
+    .description("An auditor and scaffolder for GitHub repositories");
+
+  program
+    .command("audit")
+    .description("Audit a repo against the control catalog")
+    .argument("[path]", "path to the repo to audit", ".")
+    .option("--json", "output JSON instead of a table")
+    .option("--format <format>", "output format: table | json", "table")
+    .option("--lane <lane>", "only run controls in this lane")
+    .option("--token <token>", "GitHub token (else GITHUB_TOKEN or gh auth)")
+    .option("--no-color", "disable coloured output")
+    .action(async (path: string, flags: AuditFlags) => {
+      process.exitCode = await runAudit(path, flags);
+    });
+
+  return program;
+}
+
+export async function run(argv: string[]): Promise<void> {
+  await buildProgram().parseAsync(argv);
+}

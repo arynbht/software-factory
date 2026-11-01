@@ -13,7 +13,12 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "controls",
+    "gates",
+    "templates",
+    "prompts",
+    "schema"
   ],
   "scripts": {},
   "dependencies": {
