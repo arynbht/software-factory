@@ -7,6 +7,18 @@ export const PACKAGE = "@arynbht/factory-catalog" as const;
 export * from "./taxonomy.js";
 export * from "./schema.js";
 export { ProfileSchema, type Profile } from "./profile.js";
+export {
+  GateSchema,
+  GateSelectorSchema,
+  type Gate,
+  type GateSelector,
+} from "./gate.js";
 export { loadCatalog } from "./validate.js";
 export type { CatalogError, LoadResult } from "./validate.js";
-export { bundledControlsDir, loadBundledCatalog } from "./bundled.js";
+export { loadGates, type GateLoadResult } from "./gates.js";
+export {
+  bundledControlsDir,
+  loadBundledCatalog,
+  bundledGatesDir,
+  loadBundledGates,
+} from "./bundled.js";

@@ -1,16 +1,22 @@
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { loadBundledCatalog, SEVERITIES } from "@arynbht/factory-catalog";
+import {
+  loadBundledCatalog,
+  loadBundledGates,
+  SEVERITIES,
+} from "@arynbht/factory-catalog";
 import {
   buildContext,
   type ControlResult,
   evaluateControls,
+  evaluateGate,
+  type GateResult,
   ProfileError,
   resolveToken,
 } from "@arynbht/factory-engine";
 
-import { exitCodeFor, renderReport, summarize } from "../report.js";
+import { exitCodeFor, renderGate, renderReport, summarize } from "../report.js";
 
 export interface AuditFlags {
   json?: boolean;
@@ -18,6 +24,7 @@ export interface AuditFlags {
   lane?: string;
   token?: string;
   color?: boolean;
+  gate?: string;
 }
 
 export interface RunAuditOptions {
@@ -94,7 +101,49 @@ export async function runAudit(
   process.stdout.write(`${renderReport(results, { format, color })}\n`);
 
   await writeState(ctx.repoPath, results);
+
+  if (flags.gate) {
+    return reportGates(flags.gate, results, color);
+  }
+
   return exitCodeFor(results);
+}
+
+/**
+ * Evaluate the requested gate(s), print their status, and return the exit code
+ * (1 if any requested gate is red or the gate name was unknown).
+ */
+async function reportGates(
+  which: string,
+  results: ControlResult[],
+  color: boolean,
+): Promise<number> {
+  const { gates, errors } = await loadBundledGates();
+  if (errors.length > 0) {
+    console.error(`Gate definitions are invalid (${errors.length} error(s)).`);
+    return 1;
+  }
+
+  let selected: GateResult[];
+  if (which === "all") {
+    selected = gates.map((g) => evaluateGate(g, results));
+  } else {
+    const gate = gates.find((g) => g.phase === which);
+    if (!gate) {
+      const known = gates.map((g) => g.phase).join(", ");
+      console.error(
+        `Unknown gate "${which}". Defined gates: ${known || "none"}.`,
+      );
+      return 1;
+    }
+    selected = [evaluateGate(gate, results)];
+  }
+
+  process.stdout.write("\n");
+  for (const gate of selected) {
+    process.stdout.write(`${renderGate(gate, color)}\n`);
+  }
+  return selected.some((g) => g.status === "red") ? 1 : 0;
 }
 
 async function writeState(

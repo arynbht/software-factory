@@ -1,4 +1,8 @@
-import type { ControlResult, ControlStatus } from "@arynbht/factory-engine";
+import type {
+  ControlResult,
+  ControlStatus,
+  GateResult,
+} from "@arynbht/factory-engine";
 import pc from "picocolors";
 
 export interface Summary {
@@ -34,6 +38,29 @@ export function exitCodeFor(results: ControlResult[]): number {
   return results.some((r) => r.severity === "critical" && r.status === "fail")
     ? 1
     : 0;
+}
+
+/** Render a one-line gate status (e.g. "Gate build: RED — 3 failing"). */
+export function renderGate(gate: GateResult, color = true): string {
+  const c = pc.createColors(color);
+  const tint =
+    gate.status === "green"
+      ? c.green
+      : gate.status === "red"
+        ? c.red
+        : c.yellow;
+  const label = gate.title ?? `${gate.phase} gate`;
+  const failing = gate.controls.filter((x) => x.status === "fail").length;
+  const pending = gate.controls.filter(
+    (x) => x.status === "needs-evidence" || x.status === "skip",
+  ).length;
+  const detail =
+    gate.status === "red"
+      ? ` — ${failing} failing`
+      : gate.status === "amber"
+        ? ` — ${pending} outstanding`
+        : "";
+  return `${c.bold(label)}: ${tint(gate.status.toUpperCase())}${detail}`;
 }
 
 const SYMBOL: Record<ControlStatus, string> = {

@@ -22,6 +22,10 @@ export function buildProgram(): Command {
       ]),
     )
     .option("--lane <lane>", "only run controls in this lane")
+    .option(
+      "--gate <phase>",
+      "evaluate a phase gate (or 'all') and fail if red",
+    )
     .option("--token <token>", "GitHub token (else GITHUB_TOKEN or gh auth)")
     .option("--no-color", "disable coloured output")
     .action(async (path: string, flags: AuditFlags) => {
