@@ -1,0 +1,23 @@
+id: sec.dependency-scan.ci
+title: Dependency vulnerability scan in CI
+lane: security
+phase: harden
+severity: high
+effort: small
+detect:
+  - type: file-matches
+    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
+    pattern: "(?i)(osv-scanner|trivy|snyk|dependency-review|npm audit|pnpm audit|grype)"
+evidence: none
+fix:
+  type: merge-yaml
+  file: .github/workflows/ci.yml
+  path: jobs
+references:
+  - name: OSV-Scanner
+    url: https://google.github.io/osv-scanner/
+  - name: OWASP ASVS
+    url: https://owasp.org/www-project-application-security-verification-standard/
+rationale: >
+  Scanning dependencies for known vulnerabilities on every build surfaces
+  exploitable CVEs in third-party code while they are cheap to fix.

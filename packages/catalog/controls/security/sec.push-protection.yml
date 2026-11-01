@@ -1,0 +1,19 @@
+id: sec.push-protection
+title: Secret scanning push protection enabled
+lane: security
+phase: harden
+severity: medium
+effort: small
+detect:
+  - type: github-api
+    check: secret-scanning-push-protection
+evidence: none
+fix:
+  type: github-setting
+  setting: secret-scanning-push-protection
+references:
+  - name: GitHub Docs — Push protection for repositories
+    url: https://docs.github.com/code-security/secret-scanning/push-protection-for-repositories-and-organizations
+rationale: >
+  Push protection blocks commits containing recognised secrets at push time,
+  stopping credential leaks before they ever reach the remote.

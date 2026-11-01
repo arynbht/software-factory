@@ -1,0 +1,20 @@
+id: dev.precommit-hooks
+title: Pre-commit hooks installed
+lane: development
+phase: scaffold
+severity: medium
+effort: small
+detect:
+  - type: file-exists
+    path: "lefthook.yml|lefthook.yaml|.lefthook.yml|.pre-commit-config.yaml|.husky/pre-commit|.husky"
+evidence: none
+fix:
+  type: template
+  template: lefthook
+references:
+  - name: OpenSSF Scorecard
+    url: https://github.com/ossf/scorecard/blob/main/docs/checks.md
+    section: Token-Permissions
+rationale: >
+  Pre-commit hooks catch formatting, lint, and secret issues before they are
+  committed, shortening the feedback loop and keeping bad commits out of history.

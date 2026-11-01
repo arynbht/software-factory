@@ -1,0 +1,19 @@
+id: test.e2e.present
+title: End-to-end tests present
+lane: testing
+phase: build
+severity: low
+effort: medium
+applies:
+  all:
+    - flag: public-facing
+detect:
+  - type: file-exists
+    path: "playwright.config.ts|playwright.config.js|cypress.config.ts|cypress.config.js|e2e|tests/e2e|test/e2e"
+evidence: none
+references:
+  - name: Playwright
+    url: https://playwright.dev/
+rationale: >
+  End-to-end tests exercise the top user journeys through the real UI, catching
+  integration breakage that unit tests structurally cannot.
