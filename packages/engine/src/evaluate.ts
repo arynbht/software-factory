@@ -9,6 +9,7 @@ export type ControlStatus = "pass" | "fail" | "skip" | "needs-evidence";
 
 export interface ControlResult {
   controlId: string;
+  title: string;
   lane: Control["lane"];
   phase: Control["phase"];
   severity: Control["severity"];
@@ -19,7 +20,7 @@ export interface ControlResult {
 
 export interface EvaluateOptions {
   /** Reference time for evidence expiry; defaults to now. */
-  now?: Date;
+  now?: Date | undefined;
 }
 
 /**
@@ -72,6 +73,7 @@ export async function evaluateControl(
 
   return {
     controlId: control.id,
+    title: control.title,
     lane: control.lane,
     phase: control.phase,
     severity: control.severity,

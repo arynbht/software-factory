@@ -31,5 +31,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
-# Factory runtime (managed, machine-specific)
+# Factory runtime (managed, regenerated each run)
 .factory/ai-usage.log
+.factory/state.json

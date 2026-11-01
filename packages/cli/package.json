@@ -4,6 +4,9 @@
   "description": "The factory CLI: init, audit, fix, ai, status, metrics, waive, evidence, profile.",
   "license": "MIT",
   "type": "module",
+  "bin": {
+    "factory": "./dist/bin.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -18,6 +21,8 @@
   "scripts": {},
   "dependencies": {
     "@arynbht/factory-catalog": "workspace:*",
-    "@arynbht/factory-engine": "workspace:*"
+    "@arynbht/factory-engine": "workspace:*",
+    "commander": "^15.0.0",
+    "picocolors": "^1.1.1"
   }
 }

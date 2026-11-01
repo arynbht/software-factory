@@ -8,3 +8,4 @@ export * from "./taxonomy.js";
 export * from "./schema.js";
 export { loadCatalog } from "./validate.js";
 export type { CatalogError, LoadResult } from "./validate.js";
+export { bundledControlsDir, loadBundledCatalog } from "./bundled.js";
