@@ -20,6 +20,13 @@ export type { AuditOptions } from "./audit.js";
 export { evaluateGate, selectForGate } from "./gates.js";
 export type { GateResult, GateStatus } from "./gates.js";
 export {
+  upsertStickyComment,
+  upsertStatusIssue,
+  FACTORY_MARKER,
+  STATUS_ISSUE_TITLE,
+} from "./ci.js";
+export { Octokit } from "@octokit/rest";
+export {
   findValidEvidence,
   isEvidenceValid,
   loadEvidence,

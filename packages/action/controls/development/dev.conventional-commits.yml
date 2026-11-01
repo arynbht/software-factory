@@ -1,0 +1,20 @@
+id: dev.conventional-commits
+title: Conventional commits enforced
+lane: development
+phase: scaffold
+severity: low
+effort: small
+detect:
+  - type: file-matches
+    path: "commitlint.config.js|commitlint.config.cjs|commitlint.config.mjs|commitlint.config.ts|.commitlintrc|.commitlintrc.json|.commitlintrc.js|.commitlintrc.yml|.commitlintrc.cjs"
+    pattern: "(?i)(commitlint|conventional)"
+evidence: none
+fix:
+  type: template
+  template: commitlint
+references:
+  - name: Conventional Commits
+    url: https://www.conventionalcommits.org/
+rationale: >
+  Enforcing conventional commit messages enables automated changelogs and version
+  bumps and keeps history machine- and human-readable.

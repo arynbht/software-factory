@@ -1,0 +1,21 @@
+id: ci.changelog-automated
+title: Versioning and changelog automated
+lane: cicd
+phase: build
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: ".changeset/config.json|.changeset|.releaserc|.releaserc.json|.releaserc.js|release-please-config.json|CHANGELOG.md"
+evidence: none
+fix:
+  type: template
+  template: changesets
+references:
+  - name: semantic-release
+    url: https://semantic-release.gitbook.io/semantic-release/
+  - name: Changesets
+    url: https://github.com/changesets/changesets
+rationale: >
+  Automated versioning and changelogs make releases repeatable and give users an
+  accurate record of what changed, instead of hand-maintained notes that drift.

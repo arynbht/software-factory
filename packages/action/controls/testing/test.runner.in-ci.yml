@@ -1,0 +1,21 @@
+id: test.runner.in-ci
+title: Tests run in CI
+lane: testing
+phase: build
+severity: medium
+effort: small
+detect:
+  - type: file-matches
+    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
+    pattern: '(?i)(vitest|jest|pytest|go test|cargo test|npm test|pnpm test|yarn test|\brun test\b)'
+evidence: none
+fix:
+  type: merge-yaml
+  file: .github/workflows/ci.yml
+  path: jobs.ci.steps
+references:
+  - name: DORA — Continuous integration
+    url: https://dora.dev/capabilities/continuous-integration/
+rationale: >
+  Tests that only run locally do not protect the main line; running them in CI is
+  what makes a green suite a precondition for merging.

@@ -14,3 +14,7 @@ packages/catalog/schema/*.json
 
 # Test fixtures are data, sometimes intentionally malformed.
 **/test/fixtures/**
+
+# Generated action bundle + copied catalog (produced by `pnpm action:build`).
+packages/action/controls/**
+packages/action/gates/**

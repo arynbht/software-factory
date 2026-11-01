@@ -1,6 +1,7 @@
 import { Command, Option } from "commander";
 
 import { type AuditFlags, runAudit } from "./commands/audit.js";
+import { runCi } from "./commands/ci.js";
 import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
 import { type InitFlags, runInit } from "./commands/init.js";
 import { runProfileSet, runProfileShow } from "./commands/profile.js";
@@ -111,6 +112,13 @@ export function buildProgram(): Command {
     .action(async (control: string, path: string, flags: EvidenceFlags) => {
       const today = new Date().toISOString().slice(0, 10);
       process.exitCode = await runEvidenceAdd(control, flags, path, today);
+    });
+
+  program
+    .command("ci", { hidden: true })
+    .description("GitHub Action entrypoint (driven by GITHUB_* env vars)")
+    .action(async () => {
+      process.exitCode = await runCi();
     });
 
   return program;

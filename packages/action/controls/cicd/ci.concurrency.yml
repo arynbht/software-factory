@@ -1,0 +1,21 @@
+id: ci.concurrency
+title: CI cancels superseded runs
+lane: cicd
+phase: build
+severity: low
+effort: small
+detect:
+  - type: file-matches
+    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
+    pattern: '(?im)^\s*concurrency:'
+evidence: none
+fix:
+  type: merge-yaml
+  file: .github/workflows/ci.yml
+  path: concurrency
+references:
+  - name: GitHub Docs — Using concurrency
+    url: https://docs.github.com/actions/using-jobs/using-concurrency
+rationale: >
+  A concurrency group cancels superseded in-progress runs on the same ref, saving
+  runner minutes and giving faster feedback on the latest commit.

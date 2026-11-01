@@ -1,0 +1,20 @@
+id: repo.dependency-update-bot
+title: Dependency update bot configured
+lane: hygiene
+phase: scaffold
+severity: medium
+effort: small
+detect:
+  - type: file-exists
+    path: "renovate.json|renovate.json5|.github/renovate.json|.renovaterc|.renovaterc.json|.github/dependabot.yml|.github/dependabot.yaml"
+evidence: none
+fix:
+  type: template
+  template: renovate
+references:
+  - name: OpenSSF Scorecard
+    url: https://github.com/ossf/scorecard/blob/main/docs/checks.md
+    section: Dependency-Update-Tool
+rationale: >
+  An automated update bot keeps dependencies current and surfaces security fixes
+  as reviewable PRs instead of letting the project silently rot.

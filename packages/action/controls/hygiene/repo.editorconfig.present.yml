@@ -1,0 +1,19 @@
+id: repo.editorconfig.present
+title: .editorconfig present
+lane: hygiene
+phase: scaffold
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: ".editorconfig"
+evidence: none
+fix:
+  type: template
+  template: editorconfig
+references:
+  - name: EditorConfig specification
+    url: https://editorconfig.org/
+rationale: >
+  An .editorconfig keeps indentation, charset, and line endings consistent across
+  editors, preventing noisy whitespace-only diffs.

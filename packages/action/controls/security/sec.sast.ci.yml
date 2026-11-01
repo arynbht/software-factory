@@ -1,0 +1,24 @@
+id: sec.sast.ci
+title: SAST runs in CI
+lane: security
+phase: harden
+severity: high
+effort: medium
+detect:
+  - type: file-matches
+    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
+    pattern: "(?i)(codeql|semgrep|sonarqube|sonarcloud)"
+evidence: none
+fix:
+  type: merge-yaml
+  file: .github/workflows/ci.yml
+  path: jobs
+references:
+  - name: OpenSSF Scorecard
+    url: https://github.com/ossf/scorecard/blob/main/docs/checks.md
+    section: SAST
+  - name: NIST SSDF
+    url: https://csrc.nist.gov/projects/ssdf
+rationale: >
+  Static analysis in CI finds injection, unsafe-API, and other vulnerability
+  patterns automatically on every change, before they ship.

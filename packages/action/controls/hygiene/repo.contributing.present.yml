@@ -1,0 +1,19 @@
+id: repo.contributing.present
+title: CONTRIBUTING guide present
+lane: hygiene
+phase: scaffold
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: "CONTRIBUTING.md|CONTRIBUTING.rst|.github/CONTRIBUTING.md|docs/CONTRIBUTING.md"
+evidence: none
+fix:
+  type: template
+  template: contributing
+references:
+  - name: GitHub Docs — Setting guidelines for repository contributors
+    url: https://docs.github.com/communities/setting-up-your-project-for-healthy-contributions/setting-guidelines-for-repository-contributors
+rationale: >
+  A CONTRIBUTING guide tells new contributors how to set up, test, and submit
+  changes, reducing friction and inconsistent contributions.
