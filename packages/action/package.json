@@ -1,0 +1,16 @@
+{
+  "name": "@arynbht/factory-action",
+  "version": "0.0.0",
+  "description": "Composite GitHub Action that runs the factory audit in CI and comments on PRs.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist",
+    "action.yml"
+  ],
+  "scripts": {},
+  "dependencies": {
+    "@arynbht/factory": "workspace:*"
+  }
+}
