@@ -13,6 +13,8 @@ fix:
   type: merge-yaml
   file: .github/workflows/ci.yml
   path: permissions
+  value:
+    contents: read
 references:
   - name: OpenSSF Scorecard
     url: https://github.com/ossf/scorecard/blob/main/docs/checks.md

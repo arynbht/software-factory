@@ -13,6 +13,9 @@ fix:
   type: merge-yaml
   file: .github/workflows/ci.yml
   path: concurrency
+  value:
+    group: "${{ github.workflow }}-${{ github.ref }}"
+    cancel-in-progress: true
 references:
   - name: GitHub Docs — Using concurrency
     url: https://docs.github.com/actions/using-jobs/using-concurrency

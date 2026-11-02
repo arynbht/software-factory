@@ -13,3 +13,5 @@ export {
   templateVars,
   type TemplateVars,
 } from "./template.js";
+export { mergeJsonGenerator } from "./merge-json.js";
+export { mergeYamlGenerator } from "./merge-yaml.js";
