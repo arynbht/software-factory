@@ -12,6 +12,11 @@ export const IpcChannel = {
   ReposAdd: "repos:add",
   ReposRemove: "repos:remove",
   AuditRun: "audit:run",
+  AuthStatus: "auth:status",
+  AuthSignIn: "auth:signIn",
+  AuthSignOut: "auth:signOut",
+  /** Push channel (main → renderer): sign-in progress after the device code. */
+  AuthUpdate: "auth:update",
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
@@ -98,3 +103,26 @@ export type Scorecard = z.infer<typeof Scorecard>;
 
 export const AuditRunRequest = z.object({ repoPath: z.string().min(1) });
 export type AuditRunRequest = z.infer<typeof AuditRunRequest>;
+
+// Auth — GitHub device-flow sign-in. The token lives in the main process
+// (safeStorage) and never crosses IPC; the renderer only learns who is signed in.
+export const AuthStatus = z.object({
+  signedIn: z.boolean(),
+  login: z.string().nullable(),
+});
+export type AuthStatus = z.infer<typeof AuthStatus>;
+
+/** auth:signIn response — what to show the user to complete the device flow. */
+export const DeviceCodeInfo = z.object({
+  userCode: z.string(),
+  verificationUri: z.string(),
+  expiresIn: z.number().int(),
+});
+export type DeviceCodeInfo = z.infer<typeof DeviceCodeInfo>;
+
+/** auth:update push payload — the outcome of the background token poll. */
+export const AuthUpdate = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("signed-in"), login: z.string() }),
+  z.object({ status: z.literal("error"), message: z.string() }),
+]);
+export type AuthUpdate = z.infer<typeof AuthUpdate>;
