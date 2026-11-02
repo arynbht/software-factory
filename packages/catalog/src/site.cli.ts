@@ -16,6 +16,11 @@ const outDir = resolve(repoRoot, "docs", "catalog");
 
 const { controls } = await loadCatalog(resolve(root, "controls"));
 
+/** Compile-time exhaustiveness guard: a new union member makes this a type error. */
+function assertNever(value: never): never {
+  throw new Error(`unhandled fix type: ${JSON.stringify(value)}`);
+}
+
 function fixSummary(fix: FixConfig | undefined): string {
   if (!fix) return "—";
   switch (fix.type) {
@@ -30,6 +35,9 @@ function fixSummary(fix: FixConfig | undefined): string {
       return `command \`${fix.run}\``;
     case "claude":
       return `claude \`${fix.task}\``;
+    default:
+      // A future fix type must extend this switch rather than render "undefined".
+      return assertNever(fix);
   }
 }
 

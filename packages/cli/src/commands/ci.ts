@@ -23,6 +23,7 @@ import {
   waiversExpiringWithin,
 } from "@arynbht/factory-engine";
 
+import { today } from "../dates.js";
 import { renderReport } from "../report.js";
 
 interface EventPayload {
@@ -114,7 +115,7 @@ export async function runCi(): Promise<number> {
 
   // Append a per-lane pass snapshot for the hygiene trend (best-effort).
   await appendHistory(workspace, {
-    date: now.toISOString().slice(0, 10),
+    date: today(now),
     byLane: laneCounts(results),
   }).catch(() => undefined);
 

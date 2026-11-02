@@ -27,6 +27,7 @@ import {
   WaiverError,
 } from "@arynbht/factory-engine";
 
+import { today as isoToday } from "../dates.js";
 import { renderFixPlan } from "../report.js";
 
 export interface AiFlags {
@@ -123,7 +124,7 @@ export async function runAi(
     controls.find((c) => c.fix?.type === "claude" && c.fix.task === task) ??
     null;
 
-  const today = options.today ?? new Date().toISOString().slice(0, 10);
+  const today = options.today ?? isoToday();
   const color = flags.color !== false && process.stdout.isTTY === true;
 
   let result;

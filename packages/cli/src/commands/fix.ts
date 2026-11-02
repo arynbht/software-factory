@@ -22,6 +22,7 @@ import {
   WaiverError,
 } from "@arynbht/factory-engine";
 
+import { today as isoToday } from "../dates.js";
 import { renderFixPlan } from "../report.js";
 
 export interface FixFlags {
@@ -166,7 +167,7 @@ async function runFixPr(
   color: boolean,
 ): Promise<number> {
   const titles = Object.fromEntries(controlsToFix.map((c) => [c.id, c.title]));
-  const today = options.today ?? new Date().toISOString().slice(0, 10);
+  const today = options.today ?? isoToday();
   const prOptions: FixPrOptions = {
     gate: flags.gate ?? "all",
     date: today,
