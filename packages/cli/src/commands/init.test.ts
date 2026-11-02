@@ -52,6 +52,14 @@ describe("runInit (integration)", () => {
     expect(workflow).toContain("name: factory");
     expect(workflow).toContain("cron:");
     expect(workflow).toContain("gate: scaffold");
+
+    // The Claude Code skill is installed so an agent here knows to run the audit.
+    const skill = await readFile(
+      join(dir, ".claude", "skills", "factory", "SKILL.md"),
+      "utf8",
+    );
+    expect(skill).toContain("name: factory");
+    expect(skill).toContain("factory audit");
   });
 
   it("refuses to overwrite an existing config without --force", async () => {

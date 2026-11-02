@@ -21,6 +21,7 @@ async function sourceHash() {
     resolve(root, "packages/catalog/gates"),
     resolve(root, "packages/catalog/templates"),
     resolve(root, "packages/catalog/prompts"),
+    resolve(root, "packages/catalog/skill"),
   ];
   const files = [];
   async function walk(dir) {
@@ -47,6 +48,7 @@ await rm(resolve(actionDir, "controls"), { recursive: true, force: true });
 await rm(resolve(actionDir, "gates"), { recursive: true, force: true });
 await rm(resolve(actionDir, "templates"), { recursive: true, force: true });
 await rm(resolve(actionDir, "prompts"), { recursive: true, force: true });
+await rm(resolve(actionDir, "skill"), { recursive: true, force: true });
 
 await build({
   entryPoints: [resolve(root, "packages/cli/dist/bin.js")],
@@ -89,6 +91,9 @@ await cp(
   resolve(actionDir, "prompts"),
   { recursive: true },
 );
+await cp(resolve(root, "packages/catalog/skill"), resolve(actionDir, "skill"), {
+  recursive: true,
+});
 
 // A deterministic source hash CI can diff to catch a committed bundle that wasn't
 // rebuilt after a source change (the bundle bytes themselves vary by platform).
