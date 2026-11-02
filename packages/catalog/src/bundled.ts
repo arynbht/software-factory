@@ -28,6 +28,11 @@ export function bundledPromptsDir(): string {
   return fileURLToPath(new URL("../prompts", import.meta.url));
 }
 
+/** Absolute path to the Claude Code skill shipped with this package. */
+export function bundledSkillDir(): string {
+  return fileURLToPath(new URL("../skill", import.meta.url));
+}
+
 /** Load and validate the gates shipped with this package. */
 export function loadBundledGates(): Promise<GateLoadResult> {
   return loadGates(bundledGatesDir());

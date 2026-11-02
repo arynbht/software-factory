@@ -1,7 +1,8 @@
-import { access, mkdir, writeFile } from "node:fs/promises";
-import { basename, dirname, resolve } from "node:path";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { basename, dirname, join, resolve } from "node:path";
 
 import {
+  bundledSkillDir,
   FLAG_KEYS,
   PHASE_KEYS,
   PROJECT_TYPES,
@@ -244,14 +245,24 @@ export async function runInit(
     flags.force,
   );
 
+  // Install the Claude Code skill so an agent in this repo knows to run the audit.
+  try {
+    const skill = await readFile(join(bundledSkillDir(), "SKILL.md"), "utf8");
+    await writeIfAllowed(
+      resolve(root, ".claude", "skills", "factory", "SKILL.md"),
+      skill,
+      flags.force,
+    );
+  } catch {
+    // The skill is a convenience; don't fail init if it can't be read.
+  }
+
+  const wrote =
+    "Wrote .factory/, .github/workflows/factory.yml, and .claude/skills/factory/.";
   if (interactive) {
-    outro(
-      "Wrote .factory/ and .github/workflows/factory.yml. Running first audit…",
-    );
+    outro(`${wrote} Running first audit…`);
   } else {
-    process.stdout.write(
-      "Wrote .factory/ and .github/workflows/factory.yml. Running first audit…\n\n",
-    );
+    process.stdout.write(`${wrote} Running first audit…\n\n`);
   }
 
   return runAudit(root, {}, options);
