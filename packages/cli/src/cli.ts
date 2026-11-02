@@ -7,6 +7,7 @@ import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
 import { type FixFlags, runFix } from "./commands/fix.js";
 import { type InitFlags, runInit } from "./commands/init.js";
 import { runProfileSet, runProfileShow } from "./commands/profile.js";
+import { type StatusFlags, runStatus } from "./commands/status.js";
 import { runWaive, type WaiveFlags } from "./commands/waive.js";
 
 function collect(value: string, previous: string[]): string[] {
@@ -85,6 +86,17 @@ export function buildProgram(): Command {
     .action(async (path: string, flags: FixFlags) => {
       const today = new Date().toISOString().slice(0, 10);
       process.exitCode = await runFix(path, flags, { today });
+    });
+
+  program
+    .command("status")
+    .description("Infer the project phase and list what blocks progress")
+    .argument("[path]", "path to the repo", ".")
+    .option("--json", "output JSON instead of text")
+    .option("--token <token>", "GitHub token (else GITHUB_TOKEN or gh auth)")
+    .option("--no-color", "disable coloured output")
+    .action(async (path: string, flags: StatusFlags) => {
+      process.exitCode = await runStatus(path, flags);
     });
 
   program

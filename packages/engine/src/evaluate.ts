@@ -16,6 +16,7 @@ export interface ControlResult {
   lane: Control["lane"];
   phase: Control["phase"];
   severity: Control["severity"];
+  effort: Control["effort"];
   status: ControlStatus;
   detectors: DetectorResult[];
   durationMs: number;
@@ -57,6 +58,7 @@ export async function evaluateControl(
       lane: control.lane,
       phase: control.phase,
       severity: control.severity,
+      effort: control.effort,
       status: "n/a",
       detectors: [],
       durationMs: 0,
@@ -118,6 +120,7 @@ export async function evaluateControl(
     lane: control.lane,
     phase: control.phase,
     severity: control.severity,
+    effort: control.effort,
     status,
     detectors,
     durationMs: Math.round(performance.now() - start),
