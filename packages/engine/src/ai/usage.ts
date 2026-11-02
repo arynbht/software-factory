@@ -20,7 +20,7 @@ export interface UsageEntry {
 
 /** USD per 1M tokens, [input, output]. Approximate; update as pricing changes. */
 const PRICES: Record<string, [number, number]> = {
-  "claude-opus-4-8": [15, 75],
+  "claude-opus-4-8": [5, 25],
   "claude-sonnet-4-6": [3, 15],
   "claude-haiku-4-5": [1, 5],
 };
