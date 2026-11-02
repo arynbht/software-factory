@@ -65,7 +65,8 @@ export async function runFix(
 
   const { controls, errors } = await loadBundledCatalog();
   if (errors.length > 0) {
-    console.error(`Catalog is invalid (${errors.length} error(s)).`);
+    console.error(`Catalog is invalid (${errors.length} error(s)):`);
+    for (const err of errors) console.error(`  ${err.file}: ${err.message}`);
     return 1;
   }
 

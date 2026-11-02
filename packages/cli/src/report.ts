@@ -76,7 +76,7 @@ export function renderFixPlan(
   const c = pc.createColors(color);
   if (results.length === 0) {
     return c.dim(
-      "Nothing to fix — all selected controls already pass or have no generator.",
+      "Nothing to apply — no selected control has an applicable fix (already passing, or no generator for it).",
     );
   }
 

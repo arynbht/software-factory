@@ -54,6 +54,13 @@ export async function runAudit(
   flags: AuditFlags,
   options: RunAuditOptions = {},
 ): Promise<number> {
+  if (flags.json && flags.format && flags.format !== "json") {
+    console.error(
+      `factory audit: --json conflicts with --format ${flags.format}; use one (--json is shorthand for --format json).`,
+    );
+    return 1;
+  }
+
   const root = resolve(path);
   try {
     if (!(await stat(root)).isDirectory()) {

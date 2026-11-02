@@ -77,6 +77,16 @@ describe("runAudit (integration)", () => {
     expect(code).toBe(1);
   });
 
+  it("errors when --json and a conflicting --format are both given", async () => {
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const code = await runAudit(
+      tmpdir(),
+      { json: true, format: "markdown" },
+      { token: null },
+    );
+    expect(code).toBe(1);
+  });
+
   it("errors on an unknown gate", async () => {
     const dir = await tempRepo();
     vi.spyOn(process.stdout, "write").mockImplementation(() => true);
