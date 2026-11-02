@@ -65,6 +65,10 @@ export {
   WaiverError,
 } from "./waivers.js";
 export * from "./detectors/index.js";
+export { computeMetrics } from "./metrics.js";
+export type { Metrics, MetricsOptions } from "./metrics.js";
+export { appendHistory, loadHistory, laneCounts } from "./history.js";
+export type { HistoryEntry, LaneCount } from "./history.js";
 export {
   createAiClient,
   resolveAnthropicKey,

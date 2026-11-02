@@ -6,12 +6,14 @@ import {
   SEVERITIES,
 } from "@arynbht/factory-catalog";
 import {
+  appendHistory,
   buildContext,
   evaluateControls,
   evaluateGate,
   EvidenceError,
   evidenceExpiringWithin,
   type GateStatus,
+  laneCounts,
   Octokit,
   ProfileError,
   resolveToken,
@@ -109,6 +111,12 @@ export async function runCi(): Promise<number> {
 
   // Annotations into the workflow log.
   process.stdout.write(`${renderReport(results, { format: "github" })}\n`);
+
+  // Append a per-lane pass snapshot for the hygiene trend (best-effort).
+  await appendHistory(workspace, {
+    date: now.toISOString().slice(0, 10),
+    byLane: laneCounts(results),
+  }).catch(() => undefined);
 
   const gateResult = evaluateGate(gate, results);
   const gateLine = `\n\n**${gateResult.title ?? `${gateName} gate`}: ${gateResult.status.toUpperCase()}**`;

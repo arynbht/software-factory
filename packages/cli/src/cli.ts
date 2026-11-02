@@ -6,6 +6,7 @@ import { runCi } from "./commands/ci.js";
 import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
 import { type FixFlags, runFix } from "./commands/fix.js";
 import { type InitFlags, runInit } from "./commands/init.js";
+import { type MetricsFlags, runMetrics } from "./commands/metrics.js";
 import { runProfileSet, runProfileShow } from "./commands/profile.js";
 import { type StatusFlags, runStatus } from "./commands/status.js";
 import { runWaive, type WaiveFlags } from "./commands/waive.js";
@@ -97,6 +98,17 @@ export function buildProgram(): Command {
     .option("--no-color", "disable coloured output")
     .action(async (path: string, flags: StatusFlags) => {
       process.exitCode = await runStatus(path, flags);
+    });
+
+  program
+    .command("metrics")
+    .description("Show DORA metrics for the repo (from the GitHub API)")
+    .argument("[path]", "path to the repo", ".")
+    .option("--json", "output JSON instead of text")
+    .option("--window <days>", "trailing window in days (default 90)")
+    .option("--token <token>", "GitHub token (else GITHUB_TOKEN or gh auth)")
+    .action(async (path: string, flags: MetricsFlags) => {
+      process.exitCode = await runMetrics(path, flags);
     });
 
   program
