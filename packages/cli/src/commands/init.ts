@@ -42,14 +42,39 @@ on:
     - cron: "17 6 * * 1" # Mondays 06:17 UTC
   workflow_dispatch:
 
+# Least privilege by default; each job widens only what it needs.
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
+
+# One run per ref so a newer push/PR update supersedes an in-flight run and the two
+# can't race on the sticky comment or the status issue.
+concurrency:
+  group: factory-\${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  audit:
+  # PR runs post a sticky review comment — pull-requests:write only.
+  audit-pr:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      # Pin to a commit SHA for supply-chain safety; @v1 shown for readability.
+      - uses: arynbht/software-factory/packages/action@v1
+        with:
+          gate: ${phase}
+          token: \${{ secrets.GITHUB_TOKEN }}
+
+  # Scheduled / push / manual runs maintain the pinned status issue — issues:write only.
+  audit-status:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@v4
       - uses: arynbht/software-factory/packages/action@v1
