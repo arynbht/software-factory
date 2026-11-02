@@ -22,6 +22,17 @@ export function App() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("scorecard");
+  // Views the user has opened for the current repo. A view stays mounted once
+  // opened (just hidden), so switching tabs doesn't reset its state (unsaved
+  // profile edits, expanded gates, the scorecard). Reset when the repo changes.
+  const [opened, setOpened] = useState<Set<View>>(
+    () => new Set<View>(["scorecard"]),
+  );
+
+  function showView(next: View): void {
+    setView(next);
+    setOpened((prev) => (prev.has(next) ? prev : new Set(prev).add(next)));
+  }
 
   useEffect(() => {
     if (!bridgeReady) return;
@@ -52,6 +63,7 @@ export function App() {
     setScorecard(null);
     setError(null);
     setView("scorecard");
+    setOpened(new Set<View>(["scorecard"])); // fresh state for the new repo
   }
 
   async function handleAudit(): Promise<void> {
@@ -169,7 +181,7 @@ export function App() {
                 <button
                   key={v}
                   type="button"
-                  onClick={() => setView(v)}
+                  onClick={() => showView(v)}
                   className={`-mb-px border-b-2 px-1 pb-2 capitalize ${
                     view === v
                       ? "border-sky-500 text-foreground"
@@ -181,33 +193,41 @@ export function App() {
               ))}
             </div>
 
-            {view === "scorecard" ? (
-              <>
-                {error && (
-                  <p
-                    className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-rose-300"
-                    role="alert"
-                  >
-                    {error}
+            {/* Each panel stays mounted once opened (hidden when inactive), so
+                switching tabs preserves its state; `opened` resets per repo. */}
+            <div className={view === "scorecard" ? "" : "hidden"}>
+              {error && (
+                <p
+                  className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-rose-300"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              )}
+              {scorecard ? (
+                <Scorecard data={scorecard} />
+              ) : (
+                !running && (
+                  <p className="text-sm text-muted-foreground">
+                    Run an audit to see the lane scorecard.
                   </p>
-                )}
-                {scorecard ? (
-                  <Scorecard data={scorecard} />
-                ) : (
-                  !running && (
-                    <p className="text-sm text-muted-foreground">
-                      Run an audit to see the lane scorecard.
-                    </p>
-                  )
-                )}
-              </>
-            ) : view === "profile" ? (
-              <ProfileForm
-                repoPath={selectedRepo.path}
-                repoName={selectedRepo.name}
-              />
-            ) : (
-              <Gates repoPath={selectedRepo.path} />
+                )
+              )}
+            </div>
+
+            {opened.has("profile") && (
+              <div className={view === "profile" ? "" : "hidden"}>
+                <ProfileForm
+                  repoPath={selectedRepo.path}
+                  repoName={selectedRepo.name}
+                />
+              </div>
+            )}
+
+            {opened.has("gates") && (
+              <div className={view === "gates" ? "" : "hidden"}>
+                <Gates repoPath={selectedRepo.path} />
+              </div>
             )}
           </div>
         ) : (
