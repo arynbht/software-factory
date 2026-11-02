@@ -8,7 +8,7 @@ import type { Control } from "@arynbht/factory-catalog";
 
 import type { AuditContext } from "../context.js";
 import type { ControlResult } from "../evaluate.js";
-import { isSensitivePath, looksLikeSecret } from "./redact.js";
+import { isSensitivePath, looksBinary, looksLikeSecret } from "./redact.js";
 
 export interface PackedContext {
   /** The assembled context block to hand to the model. */
@@ -109,7 +109,9 @@ export async function packContext(
       }
       const contents = await ctx.readFile(rel);
       if (contents === null) continue;
-      if (looksLikeSecret(contents)) {
+      // Skip binary files: a raw-binary secret would neither match a text regex
+      // nor be caught by name, and binary is never useful model context anyway.
+      if (looksBinary(contents) || looksLikeSecret(contents)) {
         skippedSensitive.push(rel);
         continue;
       }

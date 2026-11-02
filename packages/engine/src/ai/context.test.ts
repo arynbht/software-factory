@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { buildContext } from "../context.js";
 import { packContext } from "./context.js";
-import { isSensitivePath, looksLikeSecret } from "./redact.js";
+import { isSensitivePath, looksBinary, looksLikeSecret } from "./redact.js";
 
 const made: string[] = [];
 afterEach(async () => {
@@ -43,6 +43,26 @@ describe("redact guards", () => {
     expect(isSensitivePath("docs/environment.md")).toBe(false);
   });
 
+  it("flags the broadened path denylist (certs, stores, secret dirs)", () => {
+    for (const p of [
+      "ca.crt",
+      "server.cer",
+      "key.der",
+      "sa.p8",
+      "chain.p7b",
+      "vault.kdbx",
+      "client.ovpn",
+      "deploy/kubeconfig",
+      ".aws/credentials",
+      "home/.ssh/id_ed25519",
+      ".gnupg/secring.gpg",
+      ".docker/config.json",
+      "id_rsa.bak",
+    ]) {
+      expect(isSensitivePath(p)).toBe(true);
+    }
+  });
+
   it("flags secret-looking content", () => {
     expect(looksLikeSecret("AWS=AKIAIOSFODNN7EXAMPLE")).toBe(true);
     expect(looksLikeSecret('api_key = "abcdef1234567890"')).toBe(true); // gitleaks:allow
@@ -50,6 +70,35 @@ describe("redact guards", () => {
       true,
     );
     expect(looksLikeSecret("const total = sum(items);")).toBe(false);
+  });
+
+  it("flags the broadened content shapes", () => {
+    // Stripe keys (the old sk-[..] rule needed a hyphen after sk).
+    expect(looksLikeSecret("sk_live_51Habcdefg0123456789")).toBe(true); // gitleaks:allow
+    expect(looksLikeSecret("rk_test_abcdefghij0123456789")).toBe(true); // gitleaks:allow
+    // JWT bearer token.
+    expect(
+      looksLikeSecret(
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIn0.abc123signature",
+      ),
+    ).toBe(true);
+    // DB URL with an inline password.
+    expect(
+      looksLikeSecret("postgres://admin:hunter2pass@db.internal:5432/app"),
+    ).toBe(true); // gitleaks:allow
+    // Unquoted assignment (the old rule required quotes).
+    expect(looksLikeSecret("DB_PASSWORD=sup3rs3cretvalue")).toBe(true); // gitleaks:allow
+    // GCP service-account JSON marker.
+    expect(
+      looksLikeSecret('{"type": "service_account", "project_id": "x"}'),
+    ).toBe(true);
+    // A benign assignment doesn't trip it.
+    expect(looksLikeSecret("const name = getUser();")).toBe(false);
+  });
+
+  it("detects binary content by a NUL byte", () => {
+    expect(looksBinary("plain text file\nwith lines\n")).toBe(false);
+    expect(looksBinary("PNG\x00\x00IHDR binary blob")).toBe(true);
   });
 });
 
