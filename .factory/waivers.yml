@@ -1,0 +1,6 @@
+- control: data.migrations-versioned
+  reason: The factory is a TypeScript CLI/Action/Electron monorepo with no
+    database or schema migrations; revisit if a datastore is ever added.
+  owner: aryan.bhatia@pilotship.io
+  created: 2026-11-02
+  expires: 2027-11-02
