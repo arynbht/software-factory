@@ -56,6 +56,27 @@ describe("ControlSchema", () => {
       false,
     );
   });
+
+  it("rejects a merge fix with no value (silent no-op)", () => {
+    const noValue = {
+      ...base,
+      fix: { type: "merge-yaml", file: "ci.yml", path: "jobs" },
+    };
+    expect(ControlSchema.safeParse(noValue).success).toBe(false);
+  });
+
+  it("accepts a merge fix that specifies a value", () => {
+    const withValue = {
+      ...base,
+      fix: {
+        type: "merge-yaml",
+        file: "ci.yml",
+        path: "permissions",
+        value: { contents: "read" },
+      },
+    };
+    expect(ControlSchema.safeParse(withValue).success).toBe(true);
+  });
 });
 
 describe("DetectorConfigSchema", () => {

@@ -8,9 +8,6 @@ detect:
   - type: file-exists
     path: "pnpm-lock.yaml|package-lock.json|yarn.lock|npm-shrinkwrap.json|bun.lockb|Cargo.lock|poetry.lock|uv.lock|go.sum|Gemfile.lock"
 evidence: none
-fix:
-  type: command
-  run: npm install
 references:
   - name: OpenSSF Scorecard
     url: https://github.com/ossf/scorecard/blob/main/docs/checks.md

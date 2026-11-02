@@ -9,10 +9,6 @@ detect:
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
     pattern: 'uses:\s+\S+@[0-9a-f]{40}'
 evidence: none
-fix:
-  type: merge-yaml
-  file: .github/workflows/ci.yml
-  path: jobs
 references:
   - name: OpenSSF Scorecard
     url: https://github.com/ossf/scorecard/blob/main/docs/checks.md

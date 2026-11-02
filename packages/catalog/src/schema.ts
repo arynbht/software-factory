@@ -204,8 +204,8 @@ export const ControlObjectSchema = z.strictObject({
 });
 
 /**
- * The full control schema: the object shape plus a cross-field check that the id
- * prefix matches the declared lane's code. Use this to validate loaded controls.
+ * The full control schema: the object shape plus cross-field checks. Use this to
+ * validate loaded controls.
  */
 export const ControlSchema = ControlObjectSchema.refine(
   (control) => control.id.split(".")[0] === LANE_BY_KEY[control.lane].code,
@@ -213,6 +213,19 @@ export const ControlSchema = ControlObjectSchema.refine(
     message:
       "control id prefix must be the lane's code (see LANES in taxonomy.ts)",
     path: ["id"],
+  },
+).refine(
+  // A merge fix with no `value` has nothing to merge — the generator silently
+  // produces no change, so such a fix is misleading and rejected at load time.
+  (control) =>
+    !(
+      (control.fix?.type === "merge-yaml" ||
+        control.fix?.type === "merge-json") &&
+      control.fix.value === undefined
+    ),
+  {
+    message: "a merge-yaml/merge-json fix must specify a 'value' to merge",
+    path: ["fix", "value"],
   },
 );
 

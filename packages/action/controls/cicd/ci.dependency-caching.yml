@@ -9,10 +9,6 @@ detect:
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
     pattern: '(?i)(actions/cache|cache:\s|cache-dependency-path)'
 evidence: none
-fix:
-  type: merge-yaml
-  file: .github/workflows/ci.yml
-  path: jobs.ci.steps
 references:
   - name: GitHub Docs — Caching dependencies to speed up workflows
     url: https://docs.github.com/actions/using-workflows/caching-dependencies-to-speed-up-workflows

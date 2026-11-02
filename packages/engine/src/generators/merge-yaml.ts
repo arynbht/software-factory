@@ -15,7 +15,9 @@ function toPlain(node: unknown): unknown {
 /**
  * Set a dot/bracket path to a value inside a YAML file, preserving the rest of the
  * document's formatting and comments (yaml Document round-trip). No-op if already
- * equal; creates the file if absent.
+ * equal. A merge only ever edits an existing file — it never fabricates one (which
+ * would produce an incomplete, invalid workflow), so merging into an absent target
+ * is a safe no-op; use a `template` fix to create the file first.
  */
 export const mergeYamlGenerator: Generator = async (
   ctx: AuditContext,
@@ -28,13 +30,12 @@ export const mergeYamlGenerator: Generator = async (
   const matches = await ctx.glob(splitGlobs(file));
   const target = matches[0] ?? file;
   const current = await ctx.readFile(target);
+  if (current === null) return [];
   const tokens = tokenizePath(path);
 
-  const doc = parseDocument(current ?? "", { keepSourceTokens: true });
-  if (current !== null) {
-    const existing = toPlain(doc.getIn(tokens));
-    if (existing !== undefined && deepEqual(existing, value)) return [];
-  }
+  const doc = parseDocument(current, { keepSourceTokens: true });
+  const existing = toPlain(doc.getIn(tokens));
+  if (existing !== undefined && deepEqual(existing, value)) return [];
 
   doc.setIn(tokens, value);
 
