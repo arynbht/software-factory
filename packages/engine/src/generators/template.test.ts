@@ -1,13 +1,23 @@
-import { readdir } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
   bundledTemplatesDir,
+  type Control,
   loadBundledCatalog,
   type Profile,
 } from "@arynbht/factory-catalog";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { renderTemplate, templateVars } from "./template.js";
+import { buildContext } from "../context.js";
+import { renderTemplate, templateGenerator, templateVars } from "./template.js";
+
+const cleanup: string[] = [];
+afterEach(async () => {
+  for (const d of cleanup) await rm(d, { recursive: true, force: true });
+  cleanup.length = 0;
+});
 
 const profile = (over: Partial<Profile> = {}): Profile =>
   ({
@@ -105,6 +115,30 @@ describe("renderTemplate", () => {
     expect(
       py.some((c) => c.type === "file" && c.path === ".python-version"),
     ).toBe(true);
+  });
+
+  it("uses the context's injected `now` for the template year (no wall clock)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "factory-tmpl-"));
+    cleanup.push(dir);
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(join(dir, ".factory"), { recursive: true });
+    await writeFile(
+      join(dir, ".factory", "profile.yml"),
+      "version: 1\nname: Acme\ntype: library\n",
+    );
+
+    const ctx = buildContext(dir, { now: new Date("2019-07-04T00:00:00Z") });
+    const control = {
+      id: "repo.license.present",
+      fix: { type: "template", template: "license" },
+    } as Control;
+    const changes = await templateGenerator(ctx, control);
+    const license = changes.find(
+      (c) => c.type === "file" && c.path === "LICENSE",
+    );
+    expect(license?.type === "file" && license.contents).toContain(
+      "Copyright (c) 2019 Acme",
+    );
   });
 
   it("every fix:template control points to a template dir that renders", async () => {

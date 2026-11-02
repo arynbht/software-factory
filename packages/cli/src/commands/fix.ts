@@ -70,7 +70,7 @@ export async function runFix(
     options.token === null
       ? undefined
       : (options.token ?? resolveToken(flags.token));
-  const ctx = buildContext(root, { token });
+  const ctx = buildContext(root, { token, now: options.now });
 
   let profile;
   let waivers;

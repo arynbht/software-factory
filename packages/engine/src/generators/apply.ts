@@ -5,8 +5,9 @@ import { writeFileAtomic } from "../fs-atomic.js";
 import {
   loadState,
   managedFileUnchanged,
+  managedHash,
+  normalizeContent,
   saveState,
-  sha256,
 } from "../state.js";
 import type { Change } from "./types.js";
 
@@ -99,7 +100,10 @@ export async function applyChanges(
       continue;
     }
 
-    if (before === change.contents) {
+    if (
+      before !== undefined &&
+      normalizeContent(before) === normalizeContent(change.contents)
+    ) {
       results.push({
         controlId: change.controlId,
         type: "file",
@@ -109,14 +113,15 @@ export async function applyChanges(
         after: change.contents,
         message: `${change.path} already up to date`,
       });
-      // Keep the registry accurate even when the content already matches.
-      if (write) state.managed[change.path] = sha256(change.contents);
+      // Keep the registry accurate even when the content already matches (EOL/BOM
+      // differences aside).
+      if (write) state.managed[change.path] = managedHash(change.contents);
       continue;
     }
 
     if (write) {
       await writeFileAtomic(abs, change.contents);
-      state.managed[change.path] = sha256(change.contents);
+      state.managed[change.path] = managedHash(change.contents);
     }
     results.push({
       controlId: change.controlId,

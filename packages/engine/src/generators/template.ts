@@ -104,7 +104,7 @@ export const templateGenerator: Generator = async (
   const profile = await ctx.profile().catch(() => null);
   return renderTemplate(
     control.fix.template,
-    templateVars(profile, new Date().getFullYear()),
+    templateVars(profile, ctx.now.getFullYear()),
     control.id,
   );
 };

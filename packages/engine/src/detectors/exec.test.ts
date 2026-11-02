@@ -18,6 +18,18 @@ describe("runTool", () => {
     expect(result.exitCode).toBe(3);
   });
 
+  it("passes an argument containing spaces as a single token", async () => {
+    // Regression: a shell-based launch split "hello world" into two args, and the
+    // repo path (e.g. "…\\Software Factory - Dev") would break the same way.
+    const result = await runTool(
+      "node",
+      ["-e", "process.stdout.write(process.argv[1])", "hello world"],
+      tmpdir(),
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe("hello world");
+  });
+
   it("throws ToolNotFoundError for a missing binary", async () => {
     await expect(
       runTool("definitely-not-a-real-binary-xyz", ["--version"], tmpdir()),
