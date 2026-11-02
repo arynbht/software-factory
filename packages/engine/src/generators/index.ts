@@ -17,3 +17,4 @@ export { mergeJsonGenerator } from "./merge-json.js";
 export { mergeYamlGenerator } from "./merge-yaml.js";
 export { githubSettingGenerator } from "./github-setting.js";
 export { commandGenerator } from "./command.js";
+export { claudeGenerator } from "./claude.js";

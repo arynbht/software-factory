@@ -1,5 +1,6 @@
 import type { FixConfig } from "@arynbht/factory-catalog";
 
+import { claudeGenerator } from "./claude.js";
 import { commandGenerator } from "./command.js";
 import { githubSettingGenerator } from "./github-setting.js";
 import { mergeJsonGenerator } from "./merge-json.js";
@@ -10,9 +11,8 @@ import type { Generator } from "./types.js";
 type FixType = FixConfig["type"];
 
 /**
- * Maps a control's fix type to its generator. Partial while generators are added
- * across M3; an unmapped type (or a control with no `fix`) simply produces no
- * changes. `claude` is intentionally absent until M4.
+ * Maps a control's fix type to its generator. An unmapped type (or a control with no
+ * `fix`) simply produces no changes.
  */
 export const generators: Partial<Record<FixType, Generator>> = {
   template: templateGenerator,
@@ -20,4 +20,5 @@ export const generators: Partial<Record<FixType, Generator>> = {
   "merge-yaml": mergeYamlGenerator,
   "github-setting": githubSettingGenerator,
   command: commandGenerator,
+  claude: claudeGenerator,
 };

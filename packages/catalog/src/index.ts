@@ -23,4 +23,5 @@ export {
   bundledGatesDir,
   loadBundledGates,
   bundledTemplatesDir,
+  bundledPromptsDir,
 } from "./bundled.js";
