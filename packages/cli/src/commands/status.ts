@@ -84,7 +84,14 @@ export async function runStatus(
     throw err;
   }
 
-  const results = await evaluateControls(controls, ctx, {
+  // Apply the profile's severity-floor like audit/ci/ai/fix do, so `status` does
+  // not infer a phase from — or list — blockers the user chose to ignore.
+  const floorRank = SEVERITIES.indexOf(profile?.["severity-floor"] ?? "low");
+  const selected = controls.filter(
+    (c) => SEVERITIES.indexOf(c.severity) <= floorRank,
+  );
+
+  const results = await evaluateControls(selected, ctx, {
     now: options.now,
     profile,
     waivers,
@@ -112,8 +119,11 @@ export async function runStatus(
   const defined = perPhase.filter((p) => p.status);
   const allGreen = defined.length > 0 && !firstBlocked;
 
+  // When every defined gate is green the project is at the furthest phase; derive
+  // it from the phase list rather than hardcoding "operate".
+  const lastPhase = PHASES[PHASES.length - 1]?.key ?? null;
   const report: StatusReport = {
-    inferredPhase: firstBlocked?.phase ?? (allGreen ? "operate" : null),
+    inferredPhase: firstBlocked?.phase ?? (allGreen ? lastPhase : null),
     allGreen,
     declaredPhase: profile?.phase ?? null,
     gates: perPhase

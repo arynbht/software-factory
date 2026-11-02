@@ -59,6 +59,30 @@ describe("merge generators", () => {
     expect(pkg.name).toBe("demo");
   });
 
+  it("merge-json preserves a CRLF file's line endings (no mixed EOL)", async () => {
+    const dir = await tmp();
+    // A Windows-checked-out file with CRLF throughout.
+    await writeFile(
+      join(dir, "package.json"),
+      '{\r\n  "name": "demo",\r\n  "scripts": {\r\n    "build": "tsc"\r\n  }\r\n}\r\n',
+      "utf8",
+    );
+    const changes = await mergeJsonGenerator(
+      buildContext(dir),
+      control({
+        type: "merge-json",
+        file: "package.json",
+        path: "scripts.test",
+        value: "vitest run",
+      }),
+    );
+    const next = changes[0]?.type === "file" ? changes[0].contents : "";
+    expect(next).toContain("vitest run");
+    // The inserted region must use CRLF like the rest of the file — no lone \n.
+    expect(/[^\r]\n/.test(next)).toBe(false);
+    expect(next.includes("\r\n")).toBe(true);
+  });
+
   it("merge-json is a no-op when the value already matches", async () => {
     const dir = await tmp();
     await writeFile(

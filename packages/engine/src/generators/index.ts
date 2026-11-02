@@ -6,7 +6,12 @@ export {
   type ChangeResult,
 } from "./apply.js";
 export { generators } from "./registry.js";
-export { planControl, planControls } from "./run.js";
+export {
+  type GeneratorError,
+  planControl,
+  planControls,
+  type PlanResult,
+} from "./run.js";
 export {
   renderTemplate,
   templateGenerator,

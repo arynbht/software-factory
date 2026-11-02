@@ -37,8 +37,11 @@ export const mergeJsonGenerator: Generator = async (
     if (found.found && deepEqual(found.value, value)) return [];
   }
 
+  // Preserve the file's existing line ending. Forcing "\n" on a CRLF-checked-out
+  // file leaves it mixed-EOL and produces a whole-file diff on Windows.
+  const eol = /\r\n/.test(current) ? "\r\n" : "\n";
   const edits = modify(current, tokenizePath(path), value, {
-    formattingOptions: { insertSpaces: true, tabSize: 2, eol: "\n" },
+    formattingOptions: { insertSpaces: true, tabSize: 2, eol },
   });
   if (edits.length === 0) return [];
   const next = applyEdits(current, edits);
@@ -48,7 +51,7 @@ export const mergeJsonGenerator: Generator = async (
       type: "file",
       controlId: control.id,
       path: target,
-      contents: next.endsWith("\n") ? next : `${next}\n`,
+      contents: next.endsWith("\n") ? next : `${next}${eol}`,
       op: "merge",
     },
   ];

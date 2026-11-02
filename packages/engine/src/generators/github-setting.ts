@@ -26,7 +26,11 @@ async function ensureProtectionRuleset(gh: GitHubClient): Promise<void> {
       {
         type: "pull_request",
         parameters: {
-          required_approving_review_count: 0,
+          // Require at least one approving review: the `required-pull-request`
+          // detector reports "PR reviews required" as satisfied, so the ruleset
+          // must actually enforce a review rather than permit self-merge. A solo
+          // maintainer who intends to self-merge waives the control instead.
+          required_approving_review_count: 1,
           dismiss_stale_reviews_on_push: false,
           require_code_owner_review: false,
           require_last_push_approval: false,
