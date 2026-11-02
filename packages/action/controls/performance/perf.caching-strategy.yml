@@ -7,7 +7,7 @@ effort: small
 detect:
   - type: file-matches
     path: "docs/**/*.md|README*|ARCHITECTURE*"
-    pattern: '(?i)(cache|caching|cdn|cache-control|etag|redis)'
+    pattern: "(?i)(cache|caching|cdn|cache-control|etag|redis)"
 evidence: none
 references:
   - name: MDN — HTTP caching

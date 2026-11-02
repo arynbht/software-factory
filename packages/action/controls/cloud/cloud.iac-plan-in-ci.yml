@@ -7,7 +7,7 @@ effort: medium
 detect:
   - type: file-matches
     path: ".github/workflows/*.y*ml"
-    pattern: '(?i)(terraform plan|terraform validate|pulumi preview|cdk diff|bicep build)'
+    pattern: "(?i)(terraform plan|terraform validate|pulumi preview|cdk diff|bicep build)"
 evidence: none
 references:
   - name: HashiCorp — Automate Terraform in CI

@@ -10,7 +10,7 @@ applies:
 detect:
   - type: file-matches
     path: "**/*.css|**/*.scss|**/tailwind.config.*|**/*.{ts,tsx}"
-    pattern: '(?i)(@media|breakpoint|min-width|max-width|sm:|md:|lg:)'
+    pattern: "(?i)(@media|breakpoint|min-width|max-width|sm:|md:|lg:)"
 references:
   - name: web.dev — Responsive design basics
     url: https://web.dev/articles/responsive-web-design-basics

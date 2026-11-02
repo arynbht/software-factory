@@ -10,7 +10,7 @@ applies:
 detect:
   - type: file-matches
     path: docs/**/*.md|README.md
-    pattern: '(?i)(WCAG|accessibility target|a11y)'
+    pattern: "(?i)(WCAG|accessibility target|a11y)"
 evidence: none
 references:
   - name: WCAG 2.2

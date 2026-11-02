@@ -10,7 +10,7 @@ applies:
 detect:
   - type: file-matches
     path: "**/tailwind.config.*|**/tokens*.{json,ts,css}|**/*.stories.{ts,tsx,js,jsx}|.storybook/**"
-    pattern: '(?s).'
+    pattern: "(?s)."
 references:
   - name: Design Tokens (W3C Community Group)
     url: https://www.w3.org/community/design-tokens/

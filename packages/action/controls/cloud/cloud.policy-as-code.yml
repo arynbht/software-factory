@@ -7,7 +7,7 @@ effort: medium
 detect:
   - type: file-matches
     path: ".github/workflows/*.y*ml|.checkov.y*ml|.tflint.hcl|.config/checkov.y*ml"
-    pattern: '(?i)(checkov|tfsec|terrascan|kics|tflint)'
+    pattern: "(?i)(checkov|tfsec|terrascan|kics|tflint)"
 evidence: none
 references:
   - name: Checkov
