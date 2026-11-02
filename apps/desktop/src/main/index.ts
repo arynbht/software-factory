@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
@@ -23,6 +24,34 @@ import { clearToken, loadToken, saveToken } from "./auth/token-store";
 import { runAudit } from "./engine/audit";
 import { addRepo, listRepos, removeRepo } from "./store/repos";
 
+// In dev the renderer is served by Vite (HMR needs a looser policy); in prod it
+// loads from the bundle under a strict self-only policy. Either way: no remote
+// origins, ever.
+const DEV_RENDERER_URL = process.env.ELECTRON_RENDERER_URL;
+const isDev = Boolean(DEV_RENDERER_URL);
+
+// Dev convenience: load apps/desktop/.env into process.env so config like the
+// GitHub client id persists across restarts without exporting it each time. The
+// values aren't secret (an OAuth client id is public) and the file is gitignored.
+if (isDev) {
+  try {
+    const envFile = readFileSync(
+      join(import.meta.dirname, "../../.env"),
+      "utf8",
+    );
+    for (const line of envFile.split(/\r?\n/)) {
+      const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+      if (!match) continue;
+      const key = match[1];
+      if (key && process.env[key] === undefined) {
+        process.env[key] = (match[2] ?? "").trim().replace(/^["']|["']$/g, "");
+      }
+    }
+  } catch {
+    // no .env — fine
+  }
+}
+
 /** GitHub App / OAuth client id for device flow (ADR-0007). Empty → not set up. */
 const GITHUB_CLIENT_ID = process.env.FACTORY_GITHUB_CLIENT_ID ?? "";
 const GITHUB_SCOPE = "repo read:org";
@@ -32,12 +61,6 @@ let mainWindow: BrowserWindow | null = null;
 function sendAuthUpdate(update: AuthUpdate): void {
   mainWindow?.webContents.send(IpcChannel.AuthUpdate, update);
 }
-
-// In dev the renderer is served by Vite (HMR needs a looser policy); in prod it
-// loads from the bundle under a strict self-only policy. Either way: no remote
-// origins, ever.
-const DEV_RENDERER_URL = process.env.ELECTRON_RENDERER_URL;
-const isDev = Boolean(DEV_RENDERER_URL);
 
 /** Hosts `shell.openExternal` is allowed to hand to the OS browser. */
 const ALLOWED_EXTERNAL_HOSTS = new Set([
