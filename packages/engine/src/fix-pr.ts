@@ -130,10 +130,14 @@ export async function openFixPr(
     throw err;
   }
 
-  // Nothing to propose: undo the branch switch and report an empty result.
-  if (commits.length === 0 && !reusingBranch) {
+  // Nothing to propose: undo the branch switch and report an empty result without
+  // pushing or touching a PR. A freshly-created branch is removed; a pre-existing
+  // (reused) branch is left as-is so we don't disturb an open PR.
+  if (commits.length === 0) {
     await git.checkout(base);
-    await git.deleteLocalBranch(branch, true).catch(() => undefined);
+    if (!reusingBranch) {
+      await git.deleteLocalBranch(branch, true).catch(() => undefined);
+    }
     return {
       branch,
       base,

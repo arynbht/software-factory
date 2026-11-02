@@ -27,6 +27,12 @@ export interface AuditContext {
   readonly repoPath: string;
   /** GitHub token for API-backed detectors; undefined when running offline. */
   readonly token: string | undefined;
+  /**
+   * The run's "now". Defaulted once when the context is built so the engine never
+   * reads the wall clock downstream (e.g. the template generator's copyright year);
+   * callers and tests inject a fixed value for deterministic output.
+   */
+  readonly now: Date;
   /** Glob (relative to the repo root) returning matching file paths, posix-style. */
   glob(pattern: string | string[]): Promise<string[]>;
   /** Read a repo-relative file as UTF-8, or null if it does not exist. */
@@ -45,6 +51,8 @@ export interface BuildContextOptions {
   token?: string | undefined;
   /** Override auto-detection of the repo's owner/repo (used in tests and CI). */
   github?: RepoSlug | undefined;
+  /** The run's "now" (defaults to the current time); inject for determinism. */
+  now?: Date | undefined;
 }
 
 export function buildContext(
@@ -63,6 +71,7 @@ export function buildContext(
   return {
     repoPath: root,
     token: options.token,
+    now: options.now ?? new Date(),
 
     async glob(pattern) {
       const patterns = Array.isArray(pattern) ? pattern : [pattern];

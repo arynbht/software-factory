@@ -156,4 +156,37 @@ describe("openFixPr", () => {
     // README was already committed and unchanged; only LICENSE is new this run.
     expect(result.commits.map((c) => c.controlId)).toContain("repo.license");
   });
+
+  it("does not push or touch a PR when a reused branch has no new changes", async () => {
+    const work = await repoWithRemote();
+    const ctx = buildContext(work, { github: { owner: "o", repo: "r" } });
+    const change = [fileChange("doc.readme", "README.md")];
+
+    await openFixPr(ctx, change, {
+      gate: "scaffold",
+      date: "2026-11-01",
+      openPr: fakePr([]),
+    });
+
+    // Second run with the identical change: branch exists, nothing new to commit.
+    const calls: OpenPrParams[] = [];
+    const result = await openFixPr(ctx, change, {
+      gate: "scaffold",
+      date: "2026-11-01",
+      openPr: fakePr(calls, true),
+    });
+
+    expect(result.commits).toHaveLength(0);
+    expect(result.pushed).toBe(false);
+    expect(result.pr).toBeNull();
+    expect(calls).toHaveLength(0);
+
+    const { simpleGit } = await import("simple-git");
+    const git = simpleGit(work);
+    expect((await git.revparse(["--abbrev-ref", "HEAD"])).trim()).toBe("main");
+    // The reused branch is left in place (an open PR for it must not be disturbed).
+    expect((await git.branchLocal()).all).toContain(
+      "factory/2026-11-01-scaffold",
+    );
+  });
 });
