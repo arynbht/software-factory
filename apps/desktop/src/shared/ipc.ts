@@ -20,6 +20,9 @@ export const IpcChannel = {
   ProfileLoad: "profile:load",
   ProfileSave: "profile:save",
   ProfileMeta: "profile:meta",
+  GatesStatus: "gates:status",
+  GatesWaive: "gates:waive",
+  GatesEvidence: "gates:evidence",
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
@@ -149,3 +152,53 @@ export const ProfileSaveRequest = z.object({
   repoPath: z.string().min(1),
   profile: z.unknown(),
 });
+
+// Gates — the phase gates for a repo, the inferred phase, and what blocks each.
+export const GateStatus = z.enum(["green", "amber", "red"]);
+export type GateStatus = z.infer<typeof GateStatus>;
+
+export const GateBlocker = z.object({
+  controlId: z.string(),
+  title: z.string(),
+  status: z.enum(["fail", "needs-evidence"]),
+  severity: z.string(),
+});
+export type GateBlocker = z.infer<typeof GateBlocker>;
+
+export const GatePhase = z.object({
+  phase: z.string(),
+  title: z.string(),
+  status: GateStatus.nullable(),
+  inferred: z.boolean(),
+  blockers: z.array(GateBlocker),
+});
+export type GatePhase = z.infer<typeof GatePhase>;
+
+export const GatesReport = z.object({
+  repoPath: z.string(),
+  inferredPhase: z.string().nullable(),
+  phases: z.array(GatePhase),
+});
+export type GatesReport = z.infer<typeof GatesReport>;
+
+export const GatesStatusRequest = z.object({ repoPath: z.string().min(1) });
+
+export const WaiveRequest = z.object({
+  repoPath: z.string().min(1),
+  control: z.string().min(1),
+  reason: z.string().min(1),
+  /** ISO date YYYY-MM-DD. */
+  expires: z.string().min(1),
+  owner: z.string().optional(),
+});
+export type WaiveRequest = z.infer<typeof WaiveRequest>;
+
+export const EvidenceRequest = z.object({
+  repoPath: z.string().min(1),
+  control: z.string().min(1),
+  url: z.string().optional(),
+  note: z.string().optional(),
+  reviewer: z.string().optional(),
+  validFor: z.string().optional(),
+});
+export type EvidenceRequest = z.infer<typeof EvidenceRequest>;
