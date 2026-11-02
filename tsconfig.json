@@ -6,7 +6,6 @@
     { "path": "packages/engine" },
     { "path": "packages/cli" },
     { "path": "packages/action" },
-    { "path": "packages/skill" },
-    { "path": "apps/desktop" }
+    { "path": "packages/skill" }
   ]
 }
