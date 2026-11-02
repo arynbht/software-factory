@@ -71,6 +71,28 @@ describe("isEvidenceValid", () => {
       ),
     ).toBe(false);
   });
+
+  it("counts the valid-for window from the start of the issue date, not its end", () => {
+    // An entry dated 2026-10-01 with a 30-day window. The engine must decide it
+    // is expired by 2026-10-31T00:00:00Z (start of day). Anchoring to the END
+    // of the start day (endOfDayMs) instead grants a whole extra day, so at
+    // 2026-10-31T12:00:00Z the pre-fix code says "still valid" while the
+    // correct start-of-day anchor says "expired".
+    const entry30 = entry({ date: "2026-10-01", "valid-for": "30d" });
+    // Expired just after the window end (start of 2026-10-01 + 30d = 2026-10-31T00:00:00Z).
+    expect(isEvidenceValid(entry30, new Date("2026-10-31T00:00:30Z"))).toBe(
+      false,
+    );
+    // The one-day slip: at 2026-10-31T12:00:00Z the pre-fix end-of-day anchor
+    // still says "valid".
+    expect(isEvidenceValid(entry30, new Date("2026-10-31T12:00:00Z"))).toBe(
+      false,
+    );
+    // And it is genuinely valid before the window closes (not shifted early).
+    expect(isEvidenceValid(entry30, new Date("2026-10-20T12:00:00Z"))).toBe(
+      true,
+    );
+  });
 });
 
 describe("loadEvidence + findValidEvidence", () => {
