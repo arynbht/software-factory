@@ -1,8 +1,16 @@
 ---
 "@arynbht/factory": patch
+"@arynbht/factory-engine": patch
 ---
 
 Test coverage and cross-platform CI from the full-repo review:
+
+- **`writeFileAtomic` hardening** (bug found by the new concurrency test + Windows
+  CI leg): the temp-file name now uses random bytes instead of pid+time (two
+  concurrent writers in one process could generate the same temp name and collide),
+  and the final rename retries on a transient Windows EPERM/EACCES; the temp file is
+  cleaned up if the rename ultimately fails. Also removes the predictable-temp-name
+  weakness flagged in the review.
 
 - **`runCi()` is now tested end-to-end** (the GitHub Action entrypoint): fail-closed
   on an unknown gate, posts a sticky PR comment and fails on a red gate, maintains
