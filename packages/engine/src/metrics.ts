@@ -8,7 +8,7 @@ import { DAY_MS } from "./dates.js";
 export interface Metrics {
   windowDays: number;
   /** Releases per week in the window (proxy: a GitHub Release is a deployment). */
-  deploymentFrequencyPerWeek: number;
+  deploymentFrequencyPerWeek: number | null;
   /** Median hours from PR open to merge (proxy: merge = change delivered). */
   leadTimeHoursMedian: number | null;
   /** Fraction of merged PRs that are reverts/hotfixes (proxy for failures). */
@@ -56,7 +56,10 @@ export async function computeMetrics(
   const deploys = releases.filter(
     (r) => r.published_at && Date.parse(r.published_at) >= sinceMs,
   ).length;
-  const deploymentFrequencyPerWeek = deploys / (windowDays / 7);
+  // Guard the divide: windowDays <= 0 would make this Infinity/NaN, unlike the
+  // other DORA metrics which return null when they can't be computed honestly.
+  const weeks = windowDays / 7;
+  const deploymentFrequencyPerWeek = weeks > 0 ? deploys / weeks : null;
 
   // Lead time + change failure rate — merged PRs in the window.
   const pulls = await octokit.paginate(octokit.rest.pulls.list, {

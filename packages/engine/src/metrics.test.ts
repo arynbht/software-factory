@@ -109,4 +109,17 @@ describe("computeMetrics", () => {
     const m = await computeMetrics(await client(), { now: NOW });
     expect(m.timeToRestoreHoursMedian).toBeNull();
   });
+
+  it("returns null (not Infinity/NaN) for deployment frequency on an empty window", async () => {
+    server.use(
+      http.get(`${REPO}/releases`, () => HttpResponse.json([])),
+      http.get(`${REPO}/pulls`, () => HttpResponse.json([])),
+      http.get(`${REPO}/issues`, () => HttpResponse.json([])),
+    );
+    // windowDays <= 0 means deploys / (windowDays / 7) is a divide-by-zero.
+    // Every other metric returns null when it can't be computed honestly;
+    // deployment frequency must too (matching the issue's suggested guard).
+    const m = await computeMetrics(await client(), { now: NOW, windowDays: 0 });
+    expect(m.deploymentFrequencyPerWeek).toBeNull();
+  });
 });
