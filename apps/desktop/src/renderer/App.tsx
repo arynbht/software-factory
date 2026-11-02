@@ -2,12 +2,13 @@ import { FolderPlus, Play, RefreshCw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AuthControls } from "@/components/AuthControls";
+import { Gates } from "@/components/Gates";
 import { ProfileForm } from "@/components/ProfileForm";
 import { Scorecard } from "@/components/Scorecard";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/errors";
 
-type View = "scorecard" | "profile";
+type View = "scorecard" | "profile" | "gates";
 
 import type { RepoEntry, Scorecard as ScorecardData } from "../shared/ipc";
 
@@ -164,7 +165,7 @@ export function App() {
             </div>
 
             <div className="flex gap-4 border-b border-border text-sm">
-              {(["scorecard", "profile"] as const).map((v) => (
+              {(["scorecard", "profile", "gates"] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
@@ -200,11 +201,13 @@ export function App() {
                   )
                 )}
               </>
-            ) : (
+            ) : view === "profile" ? (
               <ProfileForm
                 repoPath={selectedRepo.path}
                 repoName={selectedRepo.name}
               />
+            ) : (
+              <Gates repoPath={selectedRepo.path} />
             )}
           </div>
         ) : (

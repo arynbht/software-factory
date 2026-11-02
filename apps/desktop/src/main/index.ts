@@ -20,12 +20,15 @@ import {
   IpcChannel,
   PingRequest,
   type PingResponse,
+  EvidenceRequest,
+  GatesStatusRequest,
   ProfileLoadRequest,
   ProfileMeta,
   ProfileSaveRequest,
   RepoList,
   RepoRemoveRequest,
   Scorecard,
+  WaiveRequest,
 } from "../shared/ipc";
 import {
   fetchUserLogin,
@@ -34,6 +37,7 @@ import {
 } from "./auth/device-flow";
 import { clearToken, loadToken, saveToken } from "./auth/token-store";
 import { runAudit } from "./engine/audit";
+import { attachEvidence, computeGates, waiveControl } from "./engine/gates";
 import { addRepo, listRepos, removeRepo } from "./store/repos";
 
 /** Enum lists that drive the renderer's Profile form (keeps the catalog out of it). */
@@ -290,6 +294,46 @@ function registerIpcHandlers(): void {
     const { repoPath, profile } = ProfileSaveRequest.parse(raw);
     // updateProfile validates against the schema and writes a minimal diff.
     return updateProfile(repoPath, profile);
+  });
+
+  ipcMain.handle(IpcChannel.GatesStatus, async (_event, raw: unknown) => {
+    const { repoPath } = GatesStatusRequest.parse(raw);
+    return computeGates(repoPath, (await loadToken()) ?? undefined);
+  });
+
+  ipcMain.handle(IpcChannel.GatesWaive, async (_event, raw: unknown) => {
+    const { repoPath, control, reason, expires, owner } =
+      WaiveRequest.parse(raw);
+    const token = (await loadToken()) ?? undefined;
+    return waiveControl(
+      repoPath,
+      {
+        control,
+        reason,
+        expires,
+        created: new Date().toISOString().slice(0, 10),
+        ...(owner ? { owner } : {}),
+      },
+      token,
+    );
+  });
+
+  ipcMain.handle(IpcChannel.GatesEvidence, async (_event, raw: unknown) => {
+    const { repoPath, control, url, note, reviewer, validFor } =
+      EvidenceRequest.parse(raw);
+    const token = (await loadToken()) ?? undefined;
+    return attachEvidence(
+      repoPath,
+      {
+        control,
+        date: new Date().toISOString().slice(0, 10),
+        ...(url ? { url } : {}),
+        ...(note ? { note } : {}),
+        ...(reviewer ? { reviewer } : {}),
+        ...(validFor ? { "valid-for": validFor } : {}),
+      },
+      token,
+    );
   });
 }
 

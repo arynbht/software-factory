@@ -10,6 +10,9 @@ import {
   AuthStatus,
   AuthUpdate,
   DeviceCodeInfo,
+  EvidenceRequest,
+  GatesReport,
+  GatesStatusRequest,
   IpcChannel,
   PingRequest,
   PingResponse,
@@ -19,6 +22,7 @@ import {
   RepoList,
   RepoRemoveRequest,
   Scorecard,
+  WaiveRequest,
 } from "../shared/ipc";
 
 const api = {
@@ -109,6 +113,33 @@ const api = {
         request,
       );
       return raw as Profile;
+    },
+  },
+
+  gates: {
+    async status(repoPath: string) {
+      const request = GatesStatusRequest.parse({ repoPath });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.GatesStatus,
+        request,
+      );
+      return GatesReport.parse(raw);
+    },
+    /** Waive a control (reason + expiry); returns the recomputed gates. */
+    async waive(request: WaiveRequest) {
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.GatesWaive,
+        WaiveRequest.parse(request),
+      );
+      return GatesReport.parse(raw);
+    },
+    /** Attach evidence for a needs-evidence control; returns recomputed gates. */
+    async attachEvidence(request: EvidenceRequest) {
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.GatesEvidence,
+        EvidenceRequest.parse(request),
+      );
+      return GatesReport.parse(raw);
     },
   },
 };
