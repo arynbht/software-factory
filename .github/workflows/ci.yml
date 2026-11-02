@@ -62,3 +62,18 @@ jobs:
             packages/action/gates \
             packages/action/templates \
             packages/action/dist/SOURCE_SHA256
+
+  # Secret-scanning backstop: the pre-commit hook (lefthook + gitleaks) can be
+  # bypassed with --no-verify, so CI scans the full history as well.
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

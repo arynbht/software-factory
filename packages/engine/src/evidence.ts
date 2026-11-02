@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import { CONTROL_ID_PATTERN } from "@arynbht/factory-catalog";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 import { DAY_MS, endOfDayMs } from "./dates.js";
@@ -45,12 +46,17 @@ export async function loadEvidence(repoPath: string): Promise<EvidenceEntry[]> {
     throw new EvidenceError("evidence.yml must be a list of entries");
   }
 
-  return parsed.filter(
-    (e): e is EvidenceEntry =>
+  return parsed.filter((e): e is EvidenceEntry => {
+    const control = (e as { control?: unknown } | null)?.control;
+    // Drop entries whose `control` isn't a real control id: it's rendered into the
+    // PR/issue comment the Action posts, so an arbitrary string could carry Markdown.
+    return (
       e !== null &&
       typeof e === "object" &&
-      typeof (e as { control?: unknown }).control === "string",
-  );
+      typeof control === "string" &&
+      CONTROL_ID_PATTERN.test(control)
+    );
+  });
 }
 
 /** Parse a duration like "365d", "26w", "1y" into days; null if unparseable. */

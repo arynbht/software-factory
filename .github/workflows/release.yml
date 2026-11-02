@@ -11,6 +11,11 @@ permissions:
   contents: write
   pull-requests: write
 
+# A double-dispatch must not race two Version Packages PR updates.
+concurrency:
+  group: release
+  cancel-in-progress: true
+
 jobs:
   version:
     runs-on: ubuntu-latest

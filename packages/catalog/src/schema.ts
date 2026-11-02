@@ -177,11 +177,19 @@ export const ReferenceSchema = z.object({
 
 export const EVIDENCE_LEVELS = ["none", "optional", "required"] as const;
 
+/**
+ * The canonical control-id shape (`lane.topic.name`, lowercase kebab-case). Shared
+ * so anything that references a control id — waivers, evidence — can validate the
+ * reference and reject arbitrary strings (which could otherwise carry Markdown into
+ * a posted PR/issue comment).
+ */
+export const CONTROL_ID_PATTERN = /^[a-z0-9]+(\.[a-z0-9-]+)+$/;
+
 export const ControlObjectSchema = z.strictObject({
   id: z
     .string()
     .regex(
-      /^[a-z0-9]+(\.[a-z0-9-]+)+$/,
+      CONTROL_ID_PATTERN,
       "id must be lane.topic.name in lowercase kebab-case",
     ),
   title: z.string().min(1),

@@ -105,4 +105,17 @@ describe("loadWaivers / addWaiver", () => {
     );
     await expect(loadWaivers(dir)).rejects.toBeInstanceOf(WaiverError);
   });
+
+  it("rejects a waiver whose control is not a control id", async () => {
+    const dir = await tmp();
+    const { writeFile, mkdir } = await import("node:fs/promises");
+    await mkdir(join(dir, ".factory"), { recursive: true });
+    // A Markdown-injection payload masquerading as a control reference.
+    await writeFile(
+      join(dir, ".factory", "waivers.yml"),
+      '- control: "x` [pwn](https://evil)"\n  reason: r\n  expires: 2099-01-01\n',
+      "utf8",
+    );
+    await expect(loadWaivers(dir)).rejects.toBeInstanceOf(WaiverError);
+  });
 });

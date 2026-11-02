@@ -8,14 +8,40 @@ on:
     - cron: "17 6 * * 1" # Mondays 06:17 UTC
   workflow_dispatch:
 
+# Least privilege by default; each job widens only what it needs.
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
+
+# One run per ref; a newer push/PR update supersedes an in-flight run so the two
+# can't race on the sticky comment or the status issue.
+concurrency:
+  group: factory-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  audit:
+  # PR runs post a sticky review comment — they need pull-requests:write only.
+  audit-pr:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Factory audit
+        uses: ./packages/action
+        with:
+          gate: build
+
+  # Scheduled / push / manual runs maintain the pinned status issue — they need
+  # issues:write only (and never pull-requests:write).
+  audit-status:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
