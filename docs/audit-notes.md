@@ -113,3 +113,48 @@ if a stranger had sent the PR. Validated against the M3 Definition of Done.
   `package-lock.json` (so `repo.lockfile.present` then passes). The effect is
   reported as "failed" even though the lockfile was produced — a false alarm in
   that one case. Minor.
+
+## 2026-11-01 — Milestone 4 dogfood: Claude integration
+
+The M4 AI pipeline (client → context packer → `claude` generator → `factory ai`
+→ usage log → skill) is covered end-to-end by **recorded-response fixtures** so the
+whole flow is tested without a network call or a key. The parts that need a live
+`ANTHROPIC_API_KEY` are the human's final check (below).
+
+### Validated offline (no key)
+
+- `factory init` installs the Claude Code skill at `.claude/skills/factory/SKILL.md`
+  alongside `.factory/` and the workflow.
+- `factory ai explain-gaps` with no key → `factory ai: no Anthropic API key. Set
+ANTHROPIC_API_KEY and retry.` and exit 1 (clean, no stack trace).
+- `factory ai bogus-task` → lists the nine available tasks (`adr, brief, c4,
+explain-gaps, license-summary, runbook, stories, test-scaffold, threat-model`),
+  confirming every prompt is bundled and discoverable.
+- `factory ai usage` on a fresh repo → `No AI usage recorded yet.`
+- **Secret guard** (the key safety property): a unit test proves a `.env` and a
+  secret-content file are excluded from the packed context even under a greedy
+  `**/*` glob, and the secret values never appear in what would be sent.
+
+### DoD items requiring a live key (human check)
+
+These can't run in this environment (no `ANTHROPIC_API_KEY`); run them locally to
+close the loop:
+
+1. `factory ai explain-gaps` produces a sendable narrative on a half-built repo.
+2. `factory ai threat-model --pr` opens a PR with a STRIDE table whose rows
+   reference real components.
+3. Claude Code, with the installed skill, answers "what's left?" by running the
+   audit.
+
+The deterministic machinery those depend on (prompt loading, context assembly with
+the gap report, client call, generated-file header/checklist, apply/`--write`/`--pr`,
+usage logging) is all fixture-tested, so the live check is about output quality, not
+plumbing.
+
+### Follow-ups opened during M4
+
+- `changelog` task deferred — it needs git-log (commits since last tag) as context,
+  which the packer doesn't assemble yet. → follow-up.
+- Eight of the nine task→control wirings wait on M6 catalog breadth; only
+  `sec.threat-model` is control-wired today (the rest run as standalone
+  `factory ai <task>`).
