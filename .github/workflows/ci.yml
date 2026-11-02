@@ -70,6 +70,7 @@ jobs:
             packages/action/controls \
             packages/action/gates \
             packages/action/templates \
+            packages/action/prompts \
             packages/action/dist/SOURCE_SHA256
 
   # Single required status check ("ci") that gates on every matrix leg, so branch

@@ -23,6 +23,11 @@ export function bundledTemplatesDir(): string {
   return fileURLToPath(new URL("../templates", import.meta.url));
 }
 
+/** Absolute path to the AI prompt templates shipped with this package. */
+export function bundledPromptsDir(): string {
+  return fileURLToPath(new URL("../prompts", import.meta.url));
+}
+
 /** Load and validate the gates shipped with this package. */
 export function loadBundledGates(): Promise<GateLoadResult> {
   return loadGates(bundledGatesDir());

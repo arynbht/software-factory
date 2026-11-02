@@ -84,3 +84,14 @@ export type {
 export { packContext } from "./ai/context.js";
 export type { PackedContext, PackContextOptions } from "./ai/context.js";
 export { isSensitivePath, looksLikeSecret } from "./ai/redact.js";
+export {
+  generateArtifact,
+  loadPrompt,
+  renderGeneratedFile,
+  PromptError,
+} from "./ai/generate.js";
+export type {
+  GenerateOptions,
+  GenerateResult,
+  PromptTemplate,
+} from "./ai/generate.js";

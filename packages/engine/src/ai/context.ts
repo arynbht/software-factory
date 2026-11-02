@@ -62,13 +62,13 @@ export async function packContext(
   }
 
   if (options.control) {
-    const refs = options.control.references
+    const refs = (options.control.references ?? [])
       .map((r) => `- ${r.name}: ${r.url}${r.section ? ` (${r.section})` : ""}`)
       .join("\n");
     sections.push(
       [
-        `## Control: ${options.control.id} — ${options.control.title}`,
-        options.control.rationale.trim(),
+        `## Control: ${options.control.id} — ${options.control.title ?? ""}`,
+        (options.control.rationale ?? "").trim(),
         refs ? `\nReferences:\n${refs}` : "",
       ]
         .filter(Boolean)

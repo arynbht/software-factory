@@ -9,6 +9,11 @@ import { Octokit } from "@octokit/rest";
 import { simpleGit } from "simple-git";
 import { glob as tinyglob } from "tinyglobby";
 
+import {
+  type AiClient,
+  type AiClientOptions,
+  createAiClient,
+} from "./ai/client.js";
 import { type EvidenceEntry, loadEvidence } from "./evidence.js";
 import { parseRepoSlug, type RepoSlug } from "./github/slug.js";
 import { loadProfile } from "./profile.js";
@@ -45,6 +50,8 @@ export interface AuditContext {
   profile(): Promise<Profile | null>;
   /** Waivers from `.factory/waivers.yml` (loaded once per run). */
   waivers(): Promise<Waiver[]>;
+  /** The AI client for `claude` generators (built from the run's AI options). */
+  ai(): AiClient;
 }
 
 export interface BuildContextOptions {
@@ -53,6 +60,8 @@ export interface BuildContextOptions {
   github?: RepoSlug | undefined;
   /** The run's "now" (defaults to the current time); inject for determinism. */
   now?: Date | undefined;
+  /** Options for the AI client (key, model, or an injected transport for tests). */
+  ai?: AiClientOptions | undefined;
 }
 
 export function buildContext(
@@ -67,6 +76,7 @@ export function buildContext(
   let evidenceEntries: Promise<EvidenceEntry[]> | undefined;
   let profileData: Promise<Profile | null> | undefined;
   let waiverData: Promise<Waiver[]> | undefined;
+  let aiClient: AiClient | undefined;
 
   return {
     repoPath: root,
@@ -132,6 +142,11 @@ export function buildContext(
         });
       }
       return waiverData;
+    },
+
+    ai() {
+      aiClient ??= createAiClient(options.ai ?? {});
+      return aiClient;
     },
   };
 }

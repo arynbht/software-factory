@@ -20,6 +20,7 @@ async function sourceHash() {
     resolve(root, "packages/catalog/controls"),
     resolve(root, "packages/catalog/gates"),
     resolve(root, "packages/catalog/templates"),
+    resolve(root, "packages/catalog/prompts"),
   ];
   const files = [];
   async function walk(dir) {
@@ -45,6 +46,7 @@ await rm(resolve(actionDir, "dist"), { recursive: true, force: true });
 await rm(resolve(actionDir, "controls"), { recursive: true, force: true });
 await rm(resolve(actionDir, "gates"), { recursive: true, force: true });
 await rm(resolve(actionDir, "templates"), { recursive: true, force: true });
+await rm(resolve(actionDir, "prompts"), { recursive: true, force: true });
 
 await build({
   entryPoints: [resolve(root, "packages/cli/dist/bin.js")],
@@ -80,6 +82,11 @@ await cp(resolve(root, "packages/catalog/gates"), resolve(actionDir, "gates"), {
 await cp(
   resolve(root, "packages/catalog/templates"),
   resolve(actionDir, "templates"),
+  { recursive: true },
+);
+await cp(
+  resolve(root, "packages/catalog/prompts"),
+  resolve(actionDir, "prompts"),
   { recursive: true },
 );
 
