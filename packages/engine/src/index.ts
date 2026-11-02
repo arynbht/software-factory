@@ -95,3 +95,10 @@ export type {
   GenerateResult,
   PromptTemplate,
 } from "./ai/generate.js";
+export {
+  appendUsage,
+  loadUsage,
+  summarizeUsage,
+  estimateCost,
+} from "./ai/usage.js";
+export type { UsageEntry, UsageSummary } from "./ai/usage.js";

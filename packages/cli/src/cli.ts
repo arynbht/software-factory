@@ -1,6 +1,6 @@
 import { Command, Option } from "commander";
 
-import { type AiFlags, runAi } from "./commands/ai.js";
+import { type AiFlags, runAi, runAiUsage } from "./commands/ai.js";
 import { type AuditFlags, runAudit } from "./commands/audit.js";
 import { runCi } from "./commands/ci.js";
 import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
@@ -97,6 +97,11 @@ export function buildProgram(): Command {
     .option("--token <token>", "GitHub token (for --pr)")
     .option("--no-color", "disable coloured output")
     .action(async (task: string, path: string, flags: AiFlags) => {
+      // `factory ai usage` is a reserved task that reports the usage log.
+      if (task === "usage") {
+        process.exitCode = await runAiUsage(path);
+        return;
+      }
       const today = new Date().toISOString().slice(0, 10);
       process.exitCode = await runAi(task, path, flags, { today });
     });
