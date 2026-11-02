@@ -38,6 +38,21 @@ describe("applyChanges", () => {
     expect((await loadState(dir)).managed?.["README.md"]).toBeDefined();
   });
 
+  it("refuses a change whose path escapes the repo (skips, writes nothing)", async () => {
+    const dir = await tmp();
+    const [r] = await applyChanges(
+      dir,
+      [fileChange({ path: "../escape.md" })],
+      { mode: "write" },
+    );
+    expect(r?.action).toBe("skip");
+    expect(r?.message).toMatch(/escapes the repository/);
+    // Nothing was written outside the repo.
+    await expect(
+      readFile(join(dir, "..", "escape.md"), "utf8"),
+    ).rejects.toThrow();
+  });
+
   it("writes nothing in dry-run but reports the action", async () => {
     const dir = await tmp();
     const [r] = await applyChanges(dir, [fileChange()], { mode: "dry-run" });

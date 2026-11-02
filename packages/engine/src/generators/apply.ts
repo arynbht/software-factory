@@ -1,7 +1,11 @@
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 
 import { writeFileAtomic } from "../fs-atomic.js";
+import {
+  assertNoSymlinkEscape,
+  PathGuardError,
+  resolveInsideRepo,
+} from "../paths.js";
 import {
   loadState,
   managedFileUnchanged,
@@ -84,7 +88,25 @@ export async function applyChanges(
       continue;
     }
 
-    const abs = resolve(repoPath, change.path);
+    // Containment chokepoint: every read/write below goes through `abs`. Reject a
+    // path that escapes the repo (`..`/absolute) or passes through a symlink,
+    // recording a visible skip rather than aborting the whole run.
+    let abs: string;
+    try {
+      abs = resolveInsideRepo(repoPath, change.path);
+      await assertNoSymlinkEscape(repoPath, abs);
+    } catch (err) {
+      if (!(err instanceof PathGuardError)) throw err;
+      results.push({
+        controlId: change.controlId,
+        type: "file",
+        action: "skip",
+        path: change.path,
+        message: `${change.path}: refused — ${err.message}`,
+      });
+      continue;
+    }
+
     let before: string | undefined;
     try {
       before = await readFile(abs, "utf8");
@@ -120,10 +142,9 @@ export async function applyChanges(
       if (humanEdited) {
         const suggestedPath = `${change.path}${SUGGESTED_SUFFIX}`;
         if (write) {
-          await writeFileAtomic(
-            resolve(repoPath, suggestedPath),
-            change.contents,
-          );
+          const suggestedAbs = resolveInsideRepo(repoPath, suggestedPath);
+          await assertNoSymlinkEscape(repoPath, suggestedAbs);
+          await writeFileAtomic(suggestedAbs, change.contents);
         }
         results.push({
           controlId: change.controlId,

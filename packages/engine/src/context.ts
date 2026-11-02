@@ -16,6 +16,7 @@ import {
 } from "./ai/client.js";
 import { type EvidenceEntry, loadEvidence } from "./evidence.js";
 import { parseRepoSlug, type RepoSlug } from "./github/slug.js";
+import { containedReadPath } from "./paths.js";
 import { loadProfile } from "./profile.js";
 import { loadWaivers } from "./waivers.js";
 
@@ -89,13 +90,20 @@ export function buildContext(
         cwd: root,
         dot: true,
         onlyFiles: true,
+        // Don't traverse into symlinked directories: a repo can't point the
+        // glob at files outside itself (secret-leak / escape guard, #95).
+        followSymbolicLinks: false,
         ignore: ["**/node_modules/**", "**/dist/**", "**/.git/**"],
       });
     },
 
     async readFile(relPath) {
+      // Follow symlinks only while they stay inside the repo; a file symlinked to
+      // e.g. `~/.aws/credentials` reads as absent rather than disclosing it.
+      const real = await containedReadPath(root, relPath);
+      if (real === null) return null;
       try {
-        return await fsReadFile(resolve(root, relPath), "utf8");
+        return await fsReadFile(real, "utf8");
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
         throw err;
