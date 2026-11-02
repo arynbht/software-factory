@@ -3,6 +3,7 @@ import { Command, Option } from "commander";
 import { type AuditFlags, runAudit } from "./commands/audit.js";
 import { runCi } from "./commands/ci.js";
 import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
+import { type FixFlags, runFix } from "./commands/fix.js";
 import { type InitFlags, runInit } from "./commands/init.js";
 import { runProfileSet, runProfileShow } from "./commands/profile.js";
 import { runWaive, type WaiveFlags } from "./commands/waive.js";
@@ -61,6 +62,20 @@ export function buildProgram(): Command {
     .option("--no-color", "disable coloured output")
     .action(async (path: string, flags: AuditFlags) => {
       process.exitCode = await runAudit(path, flags);
+    });
+
+  program
+    .command("fix")
+    .description("Generate fixes for non-passing controls (dry-run by default)")
+    .argument("[path]", "path to the repo", ".")
+    .option("--control <id>", "fix only this control")
+    .option("--gate <phase>", "fix only controls in this gate")
+    .option("--lane <lane>", "fix only controls in this lane")
+    .option("--write", "apply changes locally (default: dry-run preview)")
+    .option("--token <token>", "GitHub token (for github-setting fixes)")
+    .option("--no-color", "disable coloured output")
+    .action(async (path: string, flags: FixFlags) => {
+      process.exitCode = await runFix(path, flags);
     });
 
   const profile = program

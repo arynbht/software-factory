@@ -1,4 +1,5 @@
 import type {
+  ChangeResult,
   ControlResult,
   ControlStatus,
   GateResult,
@@ -64,6 +65,72 @@ export function renderGate(gate: GateResult, color = true): string {
         ? ` — ${pending} outstanding`
         : "";
   return `${c.bold(label)}: ${tint(gate.status.toUpperCase())}${detail}`;
+}
+
+/** Render the result of a `factory fix` plan (dry-run preview or applied). */
+export function renderFixPlan(
+  results: ChangeResult[],
+  write: boolean,
+  color = true,
+): string {
+  const c = pc.createColors(color);
+  if (results.length === 0) {
+    return c.dim(
+      "Nothing to fix — all selected controls already pass or have no generator.",
+    );
+  }
+
+  const lines: string[] = [];
+  let files = 0;
+  let effects = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const r of results) {
+    if (r.type === "effect") {
+      if (r.error) {
+        failed++;
+        lines.push(c.red(`  ✗ ${r.message}`));
+      } else {
+        effects++;
+        lines.push(
+          c.cyan(`  ⚙ ${write ? "applied" : "would apply"}: ${r.message}`),
+        );
+      }
+      continue;
+    }
+    switch (r.action) {
+      case "create":
+        files++;
+        lines.push(c.green(`  + ${write ? "created" : "create"} ${r.path}`));
+        break;
+      case "update":
+        files++;
+        lines.push(c.yellow(`  ~ ${write ? "updated" : "update"} ${r.path}`));
+        break;
+      case "skip":
+        skipped++;
+        lines.push(c.dim(`  · skip ${r.path} (${r.message})`));
+        break;
+      case "unchanged":
+        lines.push(c.dim(`  = ${r.path} already up to date`));
+        break;
+    }
+  }
+
+  const verb = write ? "applied" : "to apply";
+  lines.push("");
+  lines.push(
+    `${files} file change${files === 1 ? "" : "s"} ${verb}, ${effects} effect${effects === 1 ? "" : "s"}` +
+      (skipped ? `, ${c.dim(`${skipped} skipped`)}` : "") +
+      (failed ? `, ${c.red(`${failed} failed`)}` : ""),
+  );
+  if (!write) {
+    lines.push(
+      c.dim("Run with --write to apply, or --pr to open a pull request."),
+    );
+  }
+  return lines.join("\n");
 }
 
 const SYMBOL: Record<ControlStatus, string> = {
