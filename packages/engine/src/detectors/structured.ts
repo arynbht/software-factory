@@ -14,7 +14,10 @@ export interface StructuredPathConfig {
  * Shared core for `file-json-path` and `file-yaml-path`. Finds files matching
  * `config.file`, parses each with `parse`, and checks `config.path`:
  *   - with `equals`: passes if any file's value at `path` deep-equals it;
- *   - otherwise: passes if any file has a value at `path`.
+ *   - with `exists: false`: passes only if NO parsed file has a value at `path`
+ *     (assert-absent); any file that has it fails;
+ *   - otherwise (`exists: true` or omitted): passes if any file has a value at
+ *     `path`.
  *
  * No matching file → fail. A readable file exists but the assertion is false →
  * fail. No file could be parsed → skip (undetermined).
@@ -64,6 +67,15 @@ export async function checkStructuredPath(
           ? `${rel}: ${config.path} is ${JSON.stringify(value)}`
           : `${rel}: ${config.path} missing`,
       );
+    } else if (config.exists === false) {
+      // Assert-absent: the first file that has the path fails immediately.
+      if (found) {
+        return {
+          status: "fail",
+          message: `${rel}: ${config.path} present but expected absent`,
+          remediation: `remove ${config.path} from ${config.file}`,
+        };
+      }
     } else {
       if (found) {
         return { status: "pass", message: `${rel}: ${config.path} present` };
@@ -76,6 +88,14 @@ export async function checkStructuredPath(
     return {
       status: "skip",
       message: `could not parse any ${label} file matching "${config.file}"`,
+    };
+  }
+
+  // Assert-absent passes only after every parsed file was checked clean.
+  if (config.equals === undefined && config.exists === false) {
+    return {
+      status: "pass",
+      message: `${config.path} absent in ${label} file(s) matching "${config.file}"`,
     };
   }
 

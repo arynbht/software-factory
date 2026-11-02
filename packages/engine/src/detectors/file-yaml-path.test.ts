@@ -56,6 +56,26 @@ describe("fileYamlPath", () => {
     expect(result.status).toBe("fail");
   });
 
+  it("exists:false passes when the path is absent", async () => {
+    const result = await fileYamlPath(complete(), {
+      type: "file-yaml-path",
+      file: ".github/workflows/ci.yml",
+      path: "jobs.build.nonexistent-key",
+      exists: false,
+    });
+    expect(result.status).toBe("pass");
+  });
+
+  it("exists:false fails when the path is present", async () => {
+    const result = await fileYamlPath(complete(), {
+      type: "file-yaml-path",
+      file: ".github/workflows/ci.yml",
+      path: "jobs.build.runs-on",
+      exists: false,
+    });
+    expect(result.status).toBe("fail");
+  });
+
   it("fails when no file matches", async () => {
     const ctx = buildContext(resolve(fixtures, "empty"));
     const result = await fileYamlPath(ctx, {
