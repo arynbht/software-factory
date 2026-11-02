@@ -96,6 +96,50 @@ describe("applyChanges", () => {
     );
   });
 
+  it("diverts a merge to .factory-suggested when a managed file was human-edited", async () => {
+    const dir = await tmp();
+    // Factory writes ci.yml via merge and records its hash.
+    await applyChanges(
+      dir,
+      [
+        fileChange({
+          path: "ci.yml",
+          contents: "jobs:\n  a: 1\n",
+          op: "merge",
+        }),
+      ],
+      { mode: "write" },
+    );
+    // A human edits ci.yml afterwards.
+    await writeFile(
+      join(dir, "ci.yml"),
+      "jobs:\n  a: 1\n  human: yes\n",
+      "utf8",
+    );
+
+    // A new merge must not overwrite the human's edit; it writes a suggestion.
+    const [r] = await applyChanges(
+      dir,
+      [
+        fileChange({
+          path: "ci.yml",
+          contents: "jobs:\n  a: 2\n  human: yes\n",
+          op: "merge",
+        }),
+      ],
+      { mode: "write" },
+    );
+    expect(r?.action).toBe("suggest");
+    expect(r?.path).toBe("ci.yml.factory-suggested");
+    // The human's file is untouched; the suggestion sits alongside it.
+    expect(await readFile(join(dir, "ci.yml"), "utf8")).toBe(
+      "jobs:\n  a: 1\n  human: yes\n",
+    );
+    expect(await readFile(join(dir, "ci.yml.factory-suggested"), "utf8")).toBe(
+      "jobs:\n  a: 2\n  human: yes\n",
+    );
+  });
+
   it("runs an effect only in write mode", async () => {
     const dir = await tmp();
     let ran = 0;

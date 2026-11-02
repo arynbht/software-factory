@@ -193,6 +193,14 @@ export function renderFixPlan(
         files++;
         lines.push(c.yellow(`  ~ ${write ? "updated" : "update"} ${r.path}`));
         break;
+      case "suggest":
+        skipped++;
+        lines.push(
+          c.yellow(
+            `  ⚠ ${write ? "wrote" : "would write"} ${r.path} (${r.message})`,
+          ),
+        );
+        break;
       case "skip":
         skipped++;
         lines.push(c.dim(`  · skip ${r.path} (${r.message})`));
