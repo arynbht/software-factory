@@ -17,6 +17,7 @@
   ],
   "scripts": {},
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
     "@arynbht/factory-catalog": "workspace:*",
     "@octokit/rest": "^22.0.1",
     "eta": "^4.6.0",

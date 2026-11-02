@@ -65,3 +65,19 @@ export {
   WaiverError,
 } from "./waivers.js";
 export * from "./detectors/index.js";
+export {
+  createAiClient,
+  resolveAnthropicKey,
+  AiError,
+  AiKeyError,
+  DEFAULT_MODEL,
+} from "./ai/client.js";
+export type {
+  AiClient,
+  AiClientOptions,
+  AiTransport,
+  AiUsage,
+  CompleteParams,
+  CompleteResult,
+  TransportRequest,
+} from "./ai/client.js";

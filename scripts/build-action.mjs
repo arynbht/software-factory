@@ -55,6 +55,10 @@ await build({
   format: "esm",
   target: "node22",
   legalComments: "none",
+  // The AI SDK is only reached via `factory ai` / the claude generator, which the
+  // Action (the `ci` entrypoint) never runs. Keep it out of the committed bundle so
+  // it doesn't bloat the Action with ~300KB of code that never executes there.
+  external: ["@anthropic-ai/sdk"],
   // Prefer each dependency's ESM build so esbuild can statically bundle it
   // (some UMD builds, e.g. jsonc-parser, use dynamic require()).
   mainFields: ["module", "main"],
