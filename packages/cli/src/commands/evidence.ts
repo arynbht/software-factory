@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import {
   addEvidence,
   type EvidenceEntry,
+  EvidenceError,
   hashFile,
 } from "@arynbht/factory-engine";
 
@@ -43,7 +44,8 @@ export async function runEvidenceAdd(
   try {
     await addEvidence(resolve(path), entry);
   } catch (err) {
-    console.error(String(err));
+    const message = err instanceof EvidenceError ? err.message : String(err);
+    console.error(`factory evidence add: ${message}`);
     return 1;
   }
   process.stdout.write(`Recorded evidence for ${control}\n`);

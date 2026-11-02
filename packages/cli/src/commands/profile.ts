@@ -49,7 +49,8 @@ export async function runProfileSet(
   }
 
   const draft: Record<string, unknown> = { ...profile };
-  const bool = (v: string): boolean => v === "true";
+  const toBool = (v: string): boolean | null =>
+    v === "true" ? true : v === "false" ? false : null;
 
   if (key === "name" || key === "type" || key === "phase") {
     draft[key] = value;
@@ -60,10 +61,14 @@ export async function runProfileSet(
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-  } else if (key.startsWith("flags.")) {
-    draft["flags"] = { ...(profile.flags ?? {}), [key.slice(6)]: bool(value) };
-  } else if (key.startsWith("lanes.")) {
-    draft["lanes"] = { ...(profile.lanes ?? {}), [key.slice(6)]: bool(value) };
+  } else if (key.startsWith("flags.") || key.startsWith("lanes.")) {
+    const flag = toBool(value);
+    if (flag === null) {
+      console.error(`${key} must be "true" or "false" (got "${value}").`);
+      return 1;
+    }
+    const group = key.startsWith("flags.") ? "flags" : "lanes";
+    draft[group] = { ...(profile[group] ?? {}), [key.slice(6)]: flag };
   } else {
     console.error(
       `Unknown profile key "${key}". Try: name, type, phase, severity-floor, stack, flags.<flag>, lanes.<lane>.`,

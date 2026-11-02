@@ -43,6 +43,14 @@ describe("profile / waive / evidence commands", () => {
     expect(await runProfileSet("type", "webapp", dir)).toBe(1);
   });
 
+  it("profile set rejects a non-boolean flag value instead of coercing it", async () => {
+    const dir = await repo();
+    expect(await runProfileSet("flags.handles-pii", "yes", dir)).toBe(1);
+    // The flag must be untouched (not silently set to false).
+    const p = await loadProfile(dir);
+    expect(p?.flags["handles-pii"]).toBeUndefined();
+  });
+
   it("profile show returns 1 when there is no profile", async () => {
     const dir = await mkdtemp(join(tmpdir(), "factory-cmd-"));
     made.push(dir);

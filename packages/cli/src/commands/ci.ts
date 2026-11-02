@@ -60,6 +60,8 @@ export async function runCi(): Promise<number> {
   const { controls, errors } = await loadBundledCatalog();
   if (errors.length > 0) {
     console.error(`::error::Catalog is invalid (${errors.length} error(s)).`);
+    for (const err of errors)
+      console.error(`::error::${err.file}: ${err.message}`);
     return 1;
   }
 

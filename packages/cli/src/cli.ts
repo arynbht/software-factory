@@ -68,7 +68,10 @@ export function buildProgram(): Command {
     .command("fix")
     .description("Generate fixes for non-passing controls (dry-run by default)")
     .argument("[path]", "path to the repo", ".")
-    .option("--control <id>", "fix only this control")
+    .option(
+      "--control <id>",
+      "fix only this control (applied regardless of the severity floor)",
+    )
     .option("--gate <phase>", "fix only controls in this gate")
     .option("--lane <lane>", "fix only controls in this lane")
     .option("--write", "apply changes locally (default: dry-run preview)")
