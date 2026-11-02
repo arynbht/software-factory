@@ -65,4 +65,22 @@ describe("claude generator", () => {
     } as Control;
     expect(await claudeGenerator(ctx, control)).toEqual([]);
   });
+
+  it("degrades to no change when no API key is available (fix must not abort)", async () => {
+    const saved = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      const dir = await mkdtemp(join(tmpdir(), "factory-claude-"));
+      made.push(dir);
+      // No transport and no key → the real transport raises AiKeyError.
+      const ctx = buildContext(dir, { ai: { maxRetries: 0 } });
+      const control = {
+        id: "sec.threat-model",
+        fix: { type: "claude", task: "threat-model" },
+      } as Control;
+      expect(await claudeGenerator(ctx, control)).toEqual([]);
+    } finally {
+      if (saved !== undefined) process.env.ANTHROPIC_API_KEY = saved;
+    }
+  });
 });
