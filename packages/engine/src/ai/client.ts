@@ -48,7 +48,12 @@ export interface TransportRequest {
 
 /** The seam the client calls; tests provide a fake, production uses the SDK. */
 export interface AiTransport {
-  create(req: TransportRequest): Promise<CompleteResult>;
+  /**
+   * `signal` aborts the in-flight request when the client's timeout fires, so a
+   * timed-out call stops consuming tokens server-side instead of running to
+   * completion while a retry is billed alongside it.
+   */
+  create(req: TransportRequest, signal?: AbortSignal): Promise<CompleteResult>;
 }
 
 export interface AiClient {
@@ -101,7 +106,10 @@ export function createAiClient(options: AiClientOptions = {}): AiClient {
       let lastError: unknown;
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-          return await withTimeout(transport.create(req), timeoutMs);
+          return await withTimeout(
+            (signal) => transport.create(req, signal),
+            timeoutMs,
+          );
         } catch (err) {
           lastError = err;
           const retryable = err instanceof AiError && err.retryable;
@@ -114,7 +122,15 @@ export function createAiClient(options: AiClientOptions = {}): AiClient {
   };
 }
 
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+async function withTimeout<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  ms: number,
+): Promise<T> {
+  // Abort the in-flight request when the timeout wins the race, so it stops
+  // server-side rather than running (and billing) to completion while a retry
+  // fires. `run`'s promise is still referenced by `Promise.race`, so its
+  // post-abort rejection stays handled (no unhandledRejection).
+  const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout>;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(
@@ -123,16 +139,17 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
     );
   });
   try {
-    return await Promise.race([promise, timeout]);
+    return await Promise.race([run(controller.signal), timeout]);
   } finally {
     clearTimeout(timer!);
+    controller.abort();
   }
 }
 
 /** The real transport: lazy-loads the SDK so it isn't pulled into non-AI paths. */
 function sdkTransport(options: AiClientOptions): AiTransport {
   return {
-    async create(req) {
+    async create(req, signal) {
       const apiKey = resolveAnthropicKey(options.apiKey);
       if (!apiKey) throw new AiKeyError();
 
@@ -141,12 +158,17 @@ function sdkTransport(options: AiClientOptions): AiTransport {
       const client = new Anthropic({ apiKey, maxRetries: 0 });
 
       try {
-        const res = await client.messages.create({
-          model: req.model,
-          max_tokens: req.maxTokens,
-          ...(req.system ? { system: req.system } : {}),
-          messages: [{ role: "user", content: req.prompt }],
-        });
+        const res = await client.messages.create(
+          {
+            model: req.model,
+            max_tokens: req.maxTokens,
+            ...(req.system ? { system: req.system } : {}),
+            messages: [{ role: "user", content: req.prompt }],
+          },
+          // Pass the timeout's abort signal so a timed-out call is cancelled
+          // server-side instead of running to completion unlogged.
+          signal ? { signal } : {},
+        );
         const text = res.content
           .map((b) => (b.type === "text" ? b.text : ""))
           .join("");
