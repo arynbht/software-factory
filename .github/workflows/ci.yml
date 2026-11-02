@@ -53,6 +53,11 @@ jobs:
       - name: Validate catalog
         run: pnpm catalog:validate
 
+      - name: Check catalog site is current
+        run: |
+          pnpm catalog:site
+          git diff --exit-code -- docs/catalog
+
       - name: Test
         run: pnpm test
 

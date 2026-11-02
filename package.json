@@ -21,6 +21,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "catalog:validate": "tsx packages/catalog/src/validate.cli.ts",
+    "catalog:site": "tsx packages/catalog/src/site.cli.ts",
     "schema:json": "tsx packages/catalog/src/schema.gen.ts",
     "action:build": "pnpm build && node scripts/build-action.mjs",
     "prepare": "lefthook install"
