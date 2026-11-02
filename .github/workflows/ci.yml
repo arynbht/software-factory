@@ -44,6 +44,11 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # The desktop app is built by electron-vite (not the root tsc --build graph),
+      # so it carries its own typecheck. Packaging stays out of CI (release only).
+      - name: Typecheck desktop
+        run: pnpm --filter @arynbht/factory-desktop typecheck
+
       - name: Lint
         run: pnpm lint
 

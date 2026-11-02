@@ -34,6 +34,9 @@
     "@types/node": "^22.10.5",
     "esbuild": "^0.28.2",
     "eslint": "^9.17.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.14.0",
     "lefthook": "^1.10.1",
     "lint-staged": "^15.3.0",
     "msw": "^3.0.3",
@@ -46,6 +49,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
+      "electron",
       "lefthook"
     ]
   }
