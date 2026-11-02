@@ -1,7 +1,46 @@
 import { execFile } from "node:child_process";
+import { access, constants } from "node:fs/promises";
+import { delimiter, isAbsolute, join } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Resolve a bare command name to a concrete file on Windows, honouring PATHEXT so
+ * `.cmd`/`.bat` shims (e.g. `npm`) are found. `execFile` on Windows can't launch a
+ * `.cmd` directly, so we need both this lookup (to tell "missing" from "failed")
+ * and a shell to actually run it. Returns the resolved path, or null if not found.
+ */
+async function resolveOnWindows(binary: string): Promise<string | null> {
+  const exts = (process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD")
+    .split(";")
+    .filter(Boolean);
+  const hasExt = exts.some((e) =>
+    binary.toLowerCase().endsWith(e.toLowerCase()),
+  );
+  const candidates = hasExt
+    ? [binary]
+    : [binary, ...exts.map((e) => binary + e)];
+
+  const dirs = isAbsolute(binary)
+    ? [""]
+    : [process.cwd(), ...(process.env.PATH ?? "").split(delimiter)].filter(
+        Boolean,
+      );
+
+  for (const dir of dirs) {
+    for (const cand of candidates) {
+      const full = dir ? join(dir, cand) : cand;
+      try {
+        await access(full, constants.F_OK);
+        return full;
+      } catch {
+        // keep looking
+      }
+    }
+  }
+  return null;
+}
 
 /** Thrown when the requested binary is not on PATH (→ detector skip). */
 export class ToolNotFoundError extends Error {
@@ -36,11 +75,22 @@ export async function runTool(
   args: string[],
   cwd: string,
 ): Promise<ToolResult> {
+  const windows = process.platform === "win32";
+  // On Windows, pre-resolve the binary so a missing tool is still a clean
+  // ToolNotFoundError (shell mode would otherwise surface it as a non-zero exit),
+  // and so `.cmd` shims like npm can be launched via the shell.
+  if (windows) {
+    const resolved = await resolveOnWindows(binary);
+    if (!resolved) throw new ToolNotFoundError(binary);
+  }
   try {
     const { stdout, stderr } = await execFileAsync(binary, args, {
       cwd,
       maxBuffer: 16 * 1024 * 1024,
       windowsHide: true,
+      // Catalog commands are trusted (authored in-repo); a shell on Windows lets
+      // cmd.exe resolve .cmd/.bat shims that execFile cannot launch directly.
+      shell: windows,
     });
     return { exitCode: 0, stdout: String(stdout), stderr: String(stderr) };
   } catch (err) {

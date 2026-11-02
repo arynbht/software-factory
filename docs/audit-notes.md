@@ -60,3 +60,56 @@ These failures are real and are expected to be closed by later milestones
   against several standalone real repos. The engine is additionally exercised
   against the `empty`, `node-minimal`, and `node-complete` fixture repos in the
   unit tests, covering pass/fail/skip for every detector on different repo shapes.
+
+## 2026-11-01 — Milestone 3 dogfood: `factory fix` on a fresh repo
+
+First end-to-end run of the M3 remediation flow — `factory init` then
+`factory fix --write`/`--pr` — on a throwaway Node repo, reviewing the output as
+if a stranger had sent the PR. Validated against the M3 Definition of Done.
+
+### DoD results
+
+- **(1) `init && fix --write` → green scaffold gate.** _Met, modulo one
+  online-only control._ After `fix --write`, **every local scaffold-phase
+  control passes**. The only non-pass is `repo.branch-protection`, a `github-api`
+  setting that **skips** offline (no token) and so keeps the gate `amber` rather
+  than `red`. With a token (as in CI/the scheduled run) the `github-setting`
+  generator applies the ruleset and it passes → `green`.
+- **(2) `fix` on a hand-edited `ci.yml` adds the missing piece without touching
+  other lines.** _Met for key-level merges, with a minor caveat._ Removing the
+  `concurrency` block from a hand-edited `ci.yml` (with a custom top comment) and
+  running `fix --control ci.concurrency --write` re-added **only** the
+  `concurrency:` block; the comment, `jobs`, `steps`, and `permissions` were all
+  preserved. Caveat below.
+- **(3) Running `fix` twice produces no second diff.** _Fully met._ A second
+  `fix --write` on a committed scaffold reports `0 file changes applied` and
+  leaves a clean working tree (the managed-hash registry in `.factory/state.json`
+  makes the apply idempotent).
+
+### Fixed during this pass
+
+| Area                    | Symptom                                                                                                                                                  | Fix                                                                                                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tool runner (Windows)   | The `command` fix `npm install` failed with `"npm" is not installed` on Windows, even with npm on PATH. `execFile` cannot launch a `.cmd` shim directly. | `runTool` now resolves the binary via `PATH`+`PATHEXT` on Windows (so "missing" is still a clean `ToolNotFoundError`) and runs through a shell so `.cmd`/`.bat` shims execute. |
+| `repo.toolchain-pinned` | A **scaffold-phase** control with **no `fix`** — so `fix` could never make the scaffold gate green.                                                      | Added a stack-aware `toolchain` template (`.nvmrc` → `22` for node, `.python-version` → `3.12` for python) and wired `fix: { type: template, template: toolchain }`.           |
+
+### Findings logged for follow-up
+
+- **Most `merge-yaml` CI-content fixes are no-ops.** 8 of 10 `merge-yaml`
+  controls (`ci.dependency-caching`, `ci.actions-pinned-sha`, `dev.linter.in-ci`,
+  `sec.dependency-scan.ci`, `sec.sast.ci`, `sec.sbom.ci`, `sec.secret-scanning.ci`,
+  `test.runner.in-ci`) have **no `value`**, so the generator returns no change and
+  the advertised `fix` does nothing. They also target `jobs.ci.steps` — an
+  **array** — but the generator uses `setIn(path, value)`, which _replaces_ a key
+  rather than appending a step. Correctly auto-fixing these needs
+  append-if-missing array-merge semantics plus per-step fragments. Today the
+  remediation for CI content is the complete `ci-workflow` template (fresh repos);
+  an existing repo missing one step is not auto-fixed. → follow-up issue.
+- **YAML merge can reformat untouched lines.** The `yaml` round-trip reformats
+  flow collections (`branches: [main]` → `branches: [ main ]`) and strips a
+  leading BOM, so a `merge-yaml` fix can introduce small cosmetic diffs away from
+  the change. Structural content and comments are preserved. → minor follow-up.
+- **`npm install` with no `package.json` exits non-zero** yet still writes
+  `package-lock.json` (so `repo.lockfile.present` then passes). The effect is
+  reported as "failed" even though the lockfile was produced — a false alarm in
+  that one case. Minor.
