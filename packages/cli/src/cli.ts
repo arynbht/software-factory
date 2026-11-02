@@ -72,10 +72,15 @@ export function buildProgram(): Command {
     .option("--gate <phase>", "fix only controls in this gate")
     .option("--lane <lane>", "fix only controls in this lane")
     .option("--write", "apply changes locally (default: dry-run preview)")
-    .option("--token <token>", "GitHub token (for github-setting fixes)")
+    .option("--pr", "apply on a factory branch and open/reuse a pull request")
+    .option(
+      "--token <token>",
+      "GitHub token (for --pr and github-setting fixes)",
+    )
     .option("--no-color", "disable coloured output")
     .action(async (path: string, flags: FixFlags) => {
-      process.exitCode = await runFix(path, flags);
+      const today = new Date().toISOString().slice(0, 10);
+      process.exitCode = await runFix(path, flags, { today });
     });
 
   const profile = program
