@@ -1,5 +1,6 @@
 import { Command, Option } from "commander";
 
+import { type AiFlags, runAi } from "./commands/ai.js";
 import { type AuditFlags, runAudit } from "./commands/audit.js";
 import { runCi } from "./commands/ci.js";
 import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
@@ -84,6 +85,20 @@ export function buildProgram(): Command {
     .action(async (path: string, flags: FixFlags) => {
       const today = new Date().toISOString().slice(0, 10);
       process.exitCode = await runFix(path, flags, { today });
+    });
+
+  program
+    .command("ai")
+    .description("Draft an artifact with Claude (dry-run by default)")
+    .argument("<task>", "task to run (e.g. explain-gaps, threat-model, adr)")
+    .argument("[path]", "path to the repo", ".")
+    .option("--write", "apply the generated file locally (default: dry-run)")
+    .option("--pr", "apply on a factory branch and open/reuse a pull request")
+    .option("--token <token>", "GitHub token (for --pr)")
+    .option("--no-color", "disable coloured output")
+    .action(async (task: string, path: string, flags: AiFlags) => {
+      const today = new Date().toISOString().slice(0, 10);
+      process.exitCode = await runAi(task, path, flags, { today });
     });
 
   const profile = program
