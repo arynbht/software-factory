@@ -54,7 +54,12 @@ export { openOrReusePr } from "./github/pr.js";
 export type { OpenPrParams, PrResult } from "./github/pr.js";
 export { openFixPr, FixPrError } from "./fix-pr.js";
 export type { FixPrOptions, FixPrResult } from "./fix-pr.js";
-export { loadProfile, saveProfile, ProfileError } from "./profile.js";
+export {
+  loadProfile,
+  saveProfile,
+  updateProfile,
+  ProfileError,
+} from "./profile.js";
 export { appliesTo, evaluatePredicate } from "./applicability.js";
 export {
   loadWaivers,
