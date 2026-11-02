@@ -38,6 +38,21 @@ describe("applyChanges", () => {
     expect((await loadState(dir)).managed?.["README.md"]).toBeDefined();
   });
 
+  it("refuses a change whose path escapes the repo (skips, writes nothing)", async () => {
+    const dir = await tmp();
+    const [r] = await applyChanges(
+      dir,
+      [fileChange({ path: "../escape.md" })],
+      { mode: "write" },
+    );
+    expect(r?.action).toBe("skip");
+    expect(r?.message).toMatch(/escapes the repository/);
+    // Nothing was written outside the repo.
+    await expect(
+      readFile(join(dir, "..", "escape.md"), "utf8"),
+    ).rejects.toThrow();
+  });
+
   it("writes nothing in dry-run but reports the action", async () => {
     const dir = await tmp();
     const [r] = await applyChanges(dir, [fileChange()], { mode: "dry-run" });
@@ -93,6 +108,50 @@ describe("applyChanges", () => {
     // or duplicated pre-existing keys.
     expect(await readFile(join(dir, "ci.yml"), "utf8")).toBe(
       "jobs:\n  new: step\n",
+    );
+  });
+
+  it("diverts a merge to .factory-suggested when a managed file was human-edited", async () => {
+    const dir = await tmp();
+    // Factory writes ci.yml via merge and records its hash.
+    await applyChanges(
+      dir,
+      [
+        fileChange({
+          path: "ci.yml",
+          contents: "jobs:\n  a: 1\n",
+          op: "merge",
+        }),
+      ],
+      { mode: "write" },
+    );
+    // A human edits ci.yml afterwards.
+    await writeFile(
+      join(dir, "ci.yml"),
+      "jobs:\n  a: 1\n  human: yes\n",
+      "utf8",
+    );
+
+    // A new merge must not overwrite the human's edit; it writes a suggestion.
+    const [r] = await applyChanges(
+      dir,
+      [
+        fileChange({
+          path: "ci.yml",
+          contents: "jobs:\n  a: 2\n  human: yes\n",
+          op: "merge",
+        }),
+      ],
+      { mode: "write" },
+    );
+    expect(r?.action).toBe("suggest");
+    expect(r?.path).toBe("ci.yml.factory-suggested");
+    // The human's file is untouched; the suggestion sits alongside it.
+    expect(await readFile(join(dir, "ci.yml"), "utf8")).toBe(
+      "jobs:\n  a: 1\n  human: yes\n",
+    );
+    expect(await readFile(join(dir, "ci.yml.factory-suggested"), "utf8")).toBe(
+      "jobs:\n  a: 2\n  human: yes\n",
     );
   });
 

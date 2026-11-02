@@ -1,0 +1,18 @@
+id: a11y.contrast.enforced
+title: Color contrast enforced in design tokens
+lane: accessibility
+phase: design
+severity: medium
+effort: small
+applies:
+  all:
+    - flag: public-facing
+detect:
+  - type: manual
+evidence: optional
+references:
+  - name: WCAG 2.2 — Contrast (Minimum)
+    url: https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum
+rationale: >
+  Encoding contrast ratios into design tokens prevents low-contrast UI from
+  shipping, turning a per-screen judgement call into a reusable guarantee.

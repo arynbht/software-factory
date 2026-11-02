@@ -46,6 +46,16 @@ describe("estimateCost", () => {
     ).toBeCloseTo(18, 5);
   });
 
+  it("prices opus 4.8 at $5/M in, $25/M out", () => {
+    // opus 4.8: 1M in + 1M out = $30 (not the $90 of the old 15/75 table)
+    expect(
+      estimateCost("claude-opus-4-8", {
+        inputTokens: 1_000_000,
+        outputTokens: 1_000_000,
+      }),
+    ).toBeCloseTo(30, 5);
+  });
+
   it("returns 0 for an unpriced model", () => {
     expect(
       estimateCost("some-future-model", { inputTokens: 100, outputTokens: 50 }),

@@ -1,0 +1,23 @@
+# Launch checklist
+
+Work through this before a release and record the go/no-go decision at the
+bottom. Replace or extend the items to fit the project; an unchecked item is a
+blocker until it is either done or explicitly waived.
+
+## Readiness
+
+- [ ] All launch-gate controls are green or waived (`factory audit --gate launch`)
+- [ ] Runbooks exist for the alerts that can fire on day one
+- [ ] Rollback path is documented and has been exercised
+- [ ] On-call owner and escalation path are named
+- [ ] Monitoring and alerting cover the golden signals
+- [ ] Backups are configured and a restore has been tested
+- [ ] Privacy policy / terms are published (if the product has users)
+- [ ] Support channel is live and staffed
+
+## Go / no-go
+
+- Decision date:
+- Decision (go / no-go):
+- Decided by:
+- Outstanding risks accepted:

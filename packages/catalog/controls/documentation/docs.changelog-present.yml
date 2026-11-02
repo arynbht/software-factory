@@ -1,0 +1,16 @@
+id: docs.changelog-present
+title: Changelog present
+lane: documentation
+phase: build
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: "CHANGELOG.md|CHANGES.md|.changeset/**"
+evidence: none
+references:
+  - name: Keep a Changelog
+    url: https://keepachangelog.com/
+rationale: >
+  A changelog tells users what changed between versions in human terms,
+  which is the difference between a trustworthy release and a surprise.

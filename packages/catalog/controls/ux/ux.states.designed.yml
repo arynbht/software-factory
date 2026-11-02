@@ -1,0 +1,18 @@
+id: ux.states.designed
+title: Empty, loading, error, and offline states designed
+lane: ux
+phase: design
+severity: medium
+effort: medium
+applies:
+  all:
+    - flag: has-users
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: NN/g — Design for the states
+    url: https://www.nngroup.com/articles/skeleton-screens/
+rationale: >
+  Real UIs spend much of their life in non-happy states; designing the empty,
+  loading, error, and offline states prevents experiences that feel broken.

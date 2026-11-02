@@ -1,0 +1,20 @@
+id: test.data.factories
+title: Test data factories and a seed script exist
+lane: testing
+phase: build
+severity: low
+effort: medium
+detect:
+  - type: file-exists
+    path: "**/factories/**|**/*factory*.{ts,js,py}|seed.{ts,js,py}|**/seeds/**|prisma/seed.ts"
+evidence: none
+fix:
+  type: claude
+  task: test-scaffold
+references:
+  - name: Google — Software Engineering at Google (Testing)
+    url: https://abseil.io/resources/swe-book/html/ch13.html
+rationale: >
+  Reusable data factories and a seed script make tests readable and deterministic
+  and give every environment a known starting state, instead of each test
+  hand-rolling fragile fixtures.

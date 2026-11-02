@@ -84,20 +84,32 @@ export async function runStatus(
     throw err;
   }
 
-  const results = await evaluateControls(controls, ctx, {
+  // Apply the profile's severity-floor like audit/ci/ai/fix do, so `status` does
+  // not infer a phase from — or list — blockers the user chose to ignore.
+  const floorRank = SEVERITIES.indexOf(profile?.["severity-floor"] ?? "low");
+  const selected = controls.filter(
+    (c) => SEVERITIES.indexOf(c.severity) <= floorRank,
+  );
+
+  const results = await evaluateControls(selected, ctx, {
     now: options.now,
     profile,
     waivers,
   });
 
-  // Evaluate each phase's gate (where one is defined), in phase order.
+  // Evaluate each phase's gate (where one is defined), in phase order. A gate that
+  // selects zero controls is "undefined for this profile", not a blocker — treat it
+  // like an absent gate so it never pins phase inference (an empty discovery gate
+  // must not make every repo look stuck at "discovery").
   const gateByPhase = new Map(gates.map((g) => [g.phase, g]));
   const perPhase = PHASES.map((p) => {
     const gate = gateByPhase.get(p.key);
+    const evaluated = gate ? evaluateGate(gate, results) : null;
     return {
       phase: p.key,
       title: p.title,
-      status: gate ? evaluateGate(gate, results).status : null,
+      status:
+        evaluated && evaluated.controls.length > 0 ? evaluated.status : null,
       gate,
     };
   });
@@ -107,8 +119,11 @@ export async function runStatus(
   const defined = perPhase.filter((p) => p.status);
   const allGreen = defined.length > 0 && !firstBlocked;
 
+  // When every defined gate is green the project is at the furthest phase; derive
+  // it from the phase list rather than hardcoding "operate".
+  const lastPhase = PHASES[PHASES.length - 1]?.key ?? null;
   const report: StatusReport = {
-    inferredPhase: firstBlocked?.phase ?? (allGreen ? "operate" : null),
+    inferredPhase: firstBlocked?.phase ?? (allGreen ? lastPhase : null),
     allGreen,
     declaredPhase: profile?.phase ?? null,
     gates: perPhase

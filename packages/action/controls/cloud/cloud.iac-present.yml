@@ -1,0 +1,16 @@
+id: cloud.iac-present
+title: Infrastructure as code present
+lane: cloud
+phase: architecture
+severity: medium
+effort: large
+detect:
+  - type: file-exists
+    path: "**/*.tf|**/*.bicep|**/cloudformation*.y*ml|**/Pulumi.y*ml|**/serverless.y*ml|**/cdk.json"
+evidence: none
+references:
+  - name: AWS Well-Architected — Operational Excellence
+    url: https://docs.aws.amazon.com/wellarchitected/latest/operational-excellence-pillar/welcome.html
+rationale: >
+  Infrastructure defined as code is reviewable, reproducible, and
+  recoverable; click-ops environments drift and cannot be rebuilt reliably.

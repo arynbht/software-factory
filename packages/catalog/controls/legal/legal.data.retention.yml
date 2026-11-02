@@ -1,0 +1,22 @@
+id: legal.data.retention
+title: Retention schedule and deletion job defined
+lane: legal
+phase: requirements
+severity: high
+effort: medium
+applies:
+  all:
+    - flag: handles-pii
+detect:
+  - type: manual
+evidence: required
+fix:
+  type: claude
+  task: retention-schedule
+references:
+  - name: GDPR Art. 5(1)(e) — Storage limitation
+    url: https://gdpr-info.eu/art-5-gdpr/
+rationale: >
+  Storage limitation requires keeping PII only as long as needed, with an actual
+  deletion mechanism; a documented retention schedule and a working deletion job
+  turn that principle into enforced practice.

@@ -25,11 +25,14 @@ export async function resolveOnWindows(binary: string): Promise<string | null> {
   // only — mirroring how cmd.exe resolves a command.
   const candidates = hasExt ? [binary] : exts.map((e) => binary + e);
 
+  // Resolve only from PATH (and PATHEXT), never the current working directory.
+  // Tools run with `cwd = ctx.repoPath`, so including CWD would let a malicious
+  // repo drop a `scorecard.cmd`/`npm.cmd` in its root and have it executed ahead
+  // of the real tool — a CWD-search hijack. Modern `cmd.exe`/`where` do not search
+  // CWD for this reason.
   const dirs = isAbsolute(binary)
     ? [""]
-    : [process.cwd(), ...(process.env.PATH ?? "").split(delimiter)].filter(
-        Boolean,
-      );
+    : (process.env.PATH ?? "").split(delimiter).filter(Boolean);
 
   for (const dir of dirs) {
     for (const cand of candidates) {

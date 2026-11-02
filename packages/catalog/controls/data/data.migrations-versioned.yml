@@ -1,0 +1,16 @@
+id: data.migrations-versioned
+title: Schema migrations versioned and reversible
+lane: data
+phase: build
+severity: high
+effort: medium
+detect:
+  - type: file-exists
+    path: "**/migrations/**|**/migrate/**|prisma/migrations/**|**/alembic/**|db/migrate/**"
+evidence: none
+references:
+  - name: Twelve-Factor App — Admin processes
+    url: https://12factor.net/admin-processes
+rationale: >
+  Versioned, reversible migrations make schema change safe to deploy and roll
+  back; ad-hoc SQL against production is how data gets lost.

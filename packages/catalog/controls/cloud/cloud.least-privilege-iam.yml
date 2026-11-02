@@ -1,0 +1,15 @@
+id: cloud.least-privilege-iam
+title: Least-privilege IAM reviewed
+lane: cloud
+phase: harden
+severity: high
+effort: medium
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: AWS — IAM best practices
+    url: https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html
+rationale: >
+  Over-broad roles are the blast radius of every breach; a periodic
+  least-privilege review keeps permissions scoped to what is actually used.

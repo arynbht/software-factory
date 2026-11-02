@@ -1,0 +1,20 @@
+id: legal.cookie.consent
+title: Cookie consent for EU users with tracking
+lane: legal
+phase: launch
+severity: medium
+effort: medium
+applies:
+  all:
+    - flag: eu-users
+detect:
+  - type: file-matches
+    path: src/**|public/**|app/**
+    pattern: (?i)(cookie[- ]?consent|consent[- ]?manager|cmp|cookiebot|onetrust|klaro)
+references:
+  - name: ePrivacy Directive (cookies)
+    url: https://gdpr.eu/cookies/
+rationale: >
+  EU law requires prior informed consent for non-essential tracking cookies, so
+  a consent mechanism must be in place before tracking EU users rather than
+  relying on implied or post-hoc consent.

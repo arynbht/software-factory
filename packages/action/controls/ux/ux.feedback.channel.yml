@@ -1,0 +1,18 @@
+id: ux.feedback.channel
+title: User feedback channel exists
+lane: ux
+phase: operate
+severity: low
+effort: small
+applies:
+  all:
+    - flag: has-users
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: NN/g — Listening to users
+    url: https://www.nngroup.com/articles/listening-to-users/
+rationale: >
+  A standing channel for user feedback turns real usage into a steady stream of
+  improvements, instead of leaving the team guessing at what to fix next.

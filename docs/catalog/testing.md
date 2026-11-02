@@ -6,7 +6,7 @@ Unit, integration, end-to-end, and specialised testing with coverage expectation
 
 
 
-4 control(s).
+6 control(s).
 
 
 
@@ -20,6 +20,16 @@ Configuring coverage reporting makes test gaps visible and is the prerequisite f
 References:
   - [Google — Software Engineering at Google (Test Coverage)](https://abseil.io/resources/swe-book/html/ch11.html)
 
+### `test.data.factories` — Test data factories and a seed script exist
+
+- **phase**: build · **severity**: low · **effort**: medium
+- **detect**: `file-exists` · **fix**: claude `test-scaffold`
+
+Reusable data factories and a seed script make tests readable and deterministic and give every environment a known starting state, instead of each test hand-rolling fragile fixtures.
+
+References:
+  - [Google — Software Engineering at Google (Testing)](https://abseil.io/resources/swe-book/html/ch13.html)
+
 ### `test.e2e.present` — End-to-end tests present
 
 - **phase**: build · **severity**: low · **effort**: medium
@@ -29,6 +39,16 @@ End-to-end tests exercise the top user journeys through the real UI, catching in
 
 References:
   - [Playwright](https://playwright.dev/)
+
+### `test.integration.db` — Integration tests run against a real database in CI
+
+- **phase**: build · **severity**: medium · **effort**: medium
+- **detect**: `file-matches` · **fix**: —
+
+Integration tests against a real datastore catch schema, query, and transaction bugs that an in-memory fake hides; running them in CI keeps that coverage honest on every change rather than only on a developer's machine.
+
+References:
+  - [Google — Software Engineering at Google (Testing)](https://abseil.io/resources/swe-book/html/ch11.html)
 
 ### `test.runner.configured` — Test runner configured
 

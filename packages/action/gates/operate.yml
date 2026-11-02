@@ -1,0 +1,4 @@
+phase: operate
+title: Operate gate
+select:
+  - phase: operate

@@ -1,0 +1,17 @@
+id: cloud.rpo-rto-documented
+title: RPO and RTO written down
+lane: cloud
+phase: architecture
+severity: medium
+effort: small
+detect:
+  - type: file-matches
+    path: "docs/**/*.md|README*"
+    pattern: '(?i)\b(RPO|RTO|recovery point|recovery time)\b'
+evidence: none
+references:
+  - name: AWS — Disaster recovery objectives
+    url: https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html
+rationale: >
+  Recovery point and time objectives turn 'how much data can we lose and how
+  long can we be down' into numbers the architecture must actually meet.

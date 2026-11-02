@@ -1,0 +1,15 @@
+id: cloud.backups-restore-tested
+title: Backups configured and restore tested
+lane: cloud
+phase: harden
+severity: high
+effort: large
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: AWS Well-Architected — Reliability
+    url: https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/welcome.html
+rationale: >
+  A backup you have never restored is a hope, not a plan; this is satisfied
+  by evidence of a successful restore drill and ages out so it is re-run.

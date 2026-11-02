@@ -11,6 +11,7 @@ import { type MultiFlags, runAuditAll } from "./commands/multi.js";
 import { runProfileSet, runProfileShow } from "./commands/profile.js";
 import { type StatusFlags, runStatus } from "./commands/status.js";
 import { runWaive, type WaiveFlags } from "./commands/waive.js";
+import { today } from "./dates.js";
 
 function collect(value: string, previous: string[]): string[] {
   return [...previous, value];
@@ -93,8 +94,7 @@ export function buildProgram(): Command {
     )
     .option("--no-color", "disable coloured output")
     .action(async (path: string, flags: FixFlags) => {
-      const today = new Date().toISOString().slice(0, 10);
-      process.exitCode = await runFix(path, flags, { today });
+      process.exitCode = await runFix(path, flags, { today: today() });
     });
 
   program
@@ -134,8 +134,7 @@ export function buildProgram(): Command {
         process.exitCode = await runAiUsage(path);
         return;
       }
-      const today = new Date().toISOString().slice(0, 10);
-      process.exitCode = await runAi(task, path, flags, { today });
+      process.exitCode = await runAi(task, path, flags, { today: today() });
     });
 
   const profile = program
@@ -167,8 +166,7 @@ export function buildProgram(): Command {
     .requiredOption("--expires <date>", "expiry date (YYYY-MM-DD)")
     .option("--owner <owner>", "who owns this waiver")
     .action(async (control: string, path: string, flags: WaiveFlags) => {
-      const today = new Date().toISOString().slice(0, 10);
-      process.exitCode = await runWaive(control, flags, path, today);
+      process.exitCode = await runWaive(control, flags, path, today());
     });
 
   const evidence = program
@@ -185,8 +183,7 @@ export function buildProgram(): Command {
     .option("--reviewer <reviewer>", "who reviewed it")
     .option("--valid-for <duration>", "age-out window, e.g. 365d")
     .action(async (control: string, path: string, flags: EvidenceFlags) => {
-      const today = new Date().toISOString().slice(0, 10);
-      process.exitCode = await runEvidenceAdd(control, flags, path, today);
+      process.exitCode = await runEvidenceAdd(control, flags, path, today());
     });
 
   program

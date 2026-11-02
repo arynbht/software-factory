@@ -1,0 +1,16 @@
+id: data.analytics-taxonomy
+title: Analytics event taxonomy documented
+lane: data
+phase: build
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: "docs/analytics*|docs/events*|**/events.*|**/tracking-plan*"
+evidence: none
+references:
+  - name: Segment — Analytics tracking plan
+    url: https://segment.com/academy/collecting-data/how-to-create-a-tracking-plan/
+rationale: >
+  A documented event taxonomy keeps analytics trustworthy; without one, every
+  team invents its own names and the funnel becomes unanalysable.

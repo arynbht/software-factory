@@ -97,6 +97,28 @@ describe("githubSettingGenerator", () => {
     expect(posted).toBe(0); // already exists → no create
   });
 
+  it("creates a ruleset that requires at least one approving review", async () => {
+    const dir = await tmp();
+    let body: {
+      rules?: { type: string; parameters?: Record<string, unknown> }[];
+    } = {};
+    server.use(
+      http.get(`${REPO}/rulesets`, () => HttpResponse.json([])),
+      http.post(`${REPO}/rulesets`, async ({ request }) => {
+        body = (await request.json()) as typeof body;
+        return HttpResponse.json({ id: 1 }, { status: 201 });
+      }),
+    );
+    await applyChanges(
+      dir,
+      await githubSettingGenerator(ctx(dir), control("required-pull-request")),
+      { mode: "write" },
+    );
+    const pr = body.rules?.find((r) => r.type === "pull_request");
+    // A ruleset reporting "PR reviews required" must actually enforce one.
+    expect(pr?.parameters?.required_approving_review_count).toBe(1);
+  });
+
   it("records a failure instead of aborting when the API denies the change", async () => {
     const dir = await tmp();
     server.use(

@@ -1,0 +1,16 @@
+id: docs.onboarding-guide
+title: Onboarding / getting-started guide present
+lane: documentation
+phase: scaffold
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: "docs/onboarding*|docs/getting-started*|ONBOARDING.md|docs/CONTRIBUTING.md|CONTRIBUTING.md"
+evidence: none
+references:
+  - name: Write the Docs — Onboarding
+    url: https://www.writethedocs.org/guide/
+rationale: >
+  A getting-started guide that a fresh clone can follow is the cheapest way
+  to shorten time-to-first-contribution and catch setup rot.

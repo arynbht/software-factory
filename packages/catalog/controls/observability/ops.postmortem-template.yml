@@ -1,0 +1,16 @@
+id: ops.postmortem-template
+title: Blameless postmortem template and log
+lane: observability
+phase: operate
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: "docs/postmortem*|docs/postmortems/**|.github/**/postmortem*"
+evidence: none
+references:
+  - name: Google SRE Book — Postmortem Culture
+    url: https://sre.google/sre-book/postmortem-culture/
+rationale: >
+  A blameless template makes writing the postmortem the default after an
+  incident, so the organisation learns instead of repeating the failure.

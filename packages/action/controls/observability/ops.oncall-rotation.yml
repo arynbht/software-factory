@@ -1,0 +1,15 @@
+id: ops.oncall-rotation
+title: On-call rotation or schedule documented
+lane: observability
+phase: operate
+severity: medium
+effort: small
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: Google SRE Workbook — On-call
+    url: https://sre.google/workbook/on-call/
+rationale: >
+  A written rotation means everyone knows who responds and how escalation
+  works before an incident, not during one.

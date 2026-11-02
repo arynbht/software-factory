@@ -1,7 +1,11 @@
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 
 import { writeFileAtomic } from "../fs-atomic.js";
+import {
+  assertNoSymlinkEscape,
+  PathGuardError,
+  resolveInsideRepo,
+} from "../paths.js";
 import {
   loadState,
   managedFileUnchanged,
@@ -12,7 +16,10 @@ import {
 import type { Change } from "./types.js";
 
 export type ChangeAction =
-  "create" | "update" | "skip" | "unchanged" | "effect";
+  "create" | "update" | "skip" | "unchanged" | "suggest" | "effect";
+
+/** Suffix for a merge the factory declined to apply over a human-edited file. */
+const SUGGESTED_SUFFIX = ".factory-suggested";
 
 export interface ChangeResult {
   controlId: string;
@@ -34,10 +41,17 @@ export interface ApplyOptions {
 }
 
 /**
- * Apply a plan of changes under the merge policy (ADR-0004): a `create` file is
- * written only when absent or factory-managed-and-unchanged; a `merge` file is
- * written as its already-merged contents; effects run only in write mode. In
- * dry-run nothing is written, but each result still reports the action that would
+ * Apply a plan of changes under the merge policy (ADR-0004):
+ *  - a `create` file is written only when absent or factory-managed-and-unchanged
+ *    (never clobbering a human's file);
+ *  - a `merge` file carries its already-merged contents and is written in place —
+ *    except when the target is a file the factory previously wrote that a human has
+ *    since edited. Re-serializing over those edits is the "ambiguous merge" the
+ *    design guards against, so the merged result is written alongside as
+ *    `<path>.factory-suggested` and the human reconciles it;
+ *  - effects run only in write mode.
+ *
+ * In dry-run nothing is written, but each result still reports the action that would
  * be taken. Writes update the `.factory/state.json` managed-hash registry.
  */
 export async function applyChanges(
@@ -74,7 +88,25 @@ export async function applyChanges(
       continue;
     }
 
-    const abs = resolve(repoPath, change.path);
+    // Containment chokepoint: every read/write below goes through `abs`. Reject a
+    // path that escapes the repo (`..`/absolute) or passes through a symlink,
+    // recording a visible skip rather than aborting the whole run.
+    let abs: string;
+    try {
+      abs = resolveInsideRepo(repoPath, change.path);
+      await assertNoSymlinkEscape(repoPath, abs);
+    } catch (err) {
+      if (!(err instanceof PathGuardError)) throw err;
+      results.push({
+        controlId: change.controlId,
+        type: "file",
+        action: "skip",
+        path: change.path,
+        message: `${change.path}: refused — ${err.message}`,
+      });
+      continue;
+    }
+
     let before: string | undefined;
     try {
       before = await readFile(abs, "utf8");
@@ -98,6 +130,33 @@ export async function applyChanges(
         message: `${change.path} exists and was not written by factory; skipping (edit it yourself or delete it)`,
       });
       continue;
+    }
+
+    // Merge into a file the factory previously wrote but a human has since edited:
+    // don't re-serialize over their work. Write the merged result alongside as
+    // `<path>.factory-suggested` and leave the human's file untouched.
+    if (change.op === "merge" && before !== undefined) {
+      const recorded = state.managed[change.path];
+      const humanEdited =
+        recorded !== undefined && managedHash(before) !== recorded;
+      if (humanEdited) {
+        const suggestedPath = `${change.path}${SUGGESTED_SUFFIX}`;
+        if (write) {
+          const suggestedAbs = resolveInsideRepo(repoPath, suggestedPath);
+          await assertNoSymlinkEscape(repoPath, suggestedAbs);
+          await writeFileAtomic(suggestedAbs, change.contents);
+        }
+        results.push({
+          controlId: change.controlId,
+          type: "file",
+          action: "suggest",
+          path: suggestedPath,
+          before,
+          after: change.contents,
+          message: `${change.path} was edited since factory wrote it; wrote ${suggestedPath} to merge by hand`,
+        });
+        continue;
+      }
     }
 
     if (

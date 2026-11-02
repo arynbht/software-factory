@@ -117,6 +117,44 @@ describe("openFixPr", () => {
     expect(branches.current).toBe("main");
   });
 
+  it("returns to the base branch when opening the PR fails", async () => {
+    const work = await repoWithRemote();
+    const ctx = buildContext(work, { github: { owner: "o", repo: "r" } });
+    const boom = async (): Promise<PrResult> => {
+      throw new Error("GitHub 422");
+    };
+
+    await expect(
+      openFixPr(ctx, [fileChange("doc.readme", "README.md")], {
+        gate: "scaffold",
+        date: "2026-11-01",
+        openPr: boom,
+      }),
+    ).rejects.toThrow("GitHub 422");
+
+    const { simpleGit } = await import("simple-git");
+    const git = simpleGit(work);
+    // Despite the failure, the working tree is back on base, not the factory branch.
+    expect((await git.revparse(["--abbrev-ref", "HEAD"])).trim()).toBe("main");
+  }, 30_000);
+
+  it("refuses to run on detached HEAD", async () => {
+    const work = await repoWithRemote();
+    const { simpleGit } = await import("simple-git");
+    const git = simpleGit(work);
+    const head = (await git.revparse(["HEAD"])).trim();
+    await git.checkout(head); // detach
+    const ctx = buildContext(work, { github: { owner: "o", repo: "r" } });
+
+    await expect(
+      openFixPr(ctx, [fileChange("doc.readme", "README.md")], {
+        gate: "scaffold",
+        date: "2026-11-01",
+        openPr: fakePr([]),
+      }),
+    ).rejects.toBeInstanceOf(FixPrError);
+  }, 30_000);
+
   it("refuses to run on a dirty working tree", async () => {
     const work = await repoWithRemote();
     await writeFile(join(work, "seed.txt"), "dirty\n");

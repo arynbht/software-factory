@@ -1,0 +1,16 @@
+id: ops.slos-defined
+title: SLOs defined with error budgets
+lane: observability
+phase: harden
+severity: medium
+effort: medium
+detect:
+  - type: file-exists
+    path: "docs/slo*|**/slo*.y*ml|**/slos.*|docs/**/slo*"
+evidence: none
+references:
+  - name: Google SRE Workbook — Implementing SLOs
+    url: https://sre.google/workbook/implementing-slos/
+rationale: >
+  Explicit SLOs and error budgets turn reliability from a feeling into a
+  number that governs how aggressively the team ships.

@@ -1,0 +1,18 @@
+id: a11y.keyboard.manual-pass
+title: Keyboard-only manual pass recorded
+lane: accessibility
+phase: build
+severity: high
+effort: medium
+applies:
+  all:
+    - flag: has-users
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: WCAG 2.2 — Keyboard Accessible
+    url: https://www.w3.org/WAI/WCAG22/Understanding/keyboard-accessible
+rationale: >
+  Many access barriers only surface in a real keyboard-only pass; it is human
+  judgement and ages out, so it must be re-recorded rather than assumed.

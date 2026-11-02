@@ -1,0 +1,19 @@
+id: product.risk.register
+title: Risk register started
+lane: product
+phase: discovery
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: docs/risk-register.md|docs/risks.md|docs/**/risk*.md
+fix:
+  type: template
+  template: risk-register
+references:
+  - name: PMI — Risk Register
+    url: https://www.pmi.org/learning/library/risk-register-6813
+rationale: >
+  Tracking the top risks with their likelihood, impact, and mitigation keeps
+  known threats visible and owned rather than rediscovered late, when they are
+  more expensive to address.

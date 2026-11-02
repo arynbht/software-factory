@@ -109,6 +109,27 @@ describe("createAiClient", () => {
     );
   });
 
+  it("aborts the in-flight request when the timeout fires (no double-billing)", async () => {
+    let seenSignal: AbortSignal | undefined;
+    const transport: AiTransport = {
+      // Hang until aborted, then settle so the test doesn't leak a timer.
+      create: (_req, signal) =>
+        new Promise((_, reject) => {
+          seenSignal = signal;
+          signal?.addEventListener("abort", () =>
+            reject(new AiError("aborted", true)),
+          );
+        }),
+    };
+    const client = createAiClient({ transport, timeoutMs: 20, maxRetries: 0 });
+    await expect(client.complete({ prompt: "hi" })).rejects.toThrow(
+      /timed out/,
+    );
+    // The signal the transport received must be aborted after the timeout, so a
+    // retry doesn't run alongside a still-live server-side call.
+    expect(seenSignal?.aborted).toBe(true);
+  });
+
   it("throws AiKeyError when no key is available (real transport)", async () => {
     const saved = process.env.ANTHROPIC_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;

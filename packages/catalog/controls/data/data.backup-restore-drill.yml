@@ -1,0 +1,15 @@
+id: data.backup-restore-drill
+title: Data backup restore drill performed
+lane: data
+phase: operate
+severity: high
+effort: medium
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: Google SRE Book — Data Integrity
+    url: https://sre.google/sre-book/data-integrity/
+rationale: >
+  Restoring real data in a drill is the only proof the backup strategy works;
+  it ages out via valid-for so it is repeated, not assumed.

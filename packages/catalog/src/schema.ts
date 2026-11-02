@@ -42,7 +42,12 @@ const FileJsonPathSchema = z.object({
     .unknown()
     .optional()
     .describe("If set, the value at `path` must equal this."),
-  exists: z.boolean().optional().describe("If true, the path need only exist."),
+  exists: z
+    .boolean()
+    .optional()
+    .describe(
+      "Ignored when `equals` is set. `true` (default): pass if the path exists. `false`: pass only if the path is absent in every matched file.",
+    ),
 });
 
 const FileYamlPathSchema = z.object({
@@ -50,7 +55,12 @@ const FileYamlPathSchema = z.object({
   file: z.string().min(1),
   path: z.string().min(1).describe("Dot/bracket path into the YAML document."),
   equals: z.unknown().optional(),
-  exists: z.boolean().optional(),
+  exists: z
+    .boolean()
+    .optional()
+    .describe(
+      "Ignored when `equals` is set. `true` (default): pass if the path exists. `false`: pass only if the path is absent in every matched file.",
+    ),
 });
 
 const GithubApiCheckSchema = z.enum([

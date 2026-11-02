@@ -1,0 +1,19 @@
+id: ops.runbook-per-alert
+title: Runbook per alert
+lane: observability
+phase: operate
+severity: medium
+effort: medium
+detect:
+  - type: file-exists
+    path: "docs/runbooks/**|runbooks/**"
+evidence: none
+fix:
+  type: claude
+  task: runbook
+references:
+  - name: Google SRE Workbook — On-call
+    url: https://sre.google/workbook/on-call/
+rationale: >
+  An alert without a runbook just wakes someone up; a linked runbook turns a
+  page into a procedure.

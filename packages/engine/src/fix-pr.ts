@@ -71,6 +71,13 @@ export async function openFixPr(
   }
 
   const base = (await git.revparse(["--abbrev-ref", "HEAD"])).trim();
+  // Detached HEAD reports the literal "HEAD"; opening a PR against it 422s and
+  // would strand the user on the factory branch, so refuse up front.
+  if (base === "HEAD" || base === "") {
+    throw new FixPrError(
+      "HEAD is detached; check out a branch before running fix --pr",
+    );
+  }
   const branch = `factory/${options.date}-${options.gate}`;
 
   const fileChanges = changes.filter((c) => c.type === "file");
@@ -149,17 +156,22 @@ export async function openFixPr(
     };
   }
 
-  await git.push([remote, branch, "--set-upstream"]);
+  // Always return the working tree to the base branch, even if the push or the
+  // PR call fails partway through -- otherwise the user is left on the branch.
+  let pr: PrResult;
+  try {
+    await git.push([remote, branch, "--set-upstream"]);
 
-  const openPr = options.openPr ?? (await defaultOpenPr(ctx));
-  const pr = await openPr({
-    head: branch,
-    base,
-    title: prTitle(commits.length, options.gate),
-    body: prBody(commits, skippedEffects),
-  });
-
-  await git.checkout(base);
+    const openPr = options.openPr ?? (await defaultOpenPr(ctx));
+    pr = await openPr({
+      head: branch,
+      base,
+      title: prTitle(commits.length, options.gate),
+      body: prBody(commits, skippedEffects),
+    });
+  } finally {
+    await git.checkout(base).catch(() => undefined);
+  }
 
   return {
     branch,

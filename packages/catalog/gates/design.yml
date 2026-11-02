@@ -1,0 +1,4 @@
+phase: design
+title: Design gate
+select:
+  - phase: design

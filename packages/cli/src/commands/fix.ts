@@ -22,6 +22,7 @@ import {
   WaiverError,
 } from "@arynbht/factory-engine";
 
+import { today as isoToday } from "../dates.js";
 import { renderFixPlan } from "../report.js";
 
 export interface FixFlags {
@@ -133,7 +134,13 @@ export async function runFix(
   const fixIds = new Set(toFix.map((r) => r.controlId));
   const controlsToFix = candidates.filter((c) => fixIds.has(c.id) && c.fix);
 
-  const changes = await planControls(ctx, controlsToFix);
+  const { changes, errors: genErrors } = await planControls(ctx, controlsToFix);
+  // Surface generator failures instead of silently reporting "nothing to fix".
+  for (const e of genErrors) {
+    console.error(
+      `factory fix: generator for ${e.controlId} (${e.fixType}) failed: ${e.message}`,
+    );
+  }
   const color = flags.color !== false && process.stdout.isTTY === true;
 
   if (flags.pr) {
@@ -153,14 +160,14 @@ export async function runFix(
 /** The `--pr` path: branch, commit-per-control, push, open/reuse a PR. */
 async function runFixPr(
   ctx: ReturnType<typeof buildContext>,
-  changes: Awaited<ReturnType<typeof planControls>>,
+  changes: Awaited<ReturnType<typeof planControls>>["changes"],
   controlsToFix: Control[],
   flags: FixFlags,
   options: RunFixOptions,
   color: boolean,
 ): Promise<number> {
   const titles = Object.fromEntries(controlsToFix.map((c) => [c.id, c.title]));
-  const today = options.today ?? new Date().toISOString().slice(0, 10);
+  const today = options.today ?? isoToday();
   const prOptions: FixPrOptions = {
     gate: flags.gate ?? "all",
     date: today,

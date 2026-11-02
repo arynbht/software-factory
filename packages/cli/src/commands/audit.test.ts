@@ -77,6 +77,29 @@ describe("runAudit (integration)", () => {
     expect(code).toBe(1);
   });
 
+  it("keeps stdout valid JSON when --json is combined with --gate", async () => {
+    const dir = await tempRepo();
+    const out: string[] = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      out.push(String(chunk));
+      return true;
+    });
+    vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    const code = await runAudit(
+      dir,
+      { json: true, gate: "all" },
+      { token: null },
+    );
+
+    // Red gate on an empty repo → exit 1, but stdout must still parse as JSON.
+    expect(code).toBe(1);
+    const parsed = JSON.parse(out.join(""));
+    expect(Array.isArray(parsed.controls)).toBe(true);
+    expect(Array.isArray(parsed.gates)).toBe(true);
+    expect(parsed.gates[0]).toHaveProperty("status");
+  });
+
   it("errors when --json and a conflicting --format are both given", async () => {
     vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     const code = await runAudit(

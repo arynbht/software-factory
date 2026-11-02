@@ -1,0 +1,17 @@
+id: perf.lighthouse-ci
+title: Lighthouse CI in the pipeline
+lane: performance
+phase: harden
+severity: low
+effort: medium
+detect:
+  - type: file-matches
+    path: ".github/workflows/*.y*ml|.lighthouserc*|lighthouserc*"
+    pattern: "(?i)(lighthouse|lhci|treosh/lighthouse)"
+evidence: none
+references:
+  - name: Lighthouse CI
+    url: https://github.com/GoogleChrome/lighthouse-ci
+rationale: >
+  Running Lighthouse on every change tracks Core Web Vitals over time and
+  flags regressions before users feel them.

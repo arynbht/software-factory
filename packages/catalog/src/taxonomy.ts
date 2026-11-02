@@ -115,7 +115,6 @@ export const LANES = [
 ] as const satisfies readonly LaneDef[];
 
 export type LaneKey = (typeof LANES)[number]["key"];
-export type LaneCode = (typeof LANES)[number]["code"];
 
 export const LANE_KEYS = LANES.map((l) => l.key) as [LaneKey, ...LaneKey[]];
 
@@ -123,7 +122,8 @@ export const LANE_BY_KEY: Record<LaneKey, LaneDef> = Object.fromEntries(
   LANES.map((l) => [l.key, l]),
 ) as Record<LaneKey, LaneDef>;
 
-export interface PhaseDef {
+// Internal: shapes the PHASES literal below. Not part of the public barrel.
+interface PhaseDef {
   key: string;
   /** 1-based order; a lower phase is "earlier" in a project's lifecycle. */
   order: number;
@@ -193,10 +193,6 @@ export type PhaseKey = (typeof PHASES)[number]["key"];
 
 export const PHASE_KEYS = PHASES.map((p) => p.key) as [PhaseKey, ...PhaseKey[]];
 
-export const PHASE_BY_KEY: Record<PhaseKey, PhaseDef> = Object.fromEntries(
-  PHASES.map((p) => [p.key, p]),
-) as Record<PhaseKey, PhaseDef>;
-
 export const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 export type Severity = (typeof SEVERITIES)[number];
 
@@ -211,7 +207,6 @@ export const PROJECT_TYPES = [
   "data-pipeline",
   "monorepo",
 ] as const;
-export type ProjectType = (typeof PROJECT_TYPES)[number];
 
 /**
  * The closed set of risk flags a profile may set. A closed set means a typo
@@ -233,8 +228,6 @@ export const FLAG_KEYS = [
   "distributes-binaries",
   "multi-service",
 ] as const;
-export type FlagKey = (typeof FLAG_KEYS)[number];
 
 /** Rough implementation effort tag (used for prioritisation; wired fully in M6). */
 export const EFFORTS = ["small", "medium", "large"] as const;
-export type Effort = (typeof EFFORTS)[number];

@@ -1,0 +1,18 @@
+id: ux.copy.guidelines
+title: Copy and tone guidelines recorded
+lane: ux
+phase: design
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: "docs/**/content*.md|docs/**/copy*.md|docs/**/voice*.md|docs/**/tone*.md"
+fix:
+  type: claude
+  task: copy-guidelines
+references:
+  - name: Material Design — Writing
+    url: https://m2.material.io/design/communication/writing.html
+rationale: >
+  A short voice and tone guide keeps product copy consistent and on-brand across
+  contributors, so the product speaks with one voice as more people write it.

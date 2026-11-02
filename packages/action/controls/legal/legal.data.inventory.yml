@@ -1,0 +1,22 @@
+id: legal.data.inventory
+title: Data inventory and map maintained
+lane: legal
+phase: requirements
+severity: high
+effort: medium
+applies:
+  all:
+    - flag: handles-pii
+detect:
+  - type: manual
+evidence: required
+fix:
+  type: claude
+  task: data-inventory
+references:
+  - name: GDPR Art. 30 — Records of processing
+    url: https://gdpr-info.eu/art-30-gdpr/
+rationale: >
+  You cannot protect or delete data you have not inventoried; Art. 30 requires
+  records of processing, so maintaining a data inventory and map is the
+  foundation for every downstream privacy obligation.
