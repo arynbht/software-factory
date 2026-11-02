@@ -89,7 +89,11 @@ describe("applyChanges", () => {
       { mode: "write" },
     );
     expect(r?.action).toBe("update");
-    expect(await readFile(join(dir, "ci.yml"), "utf8")).toContain("new: step");
+    // Exact content: a weaker `toContain` wouldn't catch a merge that dropped
+    // or duplicated pre-existing keys.
+    expect(await readFile(join(dir, "ci.yml"), "utf8")).toBe(
+      "jobs:\n  new: step\n",
+    );
   });
 
   it("runs an effect only in write mode", async () => {

@@ -13,9 +13,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
-    name: ci
-    runs-on: ubuntu-latest
+  build-test:
+    name: build-test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        # Use bash on every OS so the multi-line scripts (and tools like `test`)
+        # behave identically; Git Bash ships on the Windows runners.
+        shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,6 +71,15 @@ jobs:
             packages/action/gates \
             packages/action/templates \
             packages/action/dist/SOURCE_SHA256
+
+  # Single required status check ("ci") that gates on every matrix leg, so branch
+  # protection needs just one context regardless of how many OSes the matrix runs.
+  ci:
+    name: ci
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "all build-test legs passed"
 
   # Secret-scanning backstop: the pre-commit hook (lefthook + gitleaks) can be
   # bypassed with --no-verify, so CI scans the full history as well.

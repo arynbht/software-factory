@@ -88,4 +88,19 @@ describe("openOrReusePr", () => {
       body: "updated body",
     });
   });
+
+  it("propagates an API error (e.g. 500) rather than swallowing it", async () => {
+    server.use(
+      http.get(`${REPO}/pulls`, () => HttpResponse.json([])),
+      http.post(`${REPO}/pulls`, () => new HttpResponse(null, { status: 500 })),
+    );
+    await expect(
+      openOrReusePr(await client(), {
+        head: "factory/2026-11-01-scaffold",
+        base: "main",
+        title: "t",
+        body: "b",
+      }),
+    ).rejects.toThrow();
+  });
 });
