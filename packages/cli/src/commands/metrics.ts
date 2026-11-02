@@ -84,7 +84,7 @@ function render(m: Metrics, historyPoints: number): string {
   const lines = [
     `DORA metrics (last ${m.windowDays} days)`,
     "",
-    `  Deployment frequency   ${m.deploymentFrequencyPerWeek.toFixed(2)} / week`,
+    `  Deployment frequency   ${num(m.deploymentFrequencyPerWeek, " / week", 2)}`,
     `  Lead time for changes  ${num(m.leadTimeHoursMedian, " h (median)")}`,
     `  Change failure rate    ${
       m.changeFailureRate === null

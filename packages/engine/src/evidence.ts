@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 import { CONTROL_ID_PATTERN } from "@arynbht/factory-catalog";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
-import { DAY_MS, endOfDayMs } from "./dates.js";
+import { DAY_MS, startOfDayMs } from "./dates.js";
 import { writeFileAtomic } from "./fs-atomic.js";
 
 export class EvidenceError extends Error {}
@@ -77,7 +77,12 @@ export function parseDuration(value: string): number | null {
 /** An entry is valid if it is dated and (if `valid-for` is set) not yet expired. */
 export function isEvidenceValid(entry: EvidenceEntry, now: Date): boolean {
   if (!entry.date) return false;
-  const start = endOfDayMs(entry.date);
+  // Anchor the window to the START of the issue date so a `valid-for: 30d`
+  // entry dated 2026-10-01 expires at 2026-10-31T00:00:00Z. Anchoring to the
+  // end of the start day instead would grant one extra day and make the
+  // evidence window asymmetric with waiver expiry (which ends at the start of
+  // its expiry day's window).
+  const start = startOfDayMs(entry.date);
   if (start === null) return false;
 
   const window = entry["valid-for"];
@@ -112,7 +117,9 @@ export function evidenceExpiringWithin(
   return entries.filter((e) => {
     if (!isEvidenceValid(e, now) || !e.date || !e["valid-for"]) return false;
     const durationDays = parseDuration(e["valid-for"]);
-    const start = endOfDayMs(e.date);
+    // Same start-of-day anchor as isEvidenceValid, so the "expiring within"
+    // window agrees with the validity decision above.
+    const start = startOfDayMs(e.date);
     if (durationDays === null || start === null) return false;
     return start + durationDays * DAY_MS <= horizon;
   });
