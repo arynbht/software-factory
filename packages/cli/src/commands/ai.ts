@@ -9,17 +9,21 @@ import {
 import {
   type AiClient,
   AiKeyError,
+  appendUsage,
   applyChanges,
   buildContext,
+  estimateCost,
   evaluateControls,
   EvidenceError,
   type FixPrOptions,
   FixPrError,
   generateArtifact,
+  loadUsage,
   openFixPr,
   type PromptError,
   ProfileError,
   resolveToken,
+  summarizeUsage,
   WaiverError,
 } from "@arynbht/factory-engine";
 
@@ -147,7 +151,19 @@ export async function runAi(
     throw err;
   }
 
-  const usageLine = `\nModel ${result.model} · ${result.usage.inputTokens} in / ${result.usage.outputTokens} out tokens · files consulted: ${
+  // Record the call so `factory ai usage` can report the running cost.
+  const costUsd = estimateCost(result.model, result.usage);
+  await appendUsage(root, {
+    date: today,
+    task,
+    model: result.model,
+    inputTokens: result.usage.inputTokens,
+    outputTokens: result.usage.outputTokens,
+    costUsd,
+  }).catch(() => undefined); // logging must never fail the command
+
+  const costLabel = costUsd > 0 ? ` · ~$${costUsd.toFixed(4)}` : "";
+  const usageLine = `\nModel ${result.model} · ${result.usage.inputTokens} in / ${result.usage.outputTokens} out tokens${costLabel} · files consulted: ${
     result.includedFiles.length > 0 ? result.includedFiles.join(", ") : "none"
   }${result.truncated ? " (context truncated to fit)" : ""}`;
 
@@ -188,4 +204,35 @@ export async function runAi(
 
 function isPromptError(err: unknown): err is PromptError {
   return err instanceof Error && err.name === "PromptError";
+}
+
+/** `factory ai usage` — summarize `.factory/ai-usage.log`. */
+export async function runAiUsage(path: string): Promise<number> {
+  const root = resolve(path);
+  const entries = await loadUsage(root);
+  if (entries.length === 0) {
+    process.stdout.write("No AI usage recorded yet.\n");
+    return 0;
+  }
+  const s = summarizeUsage(entries);
+  const lines = [
+    `AI usage — ${s.calls} call${s.calls === 1 ? "" : "s"}, ${s.inputTokens} in / ${s.outputTokens} out tokens, ~$${s.costUsd.toFixed(4)} total`,
+    "",
+    "By task:",
+    ...Object.entries(s.byTask)
+      .sort((a, b) => b[1].costUsd - a[1].costUsd)
+      .map(
+        ([task, t]) =>
+          `  ${task}: ${t.calls} call(s), ~$${t.costUsd.toFixed(4)}`,
+      ),
+    "",
+    "By day:",
+    ...Object.entries(s.byDay)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(
+        ([day, d]) => `  ${day}: ${d.calls} call(s), ~$${d.costUsd.toFixed(4)}`,
+      ),
+  ];
+  process.stdout.write(`${lines.join("\n")}\n`);
+  return 0;
 }

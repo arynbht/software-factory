@@ -11,7 +11,7 @@ import {
 } from "@arynbht/factory-engine";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { runAi } from "./ai.js";
+import { runAi, runAiUsage } from "./ai.js";
 
 const git = promisify(execFile);
 const GIT = (cwd: string, ...args: string[]) => git("git", args, { cwd });
@@ -102,6 +102,43 @@ describe("runAi", () => {
     );
     expect(code).toBe(1);
     expect(errs.join("")).toMatch(/unknown task/);
+  });
+
+  it("records usage and `ai usage` summarizes it", async () => {
+    const dir = await tmp();
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(join(dir, ".factory"), { recursive: true });
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    await runAi(
+      "explain-gaps",
+      dir,
+      { write: true },
+      { client: recorded, today: "2026-11-01", token: null },
+    );
+    expect(await exists(join(dir, ".factory", "ai-usage.log"))).toBe(true);
+
+    const out: string[] = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((c) => {
+      out.push(String(c));
+      return true;
+    });
+    const code = await runAiUsage(dir);
+    expect(code).toBe(0);
+    const text = out.join("");
+    expect(text).toMatch(/AI usage — 1 call/);
+    expect(text).toContain("explain-gaps");
+  });
+
+  it("`ai usage` reports nothing when there's no log", async () => {
+    const dir = await tmp();
+    const out: string[] = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((c) => {
+      out.push(String(c));
+      return true;
+    });
+    expect(await runAiUsage(dir)).toBe(0);
+    expect(out.join("")).toMatch(/No AI usage recorded/);
   });
 
   it("opens a PR for the generated artifact", async () => {
