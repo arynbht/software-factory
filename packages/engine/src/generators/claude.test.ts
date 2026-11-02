@@ -55,6 +55,41 @@ describe("claude generator", () => {
     expect(contents).toContain("Spoofing");
   });
 
+  it("makes no change (and no AI call) when the draft already exists", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "factory-claude-"));
+    made.push(dir);
+    let calls = 0;
+    const counting: AiTransport = {
+      create: async () => {
+        calls++;
+        return {
+          text: "x",
+          usage: { inputTokens: 1, outputTokens: 1 },
+          model: "claude-sonnet-4-6",
+        };
+      },
+    };
+    const ctx = buildContext(dir, {
+      now: new Date("2026-11-01T00:00:00Z"),
+      ai: { transport: counting },
+    });
+    const control = {
+      id: "sec.threat-model",
+      fix: { type: "claude", task: "explain-gaps" },
+    } as Control;
+
+    // First run generates the draft.
+    expect(await claudeGenerator(ctx, control)).toHaveLength(1);
+    expect(calls).toBe(1);
+
+    // Write the draft to disk, then a second run is a no-op with no API call.
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    await mkdir(join(dir, "docs"), { recursive: true });
+    await writeFile(join(dir, "docs", "factory-gaps.md"), "already drafted\n");
+    expect(await claudeGenerator(ctx, control)).toEqual([]);
+    expect(calls).toBe(1);
+  });
+
   it("returns nothing for a non-claude fix", async () => {
     const dir = await mkdtemp(join(tmpdir(), "factory-claude-"));
     made.push(dir);
