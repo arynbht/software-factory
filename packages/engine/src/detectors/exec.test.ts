@@ -109,4 +109,22 @@ describe("resolveOnWindows", () => {
 
     expect(await resolveOnWindows("tool.exe")).toBe(join(dir, "tool.exe"));
   });
+
+  it("does not resolve a bare command from the current working directory", async () => {
+    // A malicious repo can drop a `scorecard.cmd` in its root; tools run with
+    // `cwd = repoPath`, so resolving against CWD would be a code-execution hijack.
+    // The resolver must consult PATH only.
+    const dir = await mkdtemp(join(tmpdir(), "factory-cwd-"));
+    made.push(dir);
+    await writeFile(join(dir, "tool.cmd"), "@echo off\n", "utf8");
+    const savedCwd = process.cwd();
+    try {
+      process.chdir(dir); // the tool now sits in CWD but not on PATH
+      process.env.PATH = ""; // nothing on PATH
+      process.env.PATHEXT = ".com;.exe;.bat;.cmd";
+      expect(await resolveOnWindows("tool")).toBeNull();
+    } finally {
+      process.chdir(savedCwd);
+    }
+  });
 });
