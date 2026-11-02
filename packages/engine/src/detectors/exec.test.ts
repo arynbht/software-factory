@@ -1,8 +1,15 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { runTool, splitArgs, ToolNotFoundError } from "./exec.js";
+import {
+  resolveOnWindows,
+  runTool,
+  splitArgs,
+  ToolNotFoundError,
+} from "./exec.js";
 
 const isWindows = process.platform === "win32";
 
@@ -51,5 +58,55 @@ describe("runTool", () => {
 describe("splitArgs", () => {
   it("splits on whitespace and drops empties", () => {
     expect(splitArgs("  npm   install ")).toEqual(["npm", "install"]);
+  });
+});
+
+// resolveOnWindows is platform-agnostic logic (it just consults PATH/PATHEXT and
+// the filesystem), so we can exercise it on any OS by controlling the environment.
+describe("resolveOnWindows", () => {
+  const made: string[] = [];
+  const savedPath = process.env.PATH;
+  const savedExt = process.env.PATHEXT;
+  afterEach(async () => {
+    for (const d of made) await rm(d, { recursive: true, force: true });
+    made.length = 0;
+    process.env.PATH = savedPath;
+    process.env.PATHEXT = savedExt;
+  });
+
+  // Lowercase PATHEXT + lowercase filenames so the candidate `tool.cmd` matches on
+  // both case-sensitive (Linux CI) and case-insensitive (Windows) filesystems.
+  it("resolves a .cmd shim and ignores a coexisting extensionless file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "factory-which-"));
+    made.push(dir);
+    // A bare `tool` (bash shim) next to `tool.cmd` — only the .cmd is runnable.
+    await writeFile(join(dir, "tool"), "#!/bin/sh\n", "utf8");
+    await writeFile(join(dir, "tool.cmd"), "@echo off\n", "utf8");
+    process.env.PATH = dir;
+    process.env.PATHEXT = ".com;.exe;.bat;.cmd";
+
+    const resolved = await resolveOnWindows("tool");
+    expect(resolved).toBe(join(dir, "tool.cmd"));
+  });
+
+  it("returns null when nothing with an executable extension is found", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "factory-which-"));
+    made.push(dir);
+    await writeFile(join(dir, "tool"), "#!/bin/sh\n", "utf8"); // bare only
+    process.env.PATH = dir;
+    process.env.PATHEXT = ".com;.exe;.bat;.cmd";
+
+    expect(await resolveOnWindows("tool")).toBeNull();
+    expect(await resolveOnWindows("absent")).toBeNull();
+  });
+
+  it("honours an explicit extension", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "factory-which-"));
+    made.push(dir);
+    await writeFile(join(dir, "tool.exe"), "MZ", "utf8");
+    process.env.PATH = dir;
+    process.env.PATHEXT = ".com;.exe;.bat;.cmd";
+
+    expect(await resolveOnWindows("tool.exe")).toBe(join(dir, "tool.exe"));
   });
 });

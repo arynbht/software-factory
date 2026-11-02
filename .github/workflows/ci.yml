@@ -14,8 +14,17 @@ concurrency:
 
 jobs:
   ci:
-    name: ci
-    runs-on: ubuntu-latest
+    name: ci (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        # Use bash on every OS so the multi-line scripts (and tools like `test`)
+        # behave identically; Git Bash ships on the Windows runners.
+        shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -12,6 +12,7 @@ import {
   buildContext,
   evaluateControls,
   EvidenceError,
+  type FixPrOptions,
   FixPrError,
   openFixPr,
   planControls,
@@ -38,6 +39,8 @@ export interface RunFixOptions {
   token?: string | null | undefined;
   /** Today's date as YYYY-MM-DD, for the --pr branch name (CLI passes it in). */
   today?: string | undefined;
+  /** Override the PR-opening step (tests inject a fake; omit in production). */
+  openPr?: FixPrOptions["openPr"] | undefined;
 }
 
 /** Non-passing statuses that a fix should try to remediate. */
@@ -157,12 +160,14 @@ async function runFixPr(
 ): Promise<number> {
   const titles = Object.fromEntries(controlsToFix.map((c) => [c.id, c.title]));
   const today = options.today ?? new Date().toISOString().slice(0, 10);
+  const prOptions: FixPrOptions = {
+    gate: flags.gate ?? "all",
+    date: today,
+    titles,
+  };
+  if (options.openPr) prOptions.openPr = options.openPr;
   try {
-    const result = await openFixPr(ctx, changes, {
-      gate: flags.gate ?? "all",
-      date: today,
-      titles,
-    });
+    const result = await openFixPr(ctx, changes, prOptions);
 
     process.stdout.write(
       `${renderFixPlan(result.changeResults, true, color)}\n`,
