@@ -3,8 +3,66 @@ import type {
   ControlResult,
   ControlStatus,
   GateResult,
+  GateStatus,
 } from "@arynbht/factory-engine";
 import pc from "picocolors";
+
+export interface StatusBlocker {
+  controlId: string;
+  title: string;
+  status: ControlStatus;
+  severity: string;
+  effort: string;
+}
+
+export interface StatusReport {
+  inferredPhase: string | null;
+  allGreen: boolean;
+  declaredPhase: string | null;
+  gates: { phase: string; title: string; status: GateStatus }[];
+  blockers: StatusBlocker[];
+}
+
+/** Render `factory status`: inferred phase, gate states, and blockers. */
+export function renderStatus(report: StatusReport, color = true): string {
+  const c = pc.createColors(color);
+  const tint = (s: GateStatus): string =>
+    s === "green" ? c.green(s) : s === "red" ? c.red(s) : c.yellow(s);
+
+  const lines: string[] = [];
+  if (report.allGreen) {
+    lines.push(c.green("All defined gates are green. 🎉"));
+  } else if (report.inferredPhase) {
+    lines.push(`Inferred phase: ${c.bold(report.inferredPhase)}`);
+  } else {
+    lines.push(c.dim("No gates are defined to infer a phase."));
+  }
+  if (report.declaredPhase) {
+    lines.push(c.dim(`Declared phase (floor): ${report.declaredPhase}`));
+  }
+
+  if (report.gates.length > 0) {
+    lines.push("", c.bold("Gates"));
+    for (const g of report.gates) {
+      lines.push(`  ${g.phase.padEnd(12)} ${tint(g.status)}`);
+    }
+  }
+
+  if (report.blockers.length > 0) {
+    lines.push("", c.bold("Blocking (severity, then effort)"));
+    const idWidth = Math.max(...report.blockers.map((b) => b.controlId.length));
+    for (const b of report.blockers) {
+      const sev =
+        b.severity === "critical" || b.severity === "high"
+          ? c.red(b.severity)
+          : c.yellow(b.severity);
+      lines.push(
+        `  ${b.controlId.padEnd(idWidth)}  ${sev} · ${b.effort} · ${c.dim(b.title)}`,
+      );
+    }
+  }
+  return lines.join("\n");
+}
 
 export interface Summary {
   pass: number;
