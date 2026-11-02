@@ -2,9 +2,12 @@ import { FolderPlus, Play, RefreshCw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AuthControls } from "@/components/AuthControls";
+import { ProfileForm } from "@/components/ProfileForm";
 import { Scorecard } from "@/components/Scorecard";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/errors";
+
+type View = "scorecard" | "profile";
 
 import type { RepoEntry, Scorecard as ScorecardData } from "../shared/ipc";
 
@@ -17,6 +20,7 @@ export function App() {
   const [scorecard, setScorecard] = useState<ScorecardData | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<View>("scorecard");
 
   useEffect(() => {
     if (!bridgeReady) return;
@@ -46,6 +50,7 @@ export function App() {
     setSelected(path);
     setScorecard(null);
     setError(null);
+    setView("scorecard");
   }
 
   async function handleAudit(): Promise<void> {
@@ -146,33 +151,60 @@ export function App() {
                   {selectedRepo.path}
                 </p>
               </div>
-              <Button onClick={() => void handleAudit()} disabled={running}>
-                {running ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-                {running ? "Auditing…" : "Run audit"}
-              </Button>
+              {view === "scorecard" && (
+                <Button onClick={() => void handleAudit()} disabled={running}>
+                  {running ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                  {running ? "Auditing…" : "Run audit"}
+                </Button>
+              )}
             </div>
 
-            {error && (
-              <p
-                className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-rose-300"
-                role="alert"
-              >
-                {error}
-              </p>
-            )}
+            <div className="flex gap-4 border-b border-border text-sm">
+              {(["scorecard", "profile"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setView(v)}
+                  className={`-mb-px border-b-2 px-1 pb-2 capitalize ${
+                    view === v
+                      ? "border-sky-500 text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
 
-            {scorecard ? (
-              <Scorecard data={scorecard} />
+            {view === "scorecard" ? (
+              <>
+                {error && (
+                  <p
+                    className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-rose-300"
+                    role="alert"
+                  >
+                    {error}
+                  </p>
+                )}
+                {scorecard ? (
+                  <Scorecard data={scorecard} />
+                ) : (
+                  !running && (
+                    <p className="text-sm text-muted-foreground">
+                      Run an audit to see the lane scorecard.
+                    </p>
+                  )
+                )}
+              </>
             ) : (
-              !running && (
-                <p className="text-sm text-muted-foreground">
-                  Run an audit to see the lane scorecard.
-                </p>
-              )
+              <ProfileForm
+                repoPath={selectedRepo.path}
+                repoName={selectedRepo.name}
+              />
             )}
           </div>
         ) : (

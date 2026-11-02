@@ -2,6 +2,7 @@
 // typed, allow-listed API over contextBridge; the renderer never touches
 // ipcRenderer, fs, git, or the network. Every request is zod-validated before it
 // leaves and every response is zod-validated before the renderer sees it.
+import type { Profile } from "@arynbht/factory-catalog";
 import { contextBridge, ipcRenderer } from "electron";
 
 import {
@@ -12,6 +13,9 @@ import {
   IpcChannel,
   PingRequest,
   PingResponse,
+  ProfileLoadRequest,
+  ProfileMeta,
+  ProfileSaveRequest,
   RepoList,
   RepoRemoveRequest,
   Scorecard,
@@ -79,6 +83,32 @@ const api = {
       return () => {
         ipcRenderer.removeListener(IpcChannel.AuthUpdate, listener);
       };
+    },
+  },
+
+  profile: {
+    /** The catalog enum lists that drive the form (types, flags, lanes, …). */
+    async meta() {
+      const raw: unknown = await ipcRenderer.invoke(IpcChannel.ProfileMeta);
+      return ProfileMeta.parse(raw);
+    },
+    /** The repo's profile, or null if it has none. Validated by the engine. */
+    async load(repoPath: string): Promise<Profile | null> {
+      const request = ProfileLoadRequest.parse({ repoPath });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.ProfileLoad,
+        request,
+      );
+      return raw as Profile | null;
+    },
+    /** Write the profile with a minimal diff; returns the saved profile. */
+    async save(repoPath: string, profile: Profile): Promise<Profile> {
+      const request = ProfileSaveRequest.parse({ repoPath, profile });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.ProfileSave,
+        request,
+      );
+      return raw as Profile;
     },
   },
 };

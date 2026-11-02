@@ -17,6 +17,9 @@ export const IpcChannel = {
   AuthSignOut: "auth:signOut",
   /** Push channel (main → renderer): sign-in progress after the device code. */
   AuthUpdate: "auth:update",
+  ProfileLoad: "profile:load",
+  ProfileSave: "profile:save",
+  ProfileMeta: "profile:meta",
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
@@ -126,3 +129,23 @@ export const AuthUpdate = z.discriminatedUnion("status", [
   z.object({ status: z.literal("error"), message: z.string() }),
 ]);
 export type AuthUpdate = z.infer<typeof AuthUpdate>;
+
+// Profile — the form is driven by this metadata (the catalog's enum lists), so
+// the renderer never imports the catalog (which pulls node:fs). The profile
+// object itself is validated by the engine on load/save, not at this boundary.
+const LabeledKey = z.object({ key: z.string(), title: z.string() });
+
+export const ProfileMeta = z.object({
+  types: z.array(z.string()),
+  phases: z.array(LabeledKey),
+  flags: z.array(z.string()),
+  lanes: z.array(LabeledKey),
+  severities: z.array(z.string()),
+});
+export type ProfileMeta = z.infer<typeof ProfileMeta>;
+
+export const ProfileLoadRequest = z.object({ repoPath: z.string().min(1) });
+export const ProfileSaveRequest = z.object({
+  repoPath: z.string().min(1),
+  profile: z.unknown(),
+});

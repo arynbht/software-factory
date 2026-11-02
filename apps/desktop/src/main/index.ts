@@ -4,6 +4,15 @@ import { join } from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 
 import {
+  FLAG_KEYS,
+  LANES,
+  PHASES,
+  PROJECT_TYPES,
+  SEVERITIES,
+} from "@arynbht/factory-catalog";
+import { loadProfile, updateProfile } from "@arynbht/factory-engine";
+
+import {
   AuditRunRequest,
   AuthStatus,
   type AuthUpdate,
@@ -11,6 +20,9 @@ import {
   IpcChannel,
   PingRequest,
   type PingResponse,
+  ProfileLoadRequest,
+  ProfileMeta,
+  ProfileSaveRequest,
   RepoList,
   RepoRemoveRequest,
   Scorecard,
@@ -23,6 +35,17 @@ import {
 import { clearToken, loadToken, saveToken } from "./auth/token-store";
 import { runAudit } from "./engine/audit";
 import { addRepo, listRepos, removeRepo } from "./store/repos";
+
+/** Enum lists that drive the renderer's Profile form (keeps the catalog out of it). */
+function buildProfileMeta(): ProfileMeta {
+  return {
+    types: [...PROJECT_TYPES],
+    phases: PHASES.map((p) => ({ key: p.key, title: p.title })),
+    flags: [...FLAG_KEYS],
+    lanes: LANES.map((l) => ({ key: l.key, title: l.title })),
+    severities: [...SEVERITIES],
+  };
+}
 
 // In dev the renderer is served by Vite (HMR needs a looser policy); in prod it
 // loads from the bundle under a strict self-only policy. Either way: no remote
@@ -252,6 +275,21 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.AuthSignOut, async () => {
     await clearToken();
     return AuthStatus.parse({ signedIn: false, login: null });
+  });
+
+  ipcMain.handle(IpcChannel.ProfileMeta, () =>
+    ProfileMeta.parse(buildProfileMeta()),
+  );
+
+  ipcMain.handle(IpcChannel.ProfileLoad, async (_event, raw: unknown) => {
+    const { repoPath } = ProfileLoadRequest.parse(raw);
+    return loadProfile(repoPath); // Profile | null, validated by the engine
+  });
+
+  ipcMain.handle(IpcChannel.ProfileSave, async (_event, raw: unknown) => {
+    const { repoPath, profile } = ProfileSaveRequest.parse(raw);
+    // updateProfile validates against the schema and writes a minimal diff.
+    return updateProfile(repoPath, profile);
   });
 }
 
