@@ -24,6 +24,8 @@ import {
 import {
   exitCodeFor,
   renderGate,
+  renderGatesGithub,
+  renderGatesMarkdown,
   renderReport,
   type ReportFormat,
   summarize,
@@ -112,17 +114,63 @@ export async function runAudit(
   });
 
   const format: ReportFormat = flags.json ? "json" : (flags.format ?? "table");
+  const machine = format !== "table";
   // Honour --no-color, NO_COLOR, and non-TTY output; otherwise colourise.
   const color =
     flags.color !== false &&
     !process.env.NO_COLOR &&
     process.stdout.isTTY === true;
-  process.stdout.write(`${renderReport(results, { format, color })}\n`);
 
+  // Evaluate the requested gate(s) up front so the output path can fold them
+  // into the machine report instead of appending human text that corrupts it.
+  let gateResults: GateResult[] | null = null;
+  if (flags.gate) {
+    const resolved = await resolveGates(flags.gate, results);
+    if ("error" in resolved) {
+      console.error(resolved.error);
+      return 1;
+    }
+    gateResults = resolved.gates;
+  }
+
+  if (format === "json") {
+    const payload: Record<string, unknown> = {
+      summary: summarize(results),
+      controls: results,
+    };
+    if (gateResults) {
+      payload["gates"] = gateResults.map((g) => ({
+        phase: g.phase,
+        title: g.title ?? null,
+        status: g.status,
+      }));
+    }
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+  } else {
+    process.stdout.write(`${renderReport(results, { format, color })}\n`);
+    if (gateResults) {
+      if (format === "markdown") {
+        process.stdout.write(`${renderGatesMarkdown(gateResults)}\n`);
+      } else if (format === "github") {
+        process.stdout.write(`${renderGatesGithub(gateResults)}\n`);
+      } else {
+        process.stdout.write("\n");
+        for (const g of gateResults) {
+          process.stdout.write(`${renderGate(g, color)}\n`);
+        }
+      }
+    }
+  }
+
+  // Advisory expiry warnings: keep stdout clean for machine formats (stderr),
+  // so piped JSON/markdown/github output stays valid.
+  const warn = (msg: string): void => {
+    (machine ? process.stderr : process.stdout).write(msg);
+  };
   const asOf = options.now ?? new Date();
   const expiringWaivers = waiversExpiringWithin(waivers, 30, asOf);
   if (expiringWaivers.length > 0) {
-    process.stdout.write(
+    warn(
       `\n⚠ ${expiringWaivers.length} waiver(s) expiring within 30 days: ${expiringWaivers
         .map((w) => w.control)
         .join(", ")}\n`,
@@ -132,7 +180,7 @@ export async function runAudit(
   const entries = await ctx.evidence().catch(() => []);
   const expiringEvidence = evidenceExpiringWithin(entries, 30, asOf);
   if (expiringEvidence.length > 0) {
-    process.stdout.write(
+    warn(
       `\n⚠ ${expiringEvidence.length} evidence entr${
         expiringEvidence.length === 1 ? "y" : "ies"
       } expiring within 30 days: ${expiringEvidence
@@ -143,48 +191,38 @@ export async function runAudit(
 
   await writeState(ctx.repoPath, results);
 
-  if (flags.gate) {
-    return reportGates(flags.gate, results, color);
+  if (gateResults) {
+    return gateResults.some((g) => g.status === "red") ? 1 : 0;
   }
-
   return exitCodeFor(results);
 }
 
 /**
- * Evaluate the requested gate(s), print their status, and return the exit code
- * (1 if any requested gate is red or the gate name was unknown).
+ * Resolve the requested gate(s) to their evaluated results, or an error message
+ * (unknown gate name or invalid gate definitions).
  */
-async function reportGates(
+async function resolveGates(
   which: string,
   results: ControlResult[],
-  color: boolean,
-): Promise<number> {
+): Promise<{ gates: GateResult[] } | { error: string }> {
   const { gates, errors } = await loadBundledGates();
   if (errors.length > 0) {
-    console.error(`Gate definitions are invalid (${errors.length} error(s)).`);
-    return 1;
+    return {
+      error: `Gate definitions are invalid (${errors.length} error(s)).`,
+    };
   }
 
-  let selected: GateResult[];
   if (which === "all") {
-    selected = gates.map((g) => evaluateGate(g, results));
-  } else {
-    const gate = gates.find((g) => g.phase === which);
-    if (!gate) {
-      const known = gates.map((g) => g.phase).join(", ");
-      console.error(
-        `Unknown gate "${which}". Defined gates: ${known || "none"}.`,
-      );
-      return 1;
-    }
-    selected = [evaluateGate(gate, results)];
+    return { gates: gates.map((g) => evaluateGate(g, results)) };
   }
-
-  process.stdout.write("\n");
-  for (const gate of selected) {
-    process.stdout.write(`${renderGate(gate, color)}\n`);
+  const gate = gates.find((g) => g.phase === which);
+  if (!gate) {
+    const known = gates.map((g) => g.phase).join(", ");
+    return {
+      error: `Unknown gate "${which}". Defined gates: ${known || "none"}.`,
+    };
   }
-  return selected.some((g) => g.status === "red") ? 1 : 0;
+  return { gates: [evaluateGate(gate, results)] };
 }
 
 async function writeState(

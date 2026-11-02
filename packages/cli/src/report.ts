@@ -125,6 +125,33 @@ export function renderGate(gate: GateResult, color = true): string {
   return `${c.bold(label)}: ${tint(gate.status.toUpperCase())}${detail}`;
 }
 
+/** Markdown gate section, appended to a `--format markdown` report. */
+export function renderGatesMarkdown(gates: GateResult[]): string {
+  const lines = ["", "## Gates", "", "| Phase | Status |", "| --- | --- |"];
+  for (const g of gates) {
+    lines.push(`| ${g.title ?? `${g.phase} gate`} | ${g.status} |`);
+  }
+  return lines.join("\n");
+}
+
+/** GitHub workflow-command gate annotations, appended to a `--format github` report. */
+export function renderGatesGithub(gates: GateResult[]): string {
+  const lines: string[] = [];
+  for (const g of gates) {
+    const label = g.title ?? `${g.phase} gate`;
+    if (g.status === "red") {
+      lines.push(
+        `::error title=${escapeProperty(label)}::${escapeData(`${label} is red`)}`,
+      );
+    } else if (g.status === "amber") {
+      lines.push(
+        `::warning title=${escapeProperty(label)}::${escapeData(`${label} has outstanding items`)}`,
+      );
+    }
+  }
+  return lines.join("\n");
+}
+
 /** Render the result of a `factory fix` plan (dry-run preview or applied). */
 export function renderFixPlan(
   results: ChangeResult[],
