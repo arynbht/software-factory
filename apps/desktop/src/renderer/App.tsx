@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import type { RepoEntry, Scorecard as ScorecardData } from "../shared/ipc";
 
 export function App() {
+  // The preload exposes `window.factory`; if it failed to load, surface a clear
+  // message instead of letting every handler throw into a blank screen.
+  const bridgeReady = typeof window.factory !== "undefined";
   const [repos, setRepos] = useState<RepoEntry[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [scorecard, setScorecard] = useState<ScorecardData | null>(null);
@@ -14,10 +17,11 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!bridgeReady) return;
     window.factory.repos.list().then(setRepos, (err: unknown) => {
       setError(err instanceof Error ? err.message : String(err));
     });
-  }, []);
+  }, [bridgeReady]);
 
   async function handleAdd(): Promise<void> {
     setError(null);
@@ -56,6 +60,17 @@ export function App() {
   }
 
   const selectedRepo = repos.find((r) => r.path === selected) ?? null;
+
+  if (!bridgeReady) {
+    return (
+      <div className="flex h-screen items-center justify-center p-6 text-center">
+        <p className="max-w-sm text-sm text-rose-300" role="alert">
+          The application bridge failed to load (preload error). Restart the
+          app.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen">

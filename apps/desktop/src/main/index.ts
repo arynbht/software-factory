@@ -27,25 +27,18 @@ const ALLOWED_EXTERNAL_HOSTS = new Set([
   "www.w3.org",
 ]);
 
+/** The strict production CSP (applied only to the packaged app; see below). */
 function contentSecurityPolicy(): string {
-  const base = [
+  return [
     "default-src 'self'",
+    "script-src 'self'",
+    "connect-src 'self'",
     "img-src 'self' data:",
     "style-src 'self' 'unsafe-inline'", // bundled CSS + any injected <style>
     "object-src 'none'",
     "base-uri 'none'",
     "frame-ancestors 'none'",
-  ];
-  if (isDev) {
-    // Vite's dev server uses inline bootstrap, eval-based HMR, and a websocket.
-    base.push(
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "connect-src 'self' ws:",
-    );
-  } else {
-    base.push("script-src 'self'", "connect-src 'self'");
-  }
-  return base.join("; ");
+  ].join("; ");
 }
 
 /** Open an allow-listed https link in the OS browser; silently drop anything else. */
@@ -70,7 +63,7 @@ function createWindow(): void {
     show: false,
     backgroundColor: "#0b0f17",
     webPreferences: {
-      preload: join(import.meta.dirname, "../preload/index.mjs"),
+      preload: join(import.meta.dirname, "../preload/index.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -78,6 +71,26 @@ function createWindow(): void {
   });
 
   window.once("ready-to-show", () => window.show());
+
+  if (isDev) {
+    window.webContents.openDevTools({ mode: "detach" });
+    // Forward renderer console + load failures to the main-process stdout so
+    // they're visible when driving the app headlessly in dev.
+    window.webContents.on(
+      "console-message",
+      (_event, level, message, line, sourceId) => {
+        console.log(`[renderer:${level}] ${message} (${sourceId}:${line})`);
+      },
+    );
+    window.webContents.on("did-fail-load", (_event, code, desc, url) => {
+      console.error(`[renderer] did-fail-load ${code} ${desc} ${url}`);
+    });
+    window.webContents.on("render-process-gone", (_event, details) => {
+      console.error(
+        `[renderer] render-process-gone ${JSON.stringify(details)}`,
+      );
+    });
+  }
 
   // Never open a second window in-app; route an allow-listed link to the browser.
   window.webContents.setWindowOpenHandler(({ url }) => {
@@ -139,15 +152,19 @@ function registerIpcHandlers(): void {
 }
 
 app.whenReady().then(() => {
-  // Inject the CSP on every response as defence-in-depth alongside the bundle.
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        "Content-Security-Policy": [contentSecurityPolicy()],
-      },
+  // Enforce the strict CSP on the packaged app. In dev the renderer is the Vite
+  // server (its own inline bootstrap + HMR websocket), so we rely on Vite +
+  // Electron defaults there rather than fighting the policy.
+  if (!isDev) {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": [contentSecurityPolicy()],
+        },
+      });
     });
-  });
+  }
 
   registerIpcHandlers();
   createWindow();
