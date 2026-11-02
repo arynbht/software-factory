@@ -1,0 +1,4 @@
+phase: discovery
+title: Discovery gate
+select:
+  - phase: discovery

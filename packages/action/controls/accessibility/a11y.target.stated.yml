@@ -1,0 +1,21 @@
+id: a11y.target.stated
+title: Accessibility target stated (WCAG 2.2 AA)
+lane: accessibility
+phase: design
+severity: medium
+effort: small
+applies:
+  all:
+    - flag: public-facing
+detect:
+  - type: file-matches
+    path: docs/**/*.md|README.md
+    pattern: '(?i)(WCAG|accessibility target|a11y)'
+evidence: none
+references:
+  - name: WCAG 2.2
+    url: https://www.w3.org/TR/WCAG22/
+rationale: >
+  Naming a concrete conformance target makes accessibility testable instead of
+  aspirational: teams can verify against it rather than debating what "accessible"
+  means.

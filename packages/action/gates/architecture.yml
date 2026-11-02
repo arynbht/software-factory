@@ -1,0 +1,4 @@
+phase: architecture
+title: Architecture gate
+select:
+  - phase: architecture

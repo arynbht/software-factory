@@ -1,0 +1,20 @@
+id: product.requirements.nfrs
+title: Non-functional requirements captured as numbers
+lane: product
+phase: requirements
+severity: medium
+effort: medium
+detect:
+  - type: file-matches
+    path: docs/**/*.md
+    pattern: (?i)(latency|throughput|uptime|availability|p9[05]|SLO|RPO|RTO)
+fix:
+  type: claude
+  task: nfrs
+references:
+  - name: ISO/IEC 25010 — Quality model
+    url: https://iso25000.com/index.php/en/iso-25000-standards/iso-25010
+rationale: >
+  Quantified non-functional requirements such as latency, throughput, and
+  availability are testable, whereas prose like "fast" or "reliable" cannot be
+  verified or held to account.

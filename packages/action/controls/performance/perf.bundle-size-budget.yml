@@ -1,0 +1,16 @@
+id: perf.bundle-size-budget
+title: Bundle size budget enforced
+lane: performance
+phase: build
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: "**/.size-limit*|**/size-limit*|**/bundlesize*|**/.bundlewatch*"
+evidence: none
+references:
+  - name: web.dev — Your first performance budget
+    url: https://web.dev/articles/your-first-performance-budget
+rationale: >
+  An enforced bundle budget stops JavaScript bloat creeping in one dependency
+  at a time, which is the usual way web apps get slow.

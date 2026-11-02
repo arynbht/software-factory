@@ -1,0 +1,19 @@
+id: product.stories.acceptance
+title: User stories with acceptance criteria
+lane: product
+phase: requirements
+severity: medium
+effort: medium
+detect:
+  - type: file-exists
+    path: docs/requirements/stories.md|docs/stories.md
+fix:
+  type: claude
+  task: stories
+references:
+  - name: Mike Cohn — User Stories
+    url: https://www.mountaingoatsoftware.com/agile/user-stories
+rationale: >
+  Testable acceptance criteria turn user intent into verifiable scope, giving a
+  shared, unambiguous definition of done that both builders and reviewers can
+  check against.

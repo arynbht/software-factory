@@ -1,0 +1,15 @@
+id: cloud.cost-budget-alert
+title: Cost budget alert configured
+lane: cloud
+phase: operate
+severity: low
+effort: small
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: FinOps Foundation — Framework
+    url: https://www.finops.org/framework/
+rationale: >
+  A budget alert is the smoke detector for runaway spend; without one, the
+  first signal is the invoice.

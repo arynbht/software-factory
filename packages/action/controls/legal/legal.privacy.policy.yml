@@ -1,0 +1,25 @@
+id: legal.privacy.policy
+title: Privacy policy published
+lane: legal
+phase: launch
+severity: high
+effort: small
+applies:
+  all:
+    - flag: has-users
+detect:
+  - type: file-matches
+    path: docs/**/*.md|public/**/privacy*|src/**/privacy*
+    pattern: (?i)privacy
+evidence: optional
+fix:
+  type: claude
+  task: privacy-policy
+references:
+  - name: GDPR Arts. 13–14 — Information to be provided
+    url: https://gdpr-info.eu/art-13-gdpr/
+  - name: California CPPA
+    url: https://cppa.ca.gov/
+rationale: >
+  Users must be told what data is collected and why; a published privacy policy
+  satisfies that duty, and a draft still needs legal review before it goes live.

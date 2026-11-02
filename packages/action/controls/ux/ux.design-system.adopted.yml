@@ -1,0 +1,20 @@
+id: ux.design-system.adopted
+title: Design tokens or component library adopted
+lane: ux
+phase: design
+severity: low
+effort: medium
+applies:
+  all:
+    - flag: public-facing
+detect:
+  - type: file-matches
+    path: "**/tailwind.config.*|**/tokens*.{json,ts,css}|**/*.stories.{ts,tsx,js,jsx}|.storybook/**"
+    pattern: '(?s).'
+references:
+  - name: Design Tokens (W3C Community Group)
+    url: https://www.w3.org/community/design-tokens/
+rationale: >
+  A shared token or component layer keeps the UI consistent and makes visual
+  changes cheap, because a single source of truth drives colours, spacing, and
+  components across the whole product.

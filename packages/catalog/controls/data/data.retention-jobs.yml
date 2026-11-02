@@ -1,0 +1,15 @@
+id: data.retention-jobs
+title: Retention and deletion jobs implemented
+lane: data
+phase: harden
+severity: medium
+effort: medium
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: GDPR — Art. 5(1)(e) Storage limitation
+    url: https://gdpr-info.eu/art-5-gdpr/
+rationale: >
+  Keeping data forever is a liability; automated retention and deletion jobs
+  enforce the storage-limitation principle instead of trusting memory.

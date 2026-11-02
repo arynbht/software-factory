@@ -1,0 +1,22 @@
+id: a11y.ci.automated-checks
+title: Automated accessibility checks in CI (axe/Lighthouse)
+lane: accessibility
+phase: build
+severity: medium
+effort: medium
+applies:
+  all:
+    - flag: public-facing
+detect:
+  - type: file-matches
+    path: .github/workflows/*.yml|.github/workflows/*.yaml
+    pattern: '(?i)(axe|lighthouse|pa11y|@axe-core)'
+evidence: none
+references:
+  - name: Deque axe
+    url: https://www.deque.com/axe/
+  - name: Lighthouse accessibility
+    url: https://developer.chrome.com/docs/lighthouse/accessibility/
+rationale: >
+  Automated checks catch the most common WCAG failures on every PR cheaply,
+  shifting accessibility regressions left before they reach users.

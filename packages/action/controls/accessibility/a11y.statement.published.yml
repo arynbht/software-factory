@@ -1,0 +1,24 @@
+id: a11y.statement.published
+title: Accessibility statement page published
+lane: accessibility
+phase: launch
+severity: low
+effort: small
+applies:
+  all:
+    - flag: public-facing
+detect:
+  - type: file-exists
+    path: docs/accessibility.md|public/accessibility*.html|src/**/accessibility*
+evidence: none
+fix:
+  type: claude
+  task: accessibility-statement
+references:
+  - name: European Accessibility Act
+    url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32019L0882
+  - name: ADA Title II web rule (2024)
+    url: https://www.ada.gov/resources/2024-03-08-web-rule/
+rationale: >
+  A public accessibility statement is expected by the EAA and ADA and tells users
+  how to report barriers, giving them a clear channel to raise access problems.

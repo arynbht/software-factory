@@ -1,0 +1,18 @@
+id: product.launch.checklist
+title: Launch checklist and go/no-go recorded
+lane: product
+phase: launch
+severity: medium
+effort: small
+detect:
+  - type: file-exists
+    path: docs/launch-checklist.md|docs/**/launch*.md
+fix:
+  type: template
+  template: launch-checklist
+references:
+  - name: Google SRE — Launch Coordination
+    url: https://sre.google/sre-book/reliable-product-launches/
+rationale: >
+  A go/no-go launch checklist catches readiness gaps across the system before
+  release, turning an implicit "ship it" into an explicit, reviewable decision.

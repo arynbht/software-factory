@@ -1,0 +1,18 @@
+id: ux.flows.wireframes
+title: Wireframes for key flows linked
+lane: ux
+phase: design
+severity: low
+effort: small
+applies:
+  all:
+    - flag: has-users
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: Nielsen Norman Group — Wireframing
+    url: https://www.nngroup.com/articles/wireflows/
+rationale: >
+  Wireframing the key flows surfaces interaction problems early, when they are
+  cheap to fix, rather than after they are expensive to change in code.

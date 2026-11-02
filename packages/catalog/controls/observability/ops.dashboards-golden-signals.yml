@@ -1,0 +1,15 @@
+id: ops.dashboards-golden-signals
+title: Dashboards for the golden signals
+lane: observability
+phase: operate
+severity: low
+effort: medium
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: Google SRE Book — The Four Golden Signals
+    url: https://sre.google/sre-book/monitoring-distributed-systems/#xref_monitoring_golden-signals
+rationale: >
+  Latency, traffic, errors, and saturation on one dashboard answer 'is it
+  healthy?' at a glance, which is where triage starts.

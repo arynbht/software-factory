@@ -1,0 +1,17 @@
+id: cloud.iac-plan-in-ci
+title: IaC plan runs in CI
+lane: cloud
+phase: harden
+severity: medium
+effort: medium
+detect:
+  - type: file-matches
+    path: ".github/workflows/*.y*ml"
+    pattern: '(?i)(terraform plan|terraform validate|pulumi preview|cdk diff|bicep build)'
+evidence: none
+references:
+  - name: HashiCorp — Automate Terraform in CI
+    url: https://developer.hashicorp.com/terraform/tutorials/automation/automate-terraform
+rationale: >
+  Running the plan in CI shows the exact infrastructure diff on every change
+  so surprises surface in review, not in production.

@@ -1,0 +1,19 @@
+id: product.discovery.brief
+title: Discovery brief with success metrics and kill criteria
+lane: product
+phase: discovery
+severity: medium
+effort: medium
+detect:
+  - type: file-exists
+    path: docs/brief.md|docs/discovery/*.md
+fix:
+  type: claude
+  task: brief
+references:
+  - name: Marty Cagan — Product Discovery
+    url: https://www.svpg.com/product-discovery/
+rationale: >
+  Capturing the problem, target users, success metrics, and kill criteria
+  before building forces a clear hypothesis and a pre-agreed way to tell
+  whether the work is succeeding or should be stopped.

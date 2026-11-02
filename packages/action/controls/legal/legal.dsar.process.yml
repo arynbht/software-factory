@@ -1,0 +1,22 @@
+id: legal.dsar.process
+title: DSAR (data subject request) process documented
+lane: legal
+phase: requirements
+severity: medium
+effort: medium
+applies:
+  all:
+    - flag: handles-pii
+detect:
+  - type: manual
+evidence: required
+fix:
+  type: claude
+  task: dsar-process
+references:
+  - name: GDPR Ch. 3 — Rights of the data subject
+    url: https://gdpr-info.eu/chapter-3/
+rationale: >
+  Data subjects have access and erasure rights; a documented DSAR process keeps
+  responses within statutory deadlines and ensures requests are handled
+  consistently rather than ad hoc.

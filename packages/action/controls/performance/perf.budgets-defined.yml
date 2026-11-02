@@ -1,0 +1,16 @@
+id: perf.budgets-defined
+title: Performance budgets defined
+lane: performance
+phase: build
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: "**/budget.json|**/budgets.json|lighthouse*.json|.lighthouserc*|**/size-limit*"
+evidence: none
+references:
+  - name: web.dev — Performance budgets
+    url: https://web.dev/articles/performance-budgets-101
+rationale: >
+  A budget turns performance from an afterthought into a check: a change that
+  blows the budget is caught instead of silently degrading the experience.

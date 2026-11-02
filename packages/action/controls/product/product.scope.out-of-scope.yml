@@ -1,0 +1,20 @@
+id: product.scope.out-of-scope
+title: Out-of-scope list recorded
+lane: product
+phase: requirements
+severity: low
+effort: small
+detect:
+  - type: file-matches
+    path: docs/**/*.md
+    pattern: (?i)(out[ -]of[ -]scope|non[ -]goals?)
+fix:
+  type: claude
+  task: out-of-scope
+references:
+  - name: Basecamp — Shape Up (Scoping)
+    url: https://basecamp.com/shapeup/2.2-chapter-08
+rationale: >
+  An explicit list of non-goals prevents scope creep by making it clear what is
+  deliberately not being built, so added work becomes a visible decision rather
+  than a silent drift.

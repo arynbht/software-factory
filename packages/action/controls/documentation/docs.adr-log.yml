@@ -1,0 +1,22 @@
+id: docs.adr-log
+title: ADR log started and current
+lane: documentation
+phase: architecture
+severity: medium
+effort: medium
+detect:
+  - type: file-exists
+    path: "docs/adr/**|docs/decisions/**|doc/adr/**"
+evidence: none
+fix:
+  type: claude
+  task: adr
+references:
+  - name: MADR
+    url: https://adr.github.io/madr/
+  - name: ADR (Nygard)
+    url: https://adr.github.io/
+rationale: >
+  Architecture Decision Records capture why a choice was made and what was
+  traded off, so future contributors change the system with context rather
+  than re-litigating settled decisions.

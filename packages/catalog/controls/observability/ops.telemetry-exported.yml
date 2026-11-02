@@ -1,0 +1,17 @@
+id: ops.telemetry-exported
+title: Logs, metrics, and traces exported to a backend
+lane: observability
+phase: harden
+severity: high
+effort: large
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: Google SRE Book — Monitoring
+    url: https://sre.google/sre-book/monitoring-distributed-systems/
+  - name: OpenTelemetry
+    url: https://opentelemetry.io/docs/
+rationale: >
+  You cannot operate what you cannot see; the three signals flowing to one
+  backend is the baseline for debugging production.

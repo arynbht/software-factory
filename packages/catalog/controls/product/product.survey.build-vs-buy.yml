@@ -1,0 +1,19 @@
+id: product.survey.build-vs-buy
+title: Build-vs-buy survey recorded
+lane: product
+phase: discovery
+severity: low
+effort: small
+detect:
+  - type: manual
+evidence: required
+fix:
+  type: claude
+  task: build-vs-buy
+references:
+  - name: ThoughtWorks — Build vs Buy
+    url: https://www.thoughtworks.com/insights/blog/build-vs-buy
+rationale: >
+  Recording the build-vs-buy decision and the alternatives considered before
+  committing engineering effort documents a deliberate trade-off, so it is
+  satisfied by reviewed evidence of that judgement.

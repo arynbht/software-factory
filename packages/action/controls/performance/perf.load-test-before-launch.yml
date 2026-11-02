@@ -1,0 +1,15 @@
+id: perf.load-test-before-launch
+title: Load test at expected peak before launch
+lane: performance
+phase: launch
+severity: medium
+effort: medium
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: k6 — Load testing
+    url: https://grafana.com/docs/k6/latest/
+rationale: >
+  Finding the breaking point in a load test is far cheaper than finding it
+  with real users on launch day.

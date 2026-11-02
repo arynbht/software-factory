@@ -1,0 +1,15 @@
+id: data.encryption-verified
+title: Encryption at rest and in transit verified
+lane: data
+phase: harden
+severity: high
+effort: medium
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: OWASP — Transport Layer Security Cheat Sheet
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html
+rationale: >
+  Encryption in transit and at rest is table stakes for any system holding
+  user data; this is satisfied by evidence that both are actually on.

@@ -19,7 +19,7 @@ describe("runStatus", () => {
     return d;
   }
 
-  it("infers scaffold on an empty repo and lists blockers", async () => {
+  it("infers discovery on an empty repo and lists blockers", async () => {
     const dir = await tmp();
     const out: string[] = [];
     vi.spyOn(process.stdout, "write").mockImplementation((c) => {
@@ -31,8 +31,9 @@ describe("runStatus", () => {
 
     expect(code).toBe(0);
     const text = out.join("");
-    // An empty repo fails scaffold-phase controls → scaffold is the first non-green gate.
-    expect(text).toMatch(/Inferred phase:\s+scaffold/);
+    // An empty repo fails the earliest (discovery) phase's controls, so discovery
+    // is the first non-green gate — the lowest phase with any controls defined.
+    expect(text).toMatch(/Inferred phase:\s+discovery/);
     expect(text).toMatch(/Blocking/);
   });
 
@@ -47,7 +48,7 @@ describe("runStatus", () => {
     const code = await runStatus(dir, { json: true }, { token: null });
     expect(code).toBe(0);
     const report = JSON.parse(out.join(""));
-    expect(report.inferredPhase).toBe("scaffold");
+    expect(report.inferredPhase).toBe("discovery");
     expect(Array.isArray(report.gates)).toBe(true);
     expect(report.blockers.length).toBeGreaterThan(0);
     // Each blocker carries severity + effort for prioritization.

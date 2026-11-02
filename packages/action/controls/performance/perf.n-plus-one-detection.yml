@@ -1,0 +1,15 @@
+id: perf.n-plus-one-detection
+title: N+1 query detection in tests
+lane: performance
+phase: build
+severity: low
+effort: medium
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: Rails Guides — Eager loading
+    url: https://guides.rubyonrails.org/active_record_querying.html#eager-loading-associations
+rationale: >
+  N+1 queries are the most common ORM performance footgun; catching them in
+  tests keeps a page's query count from quietly exploding.

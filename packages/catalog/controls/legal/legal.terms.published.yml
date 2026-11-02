@@ -1,0 +1,21 @@
+id: legal.terms.published
+title: Terms of service published
+lane: legal
+phase: launch
+severity: medium
+effort: small
+applies:
+  all:
+    - flag: has-users
+detect:
+  - type: file-matches
+    path: docs/**/*.md|public/**/terms*|src/**/terms*
+    pattern: (?i)(terms of service|terms of use|terms-and-conditions)
+evidence: optional
+references:
+  - name: US FTC — Terms & disclosures guidance
+    url: https://www.ftc.gov/business-guidance/advertising-marketing/online-advertising-marketing
+rationale: >
+  Terms set the contract and liability limits between the product and its users;
+  publishing them establishes the agreed rules of engagement and reduces legal
+  exposure.

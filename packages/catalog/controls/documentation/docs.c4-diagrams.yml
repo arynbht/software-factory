@@ -1,0 +1,20 @@
+id: docs.c4-diagrams
+title: C4 context and container diagrams present
+lane: documentation
+phase: architecture
+severity: low
+effort: medium
+detect:
+  - type: file-matches
+    path: "docs/**/*.md|docs/architecture/**"
+    pattern: "(?i)(c4|flowchart|graph (TD|LR)|C4Context|C4Container)"
+evidence: none
+fix:
+  type: claude
+  task: c4
+references:
+  - name: C4 model
+    url: https://c4model.com/
+rationale: >
+  A system-context and container view gives a new engineer the shape of the
+  system in minutes; without it, architecture lives only in people's heads.

@@ -1,0 +1,17 @@
+id: docs.diataxis-layout
+title: docs/ follows the Diátaxis layout
+lane: documentation
+phase: scaffold
+severity: low
+effort: small
+detect:
+  - type: file-exists
+    path: "docs/**|documentation/**"
+evidence: none
+references:
+  - name: Diátaxis
+    url: https://diataxis.fr/
+rationale: >
+  A docs/ tree organised as tutorials, how-tos, reference, and explanation
+  (Diátaxis) means contributors can find and add documentation predictably
+  instead of a single sprawling README.

@@ -90,14 +90,19 @@ export async function runStatus(
     waivers,
   });
 
-  // Evaluate each phase's gate (where one is defined), in phase order.
+  // Evaluate each phase's gate (where one is defined), in phase order. A gate that
+  // selects zero controls is "undefined for this profile", not a blocker — treat it
+  // like an absent gate so it never pins phase inference (an empty discovery gate
+  // must not make every repo look stuck at "discovery").
   const gateByPhase = new Map(gates.map((g) => [g.phase, g]));
   const perPhase = PHASES.map((p) => {
     const gate = gateByPhase.get(p.key);
+    const evaluated = gate ? evaluateGate(gate, results) : null;
     return {
       phase: p.key,
       title: p.title,
-      status: gate ? evaluateGate(gate, results).status : null,
+      status:
+        evaluated && evaluated.controls.length > 0 ? evaluated.status : null,
       gate,
     };
   });

@@ -1,0 +1,12 @@
+# Risk register
+
+A living list of the project's top risks. Review it at the start of each
+milestone and whenever a new risk appears. Keep it short — track the risks worth
+acting on, not every hypothetical.
+
+| # | Risk | Likelihood (L/M/H) | Impact (L/M/H) | Owner | Mitigation (an action, not a hope) | Status |
+| - | ---- | ------------------ | -------------- | ----- | ---------------------------------- | ------ |
+| 1 | _e.g. Key dependency is unmaintained_ | M | H | you@example.com | Vendor a fork; add a renewal check | Open |
+| 2 | | | | | | |
+
+Status is one of: Open, Mitigating, Accepted, Closed.

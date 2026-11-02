@@ -1,0 +1,17 @@
+id: cloud.policy-as-code
+title: Policy-as-code scan for IaC
+lane: cloud
+phase: harden
+severity: medium
+effort: medium
+detect:
+  - type: file-matches
+    path: ".github/workflows/*.y*ml|.checkov.y*ml|.tflint.hcl|.config/checkov.y*ml"
+    pattern: '(?i)(checkov|tfsec|terrascan|kics|tflint)'
+evidence: none
+references:
+  - name: Checkov
+    url: https://www.checkov.io/
+rationale: >
+  Static policy checks catch insecure IaC (public buckets, open security
+  groups) before apply, where fixing them is cheap.

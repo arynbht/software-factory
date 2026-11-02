@@ -1,0 +1,21 @@
+id: test.integration.db
+title: Integration tests run against a real database in CI
+lane: testing
+phase: build
+severity: medium
+effort: medium
+applies:
+  all:
+    - flag: multi-service
+detect:
+  - type: file-matches
+    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
+    pattern: "(?i)(services:\\s|postgres|mysql|mariadb|redis|mongo|testcontainers)"
+evidence: none
+references:
+  - name: Google — Software Engineering at Google (Testing)
+    url: https://abseil.io/resources/swe-book/html/ch11.html
+rationale: >
+  Integration tests against a real datastore catch schema, query, and transaction
+  bugs that an in-memory fake hides; running them in CI keeps that coverage honest
+  on every change rather than only on a developer's machine.

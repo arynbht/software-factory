@@ -1,0 +1,15 @@
+id: data.pii-classified
+title: PII columns classified
+lane: data
+phase: architecture
+severity: high
+effort: medium
+detect:
+  - type: manual
+evidence: required
+references:
+  - name: GDPR — Art. 30 Records of processing
+    url: https://gdpr-info.eu/art-30-gdpr/
+rationale: >
+  You cannot protect, retain, or delete personal data you have not catalogued;
+  classifying PII is the prerequisite for every privacy obligation.
