@@ -169,7 +169,7 @@ describe("runFix (integration)", () => {
         base: "main",
       });
       expect(out.join("")).toContain("Opened PR #11");
-    });
+    }, 30_000); // real git init/commit/branch/push — slower on Windows CI
 
     it("maps a FixPrError to exit 1 (dirty working tree)", async () => {
       const work = await gitRepoWithRemote(made);
@@ -184,7 +184,7 @@ describe("runFix (integration)", () => {
         { token: null, today: "2026-11-01", openPr: fakePr([]) },
       );
       expect(code).toBe(1);
-    });
+    }, 30_000);
 
     it("exits 1 when no token/slug is available to open a PR", async () => {
       const work = await gitRepoWithRemote(made);
@@ -198,6 +198,6 @@ describe("runFix (integration)", () => {
         { token: null, today: "2026-11-01" },
       );
       expect(code).toBe(1);
-    });
+    }, 30_000);
   });
 });

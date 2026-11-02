@@ -94,7 +94,7 @@ describe("openFixPr", () => {
     expect(messages.some((m) => m.includes("managed-file registry"))).toBe(
       true,
     );
-  });
+  }, 30_000); // real git init/commit/push — slower on Windows CI
 
   it("opens no PR and leaves no branch when nothing changed", async () => {
     const work = await repoWithRemote();
@@ -155,7 +155,7 @@ describe("openFixPr", () => {
     expect(result.pr?.reused).toBe(true);
     // README was already committed and unchanged; only LICENSE is new this run.
     expect(result.commits.map((c) => c.controlId)).toContain("repo.license");
-  });
+  }, 30_000);
 
   it("does not push or touch a PR when a reused branch has no new changes", async () => {
     const work = await repoWithRemote();
@@ -188,5 +188,5 @@ describe("openFixPr", () => {
     expect((await git.branchLocal()).all).toContain(
       "factory/2026-11-01-scaffold",
     );
-  });
+  }, 30_000);
 });
