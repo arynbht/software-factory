@@ -24,7 +24,12 @@ export interface PromptTemplate {
   system: string;
 }
 
-export class PromptError extends Error {}
+export class PromptError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PromptError";
+  }
+}
 
 /** Load and parse a task's prompt template from the bundled prompts directory. */
 export async function loadPrompt(
