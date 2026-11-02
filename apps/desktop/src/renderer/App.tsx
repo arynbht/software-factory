@@ -1,8 +1,10 @@
 import { FolderPlus, Play, RefreshCw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { AuthControls } from "@/components/AuthControls";
 import { Scorecard } from "@/components/Scorecard";
 import { Button } from "@/components/ui/button";
+import { errorMessage } from "@/lib/errors";
 
 import type { RepoEntry, Scorecard as ScorecardData } from "../shared/ipc";
 
@@ -19,7 +21,7 @@ export function App() {
   useEffect(() => {
     if (!bridgeReady) return;
     window.factory.repos.list().then(setRepos, (err: unknown) => {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     });
   }, [bridgeReady]);
 
@@ -28,7 +30,7 @@ export function App() {
     try {
       setRepos(await window.factory.repos.add());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 
@@ -53,7 +55,7 @@ export function App() {
     try {
       setScorecard(await window.factory.audit.run(selected));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setRunning(false);
     }
@@ -129,6 +131,7 @@ export function App() {
             </ul>
           )}
         </nav>
+        <AuthControls />
       </aside>
 
       <main className="flex-1 overflow-y-auto">

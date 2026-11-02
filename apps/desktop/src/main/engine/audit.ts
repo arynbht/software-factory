@@ -61,8 +61,16 @@ function summarize(result: ControlResult): string {
   return result.detectors[0]?.message ?? "";
 }
 
-/** Run an audit over a local repo and return the lane scorecard. */
-export async function runAudit(repoPath: string): Promise<Scorecard> {
+/**
+ * Run an audit over a local repo and return the lane scorecard. With a GitHub
+ * token (from the signed-in user, M5.3) the github-api detectors run too;
+ * without one they skip. Kept free of any electron import so it unit-tests as a
+ * plain function.
+ */
+export async function runAudit(
+  repoPath: string,
+  token?: string,
+): Promise<Scorecard> {
   const { controls, errors } = await loadBundledCatalog();
   if (errors.length > 0) {
     throw new Error(
@@ -70,8 +78,7 @@ export async function runAudit(repoPath: string): Promise<Scorecard> {
     );
   }
 
-  // No token yet (device-flow auth lands in M5.3), so github-api detectors skip.
-  const ctx = buildContext(repoPath, {});
+  const ctx = buildContext(repoPath, token ? { token } : {});
   const profile = await ctx.profile().catch(() => null);
   const waivers = await ctx.waivers().catch(() => []);
 

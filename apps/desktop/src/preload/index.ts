@@ -6,6 +6,9 @@ import { contextBridge, ipcRenderer } from "electron";
 
 import {
   AuditRunRequest,
+  AuthStatus,
+  AuthUpdate,
+  DeviceCodeInfo,
   IpcChannel,
   PingRequest,
   PingResponse,
@@ -50,6 +53,32 @@ const api = {
         request,
       );
       return Scorecard.parse(raw);
+    },
+  },
+
+  auth: {
+    async status() {
+      const raw: unknown = await ipcRenderer.invoke(IpcChannel.AuthStatus);
+      return AuthStatus.parse(raw);
+    },
+    /** Starts the device flow; returns the code to show the user. */
+    async signIn() {
+      const raw: unknown = await ipcRenderer.invoke(IpcChannel.AuthSignIn);
+      return DeviceCodeInfo.parse(raw);
+    },
+    async signOut() {
+      const raw: unknown = await ipcRenderer.invoke(IpcChannel.AuthSignOut);
+      return AuthStatus.parse(raw);
+    },
+    /** Subscribe to the background sign-in outcome; returns an unsubscribe fn. */
+    onUpdate(callback: (update: AuthUpdate) => void) {
+      const listener = (_event: unknown, payload: unknown): void => {
+        callback(AuthUpdate.parse(payload));
+      };
+      ipcRenderer.on(IpcChannel.AuthUpdate, listener);
+      return () => {
+        ipcRenderer.removeListener(IpcChannel.AuthUpdate, listener);
+      };
     },
   },
 };

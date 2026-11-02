@@ -1,9 +1,13 @@
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 
 import {
   AuditRunRequest,
+  AuthStatus,
+  type AuthUpdate,
+  DeviceCodeInfo,
   IpcChannel,
   PingRequest,
   type PingResponse,
@@ -11,6 +15,12 @@ import {
   RepoRemoveRequest,
   Scorecard,
 } from "../shared/ipc";
+import {
+  fetchUserLogin,
+  pollForToken,
+  requestDeviceCode,
+} from "./auth/device-flow";
+import { clearToken, loadToken, saveToken } from "./auth/token-store";
 import { runAudit } from "./engine/audit";
 import { addRepo, listRepos, removeRepo } from "./store/repos";
 
@@ -19,6 +29,38 @@ import { addRepo, listRepos, removeRepo } from "./store/repos";
 // origins, ever.
 const DEV_RENDERER_URL = process.env.ELECTRON_RENDERER_URL;
 const isDev = Boolean(DEV_RENDERER_URL);
+
+// Dev convenience: load apps/desktop/.env into process.env so config like the
+// GitHub client id persists across restarts without exporting it each time. The
+// values aren't secret (an OAuth client id is public) and the file is gitignored.
+if (isDev) {
+  try {
+    const envFile = readFileSync(
+      join(import.meta.dirname, "../../.env"),
+      "utf8",
+    );
+    for (const line of envFile.split(/\r?\n/)) {
+      const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+      if (!match) continue;
+      const key = match[1];
+      if (key && process.env[key] === undefined) {
+        process.env[key] = (match[2] ?? "").trim().replace(/^["']|["']$/g, "");
+      }
+    }
+  } catch {
+    // no .env — fine
+  }
+}
+
+/** GitHub App / OAuth client id for device flow (ADR-0007). Empty → not set up. */
+const GITHUB_CLIENT_ID = process.env.FACTORY_GITHUB_CLIENT_ID ?? "";
+const GITHUB_SCOPE = "repo read:org";
+
+let mainWindow: BrowserWindow | null = null;
+
+function sendAuthUpdate(update: AuthUpdate): void {
+  mainWindow?.webContents.send(IpcChannel.AuthUpdate, update);
+}
 
 /** Hosts `shell.openExternal` is allowed to hand to the OS browser. */
 const ALLOWED_EXTERNAL_HOSTS = new Set([
@@ -68,6 +110,11 @@ function createWindow(): void {
       nodeIntegration: false,
       sandbox: true,
     },
+  });
+
+  mainWindow = window;
+  window.on("closed", () => {
+    if (mainWindow === window) mainWindow = null;
   });
 
   window.once("ready-to-show", () => window.show());
@@ -147,7 +194,64 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannel.AuditRun, async (_event, raw: unknown) => {
     const { repoPath } = AuditRunRequest.parse(raw);
-    return Scorecard.parse(await runAudit(repoPath));
+    const token = (await loadToken()) ?? undefined;
+    return Scorecard.parse(await runAudit(repoPath, token));
+  });
+
+  ipcMain.handle(IpcChannel.AuthStatus, async () => {
+    const token = await loadToken();
+    if (!token) return AuthStatus.parse({ signedIn: false, login: null });
+    try {
+      const login = await fetchUserLogin(token, fetch);
+      return AuthStatus.parse({ signedIn: true, login });
+    } catch {
+      // Token present but unverifiable (offline / revoked) — still "signed in".
+      return AuthStatus.parse({ signedIn: true, login: null });
+    }
+  });
+
+  ipcMain.handle(IpcChannel.AuthSignIn, async () => {
+    if (!GITHUB_CLIENT_ID) {
+      throw new Error(
+        "GitHub sign-in isn't configured. Set FACTORY_GITHUB_CLIENT_ID to a " +
+          "registered GitHub App/OAuth client id (ADR-0007).",
+      );
+    }
+    const deps = { fetch };
+    const code = await requestDeviceCode(GITHUB_CLIENT_ID, GITHUB_SCOPE, deps);
+    // Open github.com/login/device for the user (host is allow-listed).
+    openExternalIfAllowed(code.verificationUri);
+
+    // Poll in the background; push the outcome to the renderer when it lands.
+    void (async () => {
+      try {
+        const token = await pollForToken(GITHUB_CLIENT_ID, code, deps);
+        await saveToken(token);
+        let login = "";
+        try {
+          login = await fetchUserLogin(token, fetch);
+        } catch {
+          // keep login empty; the status call will refresh it
+        }
+        sendAuthUpdate({ status: "signed-in", login });
+      } catch (err) {
+        sendAuthUpdate({
+          status: "error",
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+    })();
+
+    return DeviceCodeInfo.parse({
+      userCode: code.userCode,
+      verificationUri: code.verificationUri,
+      expiresIn: code.expiresIn,
+    });
+  });
+
+  ipcMain.handle(IpcChannel.AuthSignOut, async () => {
+    await clearToken();
+    return AuthStatus.parse({ signedIn: false, login: null });
   });
 }
 
