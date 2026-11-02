@@ -84,6 +84,29 @@ describe("renderTemplate", () => {
     ).toBe(false);
   });
 
+  it("pins the toolchain per stack (.nvmrc for node, .python-version for python)", async () => {
+    const node = await renderTemplate(
+      "toolchain",
+      templateVars(profile({ stack: ["typescript"] }), 2026),
+      "repo.toolchain-pinned",
+    );
+    expect(node.some((c) => c.type === "file" && c.path === ".nvmrc")).toBe(
+      true,
+    );
+    expect(
+      node.some((c) => c.type === "file" && c.path === ".python-version"),
+    ).toBe(false);
+
+    const py = await renderTemplate(
+      "toolchain",
+      templateVars(profile({ stack: ["python"] }), 2026),
+      "repo.toolchain-pinned",
+    );
+    expect(
+      py.some((c) => c.type === "file" && c.path === ".python-version"),
+    ).toBe(true);
+  });
+
   it("every fix:template control points to a template dir that renders", async () => {
     const { controls } = await loadBundledCatalog();
     const names = new Set(

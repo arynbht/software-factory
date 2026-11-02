@@ -8,6 +8,9 @@ detect:
   - type: file-exists
     path: ".nvmrc|.node-version|.tool-versions|rust-toolchain.toml|rust-toolchain|.python-version|.devcontainer/devcontainer.json"
 evidence: none
+fix:
+  type: template
+  template: toolchain
 references:
   - name: Twelve-Factor App — Dependencies
     url: https://12factor.net/dependencies
