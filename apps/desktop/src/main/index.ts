@@ -1,8 +1,18 @@
 import { join } from "node:path";
 
-import { app, BrowserWindow, ipcMain, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 
-import { IpcChannel, PingRequest, type PingResponse } from "../shared/ipc";
+import {
+  AuditRunRequest,
+  IpcChannel,
+  PingRequest,
+  type PingResponse,
+  RepoList,
+  RepoRemoveRequest,
+  Scorecard,
+} from "../shared/ipc";
+import { runAudit } from "./engine/audit";
+import { addRepo, listRepos, removeRepo } from "./store/repos";
 
 // In dev the renderer is served by Vite (HMR needs a looser policy); in prod it
 // loads from the bundle under a strict self-only policy. Either way: no remote
@@ -17,25 +27,18 @@ const ALLOWED_EXTERNAL_HOSTS = new Set([
   "www.w3.org",
 ]);
 
+/** The strict production CSP (applied only to the packaged app; see below). */
 function contentSecurityPolicy(): string {
-  const base = [
+  return [
     "default-src 'self'",
+    "script-src 'self'",
+    "connect-src 'self'",
     "img-src 'self' data:",
     "style-src 'self' 'unsafe-inline'", // bundled CSS + any injected <style>
     "object-src 'none'",
     "base-uri 'none'",
     "frame-ancestors 'none'",
-  ];
-  if (isDev) {
-    // Vite's dev server uses inline bootstrap, eval-based HMR, and a websocket.
-    base.push(
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "connect-src 'self' ws:",
-    );
-  } else {
-    base.push("script-src 'self'", "connect-src 'self'");
-  }
-  return base.join("; ");
+  ].join("; ");
 }
 
 /** Open an allow-listed https link in the OS browser; silently drop anything else. */
@@ -60,7 +63,7 @@ function createWindow(): void {
     show: false,
     backgroundColor: "#0b0f17",
     webPreferences: {
-      preload: join(import.meta.dirname, "../preload/index.mjs"),
+      preload: join(import.meta.dirname, "../preload/index.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -68,6 +71,26 @@ function createWindow(): void {
   });
 
   window.once("ready-to-show", () => window.show());
+
+  if (isDev) {
+    window.webContents.openDevTools({ mode: "detach" });
+    // Forward renderer console + load failures to the main-process stdout so
+    // they're visible when driving the app headlessly in dev.
+    window.webContents.on(
+      "console-message",
+      (_event, level, message, line, sourceId) => {
+        console.log(`[renderer:${level}] ${message} (${sourceId}:${line})`);
+      },
+    );
+    window.webContents.on("did-fail-load", (_event, code, desc, url) => {
+      console.error(`[renderer] did-fail-load ${code} ${desc} ${url}`);
+    });
+    window.webContents.on("render-process-gone", (_event, details) => {
+      console.error(
+        `[renderer] render-process-gone ${JSON.stringify(details)}`,
+      );
+    });
+  }
 
   // Never open a second window in-app; route an allow-listed link to the browser.
   window.webContents.setWindowOpenHandler(({ url }) => {
@@ -100,18 +123,48 @@ function registerIpcHandlers(): void {
     };
     return response;
   });
+
+  ipcMain.handle(IpcChannel.ReposList, async () =>
+    RepoList.parse(await listRepos()),
+  );
+
+  ipcMain.handle(IpcChannel.ReposAdd, async () => {
+    const result = await dialog.showOpenDialog({
+      title: "Add a repository folder",
+      properties: ["openDirectory"],
+    });
+    const chosen = result.filePaths[0];
+    if (result.canceled || !chosen) {
+      return RepoList.parse(await listRepos());
+    }
+    return RepoList.parse(await addRepo(chosen));
+  });
+
+  ipcMain.handle(IpcChannel.ReposRemove, async (_event, raw: unknown) => {
+    const { path } = RepoRemoveRequest.parse(raw);
+    return RepoList.parse(await removeRepo(path));
+  });
+
+  ipcMain.handle(IpcChannel.AuditRun, async (_event, raw: unknown) => {
+    const { repoPath } = AuditRunRequest.parse(raw);
+    return Scorecard.parse(await runAudit(repoPath));
+  });
 }
 
 app.whenReady().then(() => {
-  // Inject the CSP on every response as defence-in-depth alongside the bundle.
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        "Content-Security-Policy": [contentSecurityPolicy()],
-      },
+  // Enforce the strict CSP on the packaged app. In dev the renderer is the Vite
+  // server (its own inline bootstrap + HMR websocket), so we rely on Vite +
+  // Electron defaults there rather than fighting the policy.
+  if (!isDev) {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": [contentSecurityPolicy()],
+        },
+      });
     });
-  });
+  }
 
   registerIpcHandlers();
   createWindow();

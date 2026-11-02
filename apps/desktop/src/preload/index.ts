@@ -4,14 +4,53 @@
 // leaves and every response is zod-validated before the renderer sees it.
 import { contextBridge, ipcRenderer } from "electron";
 
-import { IpcChannel, PingRequest, PingResponse } from "../shared/ipc";
+import {
+  AuditRunRequest,
+  IpcChannel,
+  PingRequest,
+  PingResponse,
+  RepoList,
+  RepoRemoveRequest,
+  Scorecard,
+} from "../shared/ipc";
 
 const api = {
   /** Smoke round-trip: validate the request, invoke main, validate the reply. */
-  async ping(message: string): Promise<PingResponse> {
+  async ping(message: string) {
     const request = PingRequest.parse({ message });
     const raw: unknown = await ipcRenderer.invoke(IpcChannel.Ping, request);
     return PingResponse.parse(raw);
+  },
+
+  repos: {
+    async list() {
+      const raw: unknown = await ipcRenderer.invoke(IpcChannel.ReposList);
+      return RepoList.parse(raw);
+    },
+    /** Opens a native folder picker in main; returns the updated list. */
+    async add() {
+      const raw: unknown = await ipcRenderer.invoke(IpcChannel.ReposAdd);
+      return RepoList.parse(raw);
+    },
+    async remove(path: string) {
+      const request = RepoRemoveRequest.parse({ path });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.ReposRemove,
+        request,
+      );
+      return RepoList.parse(raw);
+    },
+  },
+
+  audit: {
+    async run(repoPath: string) {
+      const request = AuditRunRequest.parse({ repoPath });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.AuditRun,
+        request,
+      );
+      return Scorecard.parse(raw);
+    },
   },
 };
 

@@ -8,19 +8,93 @@ import { z } from "zod";
 /** Allow-listed channel names. The preload exposes exactly these. */
 export const IpcChannel = {
   Ping: "app:ping",
+  ReposList: "repos:list",
+  ReposAdd: "repos:add",
+  ReposRemove: "repos:remove",
+  AuditRun: "audit:run",
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
 
 // app:ping — a smoke round-trip proving the typed, validated bridge works.
-export const PingRequest = z.object({
-  message: z.string().min(1).max(200),
-});
-export type PingRequest = z.infer<typeof PingRequest>;
-
 export const PingResponse = z.object({
   reply: z.string(),
-  /** The main process's app version, so the renderer can see who answered. */
   version: z.string(),
 });
 export type PingResponse = z.infer<typeof PingResponse>;
+
+export const PingRequest = z.object({ message: z.string().min(1).max(200) });
+export type PingRequest = z.infer<typeof PingRequest>;
+
+// Repos — local repo folders the user has added (persisted in userData).
+export const RepoEntry = z.object({
+  /** Absolute path to the repo on disk. */
+  path: z.string(),
+  /** Display name (folder basename). */
+  name: z.string(),
+});
+export type RepoEntry = z.infer<typeof RepoEntry>;
+
+export const RepoList = z.array(RepoEntry);
+export type RepoList = z.infer<typeof RepoList>;
+
+export const RepoRemoveRequest = z.object({ path: z.string().min(1) });
+export type RepoRemoveRequest = z.infer<typeof RepoRemoveRequest>;
+
+// Audit — the lane scorecard for one repo.
+export const ControlStatus = z.enum([
+  "pass",
+  "fail",
+  "skip",
+  "needs-evidence",
+  "waived",
+  "n/a",
+]);
+export type ControlStatus = z.infer<typeof ControlStatus>;
+
+const StatusCounts = z.object({
+  pass: z.number().int(),
+  fail: z.number().int(),
+  needsEvidence: z.number().int(),
+  waived: z.number().int(),
+  skip: z.number().int(),
+  na: z.number().int(),
+});
+export type StatusCounts = z.infer<typeof StatusCounts>;
+
+export const ControlReference = z.object({
+  name: z.string(),
+  url: z.string(),
+  section: z.string().optional(),
+});
+
+export const ScorecardControl = z.object({
+  controlId: z.string(),
+  title: z.string(),
+  status: ControlStatus,
+  severity: z.string(),
+  message: z.string(),
+  rationale: z.string(),
+  references: z.array(ControlReference),
+});
+export type ScorecardControl = z.infer<typeof ScorecardControl>;
+
+export const ScorecardLane = z.object({
+  key: z.string(),
+  title: z.string(),
+  counts: StatusCounts,
+  controls: z.array(ScorecardControl),
+});
+export type ScorecardLane = z.infer<typeof ScorecardLane>;
+
+export const Scorecard = z.object({
+  repoPath: z.string(),
+  /** ISO timestamp the audit was produced. */
+  generatedAt: z.string(),
+  totals: StatusCounts.extend({ total: z.number().int() }),
+  lanes: z.array(ScorecardLane),
+});
+export type Scorecard = z.infer<typeof Scorecard>;
+
+export const AuditRunRequest = z.object({ repoPath: z.string().min(1) });
+export type AuditRunRequest = z.infer<typeof AuditRunRequest>;

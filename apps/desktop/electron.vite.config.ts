@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import react from "@vitejs/plugin-react";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 
@@ -11,9 +13,24 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
+    // A sandboxed preload runs as CommonJS and can only require('electron') —
+    // it cannot require node_modules. So emit CJS and BUNDLE deps (zod) into it
+    // rather than externalizing them.
+    build: {
+      rollupOptions: {
+        output: {
+          format: "cjs",
+          entryFileNames: "[name].cjs",
+        },
+      },
+    },
   },
   renderer: {
     plugins: [react()],
+    resolve: {
+      alias: {
+        "@": fileURLToPath(new URL("./src/renderer", import.meta.url)),
+      },
+    },
   },
 });
