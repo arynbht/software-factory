@@ -9,10 +9,6 @@ detect:
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
     pattern: '(?i)(cyclonedx|\bsbom\b|anchore/sbom-action|syft)'
 evidence: none
-fix:
-  type: merge-yaml
-  file: .github/workflows/release.yml
-  path: jobs
 references:
   - name: CycloneDX
     url: https://cyclonedx.org/

@@ -9,10 +9,6 @@ detect:
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
     pattern: "(?i)(osv-scanner|trivy|snyk|dependency-review|npm audit|pnpm audit|grype)"
 evidence: none
-fix:
-  type: merge-yaml
-  file: .github/workflows/ci.yml
-  path: jobs
 references:
   - name: OSV-Scanner
     url: https://google.github.io/osv-scanner/

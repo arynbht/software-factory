@@ -131,4 +131,31 @@ describe("merge generators", () => {
       ),
     ).toEqual([]);
   });
+
+  it("never fabricates an absent target file (safe no-op)", async () => {
+    const dir = await tmp();
+    // No package.json / ci.yml exists in this repo.
+    const json = await mergeJsonGenerator(
+      buildContext(dir),
+      control({
+        type: "merge-json",
+        file: "package.json",
+        path: "scripts.test",
+        value: "vitest run",
+      }),
+    );
+    const yaml = await mergeYamlGenerator(
+      buildContext(dir),
+      control({
+        type: "merge-yaml",
+        file: ".github/workflows/ci.yml",
+        path: "permissions",
+        value: { contents: "read" },
+      }),
+    );
+    expect(json).toEqual([]);
+    expect(yaml).toEqual([]);
+    // And nothing was written.
+    await expect(readFile(join(dir, "package.json"), "utf8")).rejects.toThrow();
+  });
 });

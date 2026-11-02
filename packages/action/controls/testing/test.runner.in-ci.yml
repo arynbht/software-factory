@@ -9,10 +9,6 @@ detect:
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
     pattern: '(?i)(vitest|jest|pytest|go test|cargo test|npm test|pnpm test|yarn test|\brun test\b)'
 evidence: none
-fix:
-  type: merge-yaml
-  file: .github/workflows/ci.yml
-  path: jobs.ci.steps
 references:
   - name: DORA — Continuous integration
     url: https://dora.dev/capabilities/continuous-integration/

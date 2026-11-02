@@ -8,8 +8,10 @@ import type { Change, Generator } from "./types.js";
 
 /**
  * Set a dot/bracket path to a value inside a JSON(C) file with a minimal,
- * formatting-preserving edit (jsonc-parser). No-op if already equal; creates the
- * file from `{}` if absent.
+ * formatting-preserving edit (jsonc-parser). No-op if already equal. A merge only
+ * ever edits an existing file — it never fabricates one (creating a structured
+ * file from a single fragment is a `template` fix's job), so merging into an absent
+ * target (e.g. `package.json` in a non-Node repo) is a safe no-op.
  */
 export const mergeJsonGenerator: Generator = async (
   ctx: AuditContext,
@@ -21,7 +23,8 @@ export const mergeJsonGenerator: Generator = async (
 
   const matches = await ctx.glob(splitGlobs(file));
   const target = matches[0] ?? file;
-  const current = (await ctx.readFile(target)) ?? "{}\n";
+  const current = await ctx.readFile(target);
+  if (current === null) return [];
 
   let parsed: unknown;
   try {
