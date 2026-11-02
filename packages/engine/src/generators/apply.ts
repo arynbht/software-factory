@@ -22,6 +22,8 @@ export interface ChangeResult {
   before?: string | undefined;
   /** Proposed content (file changes). */
   after?: string | undefined;
+  /** Set when an effect threw while applying (write mode). */
+  error?: string | undefined;
   message: string;
 }
 
@@ -50,12 +52,23 @@ export async function applyChanges(
 
   for (const change of changes) {
     if (change.type === "effect") {
-      if (write) await change.run();
+      let error: string | undefined;
+      if (write) {
+        try {
+          await change.run();
+        } catch (err) {
+          // One failing setting (e.g. missing admin scope) must not abort the run.
+          error = (err as Error).message;
+        }
+      }
       results.push({
         controlId: change.controlId,
         type: "effect",
         action: "effect",
-        message: change.summary,
+        error,
+        message: error
+          ? `${change.summary} — failed: ${error}`
+          : change.summary,
       });
       continue;
     }

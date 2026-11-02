@@ -1,5 +1,6 @@
 import type { FixConfig } from "@arynbht/factory-catalog";
 
+import { githubSettingGenerator } from "./github-setting.js";
 import { mergeJsonGenerator } from "./merge-json.js";
 import { mergeYamlGenerator } from "./merge-yaml.js";
 import { templateGenerator } from "./template.js";
@@ -16,4 +17,5 @@ export const generators: Partial<Record<FixType, Generator>> = {
   template: templateGenerator,
   "merge-json": mergeJsonGenerator,
   "merge-yaml": mergeYamlGenerator,
+  "github-setting": githubSettingGenerator,
 };
