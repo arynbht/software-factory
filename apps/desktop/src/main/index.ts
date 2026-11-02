@@ -1,8 +1,18 @@
 import { join } from "node:path";
 
-import { app, BrowserWindow, ipcMain, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 
-import { IpcChannel, PingRequest, type PingResponse } from "../shared/ipc";
+import {
+  AuditRunRequest,
+  IpcChannel,
+  PingRequest,
+  type PingResponse,
+  RepoList,
+  RepoRemoveRequest,
+  Scorecard,
+} from "../shared/ipc";
+import { runAudit } from "./engine/audit";
+import { addRepo, listRepos, removeRepo } from "./store/repos";
 
 // In dev the renderer is served by Vite (HMR needs a looser policy); in prod it
 // loads from the bundle under a strict self-only policy. Either way: no remote
@@ -99,6 +109,32 @@ function registerIpcHandlers(): void {
       version: app.getVersion(),
     };
     return response;
+  });
+
+  ipcMain.handle(IpcChannel.ReposList, async () =>
+    RepoList.parse(await listRepos()),
+  );
+
+  ipcMain.handle(IpcChannel.ReposAdd, async () => {
+    const result = await dialog.showOpenDialog({
+      title: "Add a repository folder",
+      properties: ["openDirectory"],
+    });
+    const chosen = result.filePaths[0];
+    if (result.canceled || !chosen) {
+      return RepoList.parse(await listRepos());
+    }
+    return RepoList.parse(await addRepo(chosen));
+  });
+
+  ipcMain.handle(IpcChannel.ReposRemove, async (_event, raw: unknown) => {
+    const { path } = RepoRemoveRequest.parse(raw);
+    return RepoList.parse(await removeRepo(path));
+  });
+
+  ipcMain.handle(IpcChannel.AuditRun, async (_event, raw: unknown) => {
+    const { repoPath } = AuditRunRequest.parse(raw);
+    return Scorecard.parse(await runAudit(repoPath));
   });
 }
 
