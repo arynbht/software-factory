@@ -1,0 +1,27 @@
+id: legal.license-summary
+title: Third-party license summary
+lane: legal
+phase: harden
+severity: medium
+effort: small
+applies:
+  all:
+    - flag: distributes-binaries
+detect:
+  - type: file-exists
+    path: "docs/legal/license-summary.md|docs/**/licenses*.md|THIRD_PARTY_NOTICES*|NOTICE"
+evidence: optional
+fix:
+  type: claude
+  task: license-summary
+references:
+  - name: SPDX License List
+    url: https://spdx.org/licenses/
+  - name: REUSE Specification
+    url: https://reuse.software/spec/
+rationale: >
+  Shipping software means redistributing its dependencies, each under its own
+  license with its own obligations (attribution, source offer, copyleft reach). A
+  grouped summary of those licenses confirms the project has the right to ship and
+  surfaces any term that needs action before release; a drafted summary still needs
+  a human to verify it against the actual dependency tree.
