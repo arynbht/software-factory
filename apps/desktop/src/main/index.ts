@@ -21,6 +21,7 @@ import {
   PingRequest,
   type PingResponse,
   EvidenceRequest,
+  FixPlanRequest,
   GatesStatusRequest,
   ProfileLoadRequest,
   ProfileMeta,
@@ -37,6 +38,7 @@ import {
 } from "./auth/device-flow";
 import { clearToken, loadToken, saveToken } from "./auth/token-store";
 import { runAudit } from "./engine/audit";
+import { applyFix, openFixPrForRepo, planFix } from "./engine/fix";
 import { attachEvidence, computeGates, waiveControl } from "./engine/gates";
 import { addRepo, listRepos, removeRepo } from "./store/repos";
 
@@ -334,6 +336,22 @@ function registerIpcHandlers(): void {
       },
       token,
     );
+  });
+
+  ipcMain.handle(IpcChannel.FixPlan, async (_event, raw: unknown) => {
+    const { repoPath } = FixPlanRequest.parse(raw);
+    return planFix(repoPath, (await loadToken()) ?? undefined);
+  });
+
+  ipcMain.handle(IpcChannel.FixApply, async (_event, raw: unknown) => {
+    const { repoPath } = FixPlanRequest.parse(raw);
+    return applyFix(repoPath, (await loadToken()) ?? undefined);
+  });
+
+  ipcMain.handle(IpcChannel.FixOpenPr, async (_event, raw: unknown) => {
+    const { repoPath } = FixPlanRequest.parse(raw);
+    const date = new Date().toISOString().slice(0, 10);
+    return openFixPrForRepo(repoPath, date, (await loadToken()) ?? undefined);
   });
 }
 

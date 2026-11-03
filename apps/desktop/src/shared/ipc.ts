@@ -23,6 +23,9 @@ export const IpcChannel = {
   GatesStatus: "gates:status",
   GatesWaive: "gates:waive",
   GatesEvidence: "gates:evidence",
+  FixPlan: "fix:plan",
+  FixApply: "fix:apply",
+  FixOpenPr: "fix:openPr",
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
@@ -202,3 +205,48 @@ export const EvidenceRequest = z.object({
   validFor: z.string().optional(),
 });
 export type EvidenceRequest = z.infer<typeof EvidenceRequest>;
+
+// Fix — proposed generator changes (dry-run or applied) and the PR outcome.
+export const FixChange = z.object({
+  controlId: z.string(),
+  type: z.enum(["file", "effect"]),
+  action: z.enum([
+    "create",
+    "update",
+    "skip",
+    "unchanged",
+    "suggest",
+    "effect",
+  ]),
+  path: z.string().optional(),
+  before: z.string().optional(),
+  after: z.string().optional(),
+  message: z.string(),
+  error: z.string().optional(),
+});
+export type FixChange = z.infer<typeof FixChange>;
+
+export const FixPlan = z.object({
+  changes: z.array(FixChange),
+  generatorErrors: z.array(
+    z.object({
+      controlId: z.string(),
+      fixType: z.string(),
+      message: z.string(),
+    }),
+  ),
+});
+export type FixPlan = z.infer<typeof FixPlan>;
+
+export const FixPrOutcome = z.object({
+  pr: z
+    .object({ number: z.number(), url: z.string(), reused: z.boolean() })
+    .nullable(),
+  commits: z.number().int(),
+  pushed: z.boolean(),
+  changeResults: z.array(FixChange),
+  skippedEffects: z.number().int(),
+});
+export type FixPrOutcome = z.infer<typeof FixPrOutcome>;
+
+export const FixPlanRequest = z.object({ repoPath: z.string().min(1) });

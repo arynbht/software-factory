@@ -2,13 +2,14 @@ import { FolderPlus, Play, RefreshCw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AuthControls } from "@/components/AuthControls";
+import { Fix } from "@/components/Fix";
 import { Gates } from "@/components/Gates";
 import { ProfileForm } from "@/components/ProfileForm";
 import { Scorecard } from "@/components/Scorecard";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/errors";
 
-type View = "scorecard" | "profile" | "gates";
+type View = "scorecard" | "profile" | "gates" | "fix";
 
 import type { RepoEntry, Scorecard as ScorecardData } from "../shared/ipc";
 
@@ -177,7 +178,7 @@ export function App() {
             </div>
 
             <div className="flex gap-4 border-b border-border text-sm">
-              {(["scorecard", "profile", "gates"] as const).map((v) => (
+              {(["scorecard", "profile", "gates", "fix"] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
@@ -227,6 +228,12 @@ export function App() {
             {opened.has("gates") && (
               <div className={view === "gates" ? "" : "hidden"}>
                 <Gates repoPath={selectedRepo.path} />
+              </div>
+            )}
+
+            {opened.has("fix") && (
+              <div className={view === "fix" ? "" : "hidden"}>
+                <Fix repoPath={selectedRepo.path} />
               </div>
             )}
           </div>

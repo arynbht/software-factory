@@ -11,6 +11,9 @@ import {
   AuthUpdate,
   DeviceCodeInfo,
   EvidenceRequest,
+  FixPlan,
+  FixPlanRequest,
+  FixPrOutcome,
   GatesReport,
   GatesStatusRequest,
   IpcChannel,
@@ -140,6 +143,36 @@ const api = {
         EvidenceRequest.parse(request),
       );
       return GatesReport.parse(raw);
+    },
+  },
+
+  fix: {
+    /** Dry-run: the changes `factory fix` would make, grouped per control. */
+    async plan(repoPath: string) {
+      const request = FixPlanRequest.parse({ repoPath });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.FixPlan,
+        request,
+      );
+      return FixPlan.parse(raw);
+    },
+    /** Apply the changes to the working tree; returns the applied results. */
+    async apply(repoPath: string) {
+      const request = FixPlanRequest.parse({ repoPath });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.FixApply,
+        request,
+      );
+      return FixPlan.parse(raw);
+    },
+    /** Open (or reuse) a factory PR with the changes; returns the PR outcome. */
+    async openPr(repoPath: string) {
+      const request = FixPlanRequest.parse({ repoPath });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.FixOpenPr,
+        request,
+      );
+      return FixPrOutcome.parse(raw);
     },
   },
 };
