@@ -17,8 +17,9 @@ export const STATUS_META: Record<ControlStatus, StatusMeta> = {
     text: "text-amber-400",
   },
   waived: { label: "Waived", dot: "bg-sky-500", text: "text-sky-400" },
+  // slate-400 (not 500) so the label clears WCAG AA contrast on the card bg.
   skip: { label: "Skipped", dot: "bg-slate-500", text: "text-slate-400" },
-  "n/a": { label: "N/A", dot: "bg-slate-700", text: "text-slate-500" },
+  "n/a": { label: "N/A", dot: "bg-slate-700", text: "text-slate-400" },
 };
 
 /** Status order for the compact count summary (most urgent first). */

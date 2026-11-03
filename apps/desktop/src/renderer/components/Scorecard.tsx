@@ -90,7 +90,7 @@ function ControlRow({ control }: { control: ScorecardControl }) {
                   <li key={ref.url}>
                     {ref.name}
                     {ref.section ? ` — ${ref.section}` : ""}
-                    <span className="ml-1 break-all text-muted-foreground/70">
+                    <span className="ml-1 break-all text-muted-foreground">
                       {ref.url}
                     </span>
                   </li>

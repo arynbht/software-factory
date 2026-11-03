@@ -12,7 +12,7 @@ const ACTION: Record<FixChange["action"], string> = {
   update: "text-sky-400",
   suggest: "text-amber-400",
   skip: "text-slate-400",
-  unchanged: "text-slate-500",
+  unchanged: "text-slate-400",
   effect: "text-violet-400",
 };
 
@@ -176,9 +176,13 @@ export function Fix({ repoPath }: { repoPath: string }) {
           {error}
         </p>
       )}
-      {notice && <p className="text-sm text-emerald-400">{notice}</p>}
+      {notice && (
+        <p className="text-sm text-emerald-400" aria-live="polite">
+          {notice}
+        </p>
+      )}
       {pr?.pr && (
-        <p className="text-sm text-sky-400">
+        <p className="text-sm text-sky-400" aria-live="polite">
           {pr.pr.reused ? "Updated" : "Opened"} PR #{pr.pr.number} ({pr.commits}{" "}
           commit{pr.commits === 1 ? "" : "s"}): {pr.pr.url}
         </p>

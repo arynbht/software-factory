@@ -5,7 +5,7 @@ import {
   Settings as SettingsIcon,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Ai } from "@/components/Ai";
 import { AuthControls } from "@/components/AuthControls";
@@ -21,12 +21,79 @@ import { applyTheme } from "@/lib/theme";
 
 type View = "scorecard" | "profile" | "gates" | "fix" | "ai" | "docs";
 
+const TABS: { id: View; label: string }[] = [
+  { id: "scorecard", label: "Scorecard" },
+  { id: "profile", label: "Profile" },
+  { id: "gates", label: "Gates" },
+  { id: "fix", label: "Fix" },
+  { id: "ai", label: "AI" },
+  { id: "docs", label: "Docs" },
+];
+
 import type {
   RepoEntry,
   Scorecard as ScorecardData,
   Theme,
   UpdateInfo,
 } from "../shared/ipc";
+
+/** The screen tab bar as an ARIA tablist: roving tabindex + arrow-key nav. */
+function TabBar({
+  view,
+  onSelect,
+}: {
+  view: View;
+  onSelect: (v: View) => void;
+}) {
+  const refs = useRef<Partial<Record<View, HTMLButtonElement | null>>>({});
+
+  function onKeyDown(e: React.KeyboardEvent): void {
+    const i = TABS.findIndex((t) => t.id === view);
+    let next = i;
+    if (e.key === "ArrowRight") next = (i + 1) % TABS.length;
+    else if (e.key === "ArrowLeft") next = (i - 1 + TABS.length) % TABS.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = TABS.length - 1;
+    else return;
+    e.preventDefault();
+    const target = TABS[next];
+    if (!target) return;
+    onSelect(target.id);
+    refs.current[target.id]?.focus();
+  }
+
+  return (
+    <div
+      role="tablist"
+      aria-label="Repository views"
+      onKeyDown={onKeyDown}
+      className="flex gap-4 border-b border-border text-sm"
+    >
+      {TABS.map((t) => (
+        <button
+          key={t.id}
+          ref={(el) => {
+            refs.current[t.id] = el;
+          }}
+          type="button"
+          role="tab"
+          id={`tab-${t.id}`}
+          aria-selected={view === t.id}
+          aria-controls={`panel-${t.id}`}
+          tabIndex={view === t.id ? 0 : -1}
+          onClick={() => onSelect(t.id)}
+          className={`-mb-px rounded-t-sm border-b-2 px-1 pb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            view === t.id
+              ? "border-sky-500 text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function App() {
   // The preload exposes `window.factory`; if it failed to load, surface a clear
@@ -181,7 +248,8 @@ export function App() {
                     <button
                       type="button"
                       onClick={() => handleSelect(repo.path)}
-                      className="min-w-0 flex-1 text-left"
+                      aria-current={repo.path === selected ? "true" : undefined}
+                      className="min-w-0 flex-1 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       title={repo.path}
                     >
                       <span className="block truncate text-sm">
@@ -195,7 +263,7 @@ export function App() {
                       type="button"
                       onClick={() => void handleRemove(repo.path)}
                       aria-label={`Remove ${repo.name}`}
-                      className="shrink-0 rounded p-1 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+                      className="shrink-0 rounded p-1 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -271,28 +339,17 @@ export function App() {
               )}
             </div>
 
-            <div className="flex gap-4 border-b border-border text-sm">
-              {(
-                ["scorecard", "profile", "gates", "fix", "ai", "docs"] as const
-              ).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => showView(v)}
-                  className={`-mb-px border-b-2 px-1 pb-2 capitalize ${
-                    view === v
-                      ? "border-sky-500 text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
+            <TabBar view={view} onSelect={showView} />
 
             {/* Each panel stays mounted once opened (hidden when inactive), so
                 switching tabs preserves its state; `opened` resets per repo. */}
-            <div className={view === "scorecard" ? "" : "hidden"}>
+            <div
+              id="panel-scorecard"
+              role="tabpanel"
+              aria-labelledby="tab-scorecard"
+              tabIndex={0}
+              hidden={view !== "scorecard"}
+            >
               {error && (
                 <p
                   className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-rose-300"
@@ -313,7 +370,13 @@ export function App() {
             </div>
 
             {opened.has("profile") && (
-              <div className={view === "profile" ? "" : "hidden"}>
+              <div
+                id="panel-profile"
+                role="tabpanel"
+                aria-labelledby="tab-profile"
+                tabIndex={0}
+                hidden={view !== "profile"}
+              >
                 <ProfileForm
                   repoPath={selectedRepo.path}
                   repoName={selectedRepo.name}
@@ -322,27 +385,51 @@ export function App() {
             )}
 
             {opened.has("gates") && (
-              <div className={view === "gates" ? "" : "hidden"}>
+              <div
+                id="panel-gates"
+                role="tabpanel"
+                aria-labelledby="tab-gates"
+                tabIndex={0}
+                hidden={view !== "gates"}
+              >
                 <Gates repoPath={selectedRepo.path} />
               </div>
             )}
 
             {opened.has("fix") && (
-              <div className={view === "fix" ? "" : "hidden"}>
+              <div
+                id="panel-fix"
+                role="tabpanel"
+                aria-labelledby="tab-fix"
+                tabIndex={0}
+                hidden={view !== "fix"}
+              >
                 {/* key resets the panel's run/PR state when the repo changes. */}
                 <Fix key={selectedRepo.path} repoPath={selectedRepo.path} />
               </div>
             )}
 
             {opened.has("ai") && (
-              <div className={view === "ai" ? "" : "hidden"}>
+              <div
+                id="panel-ai"
+                role="tabpanel"
+                aria-labelledby="tab-ai"
+                tabIndex={0}
+                hidden={view !== "ai"}
+              >
                 {/* key resets the panel's draft/run state when the repo changes. */}
                 <Ai key={selectedRepo.path} repoPath={selectedRepo.path} />
               </div>
             )}
 
             {opened.has("docs") && (
-              <div className={view === "docs" ? "" : "hidden"}>
+              <div
+                id="panel-docs"
+                role="tabpanel"
+                aria-labelledby="tab-docs"
+                tabIndex={0}
+                hidden={view !== "docs"}
+              >
                 <Docs repoPath={selectedRepo.path} />
               </div>
             )}

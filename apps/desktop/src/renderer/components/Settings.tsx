@@ -27,7 +27,7 @@ function Field(props: {
       </label>
       {props.children}
       {props.hint && (
-        <p className="text-xs text-muted-foreground/80">{props.hint}</p>
+        <p className="text-xs text-muted-foreground">{props.hint}</p>
       )}
     </div>
   );
