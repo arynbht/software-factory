@@ -9,6 +9,17 @@ detect:
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
     pattern: '(?i)(cyclonedx|\bsbom\b|anchore/sbom-action|syft)'
 evidence: none
+fix:
+  type: merge-yaml
+  file: .github/workflows/ci.yml
+  path: jobs.ci.steps
+  mergeStrategy: append-if-missing
+  dedupeKey: name
+  value:
+    name: Generate SBOM
+    uses: anchore/sbom-action@55dc4ee22412511ee8c3142cbea40418e6cec693 # v0.17.8
+    with:
+      format: cyclonedx-json
 references:
   - name: CycloneDX
     url: https://cyclonedx.org/

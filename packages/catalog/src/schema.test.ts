@@ -77,6 +77,51 @@ describe("ControlSchema", () => {
     };
     expect(ControlSchema.safeParse(withValue).success).toBe(true);
   });
+
+  it("accepts a merge-yaml fix with byStack and no top-level value", () => {
+    const withByStack = {
+      ...base,
+      fix: {
+        type: "merge-yaml",
+        file: "ci.yml",
+        path: "jobs.ci.steps",
+        mergeStrategy: "append-if-missing",
+        dedupeKey: "name",
+        byStack: {
+          node: { name: "Test", run: "npm test --if-present" },
+          python: { name: "Test", run: "pytest" },
+        },
+      },
+    };
+    expect(ControlSchema.safeParse(withByStack).success).toBe(true);
+  });
+
+  it("rejects a merge-yaml fix with an empty byStack and no value", () => {
+    const emptyByStack = {
+      ...base,
+      fix: {
+        type: "merge-yaml",
+        file: "ci.yml",
+        path: "jobs.ci.steps",
+        byStack: {},
+      },
+    };
+    expect(ControlSchema.safeParse(emptyByStack).success).toBe(false);
+  });
+
+  it("rejects append-if-missing without a dedupeKey", () => {
+    const noDedupe = {
+      ...base,
+      fix: {
+        type: "merge-yaml",
+        file: "ci.yml",
+        path: "jobs.ci.steps",
+        mergeStrategy: "append-if-missing",
+        value: { name: "Test", run: "npm test" },
+      },
+    };
+    expect(ControlSchema.safeParse(noDedupe).success).toBe(false);
+  });
 });
 
 describe("DetectorConfigSchema", () => {

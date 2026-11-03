@@ -9,6 +9,19 @@ detect:
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
     pattern: "(?i)(codeql|semgrep|sonarqube|sonarcloud)"
 evidence: none
+# CodeQL needs an init step and an analyze step; append both as a list (only the
+# missing ones are added, matched by name).
+fix:
+  type: merge-yaml
+  file: .github/workflows/ci.yml
+  path: jobs.ci.steps
+  mergeStrategy: append-if-missing
+  dedupeKey: name
+  value:
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@6825d5659bf007b85a0866e2d0f434aacf50de94 # v3.27.5
+    - name: Perform CodeQL analysis
+      uses: github/codeql-action/analyze@6825d5659bf007b85a0866e2d0f434aacf50de94 # v3.27.5
 references:
   - name: OpenSSF Scorecard
     url: https://github.com/ossf/scorecard/blob/main/docs/checks.md

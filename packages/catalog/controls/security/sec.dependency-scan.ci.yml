@@ -9,6 +9,17 @@ detect:
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
     pattern: "(?i)(osv-scanner|trivy|snyk|dependency-review|npm audit|pnpm audit|grype)"
 evidence: none
+# dependency-review runs on pull_request; this is a GitHub-native, stack-agnostic
+# scan, so no per-stack variant is needed.
+fix:
+  type: merge-yaml
+  file: .github/workflows/ci.yml
+  path: jobs.ci.steps
+  mergeStrategy: append-if-missing
+  dedupeKey: name
+  value:
+    name: Dependency review
+    uses: actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019 # v4.5.0
 references:
   - name: OSV-Scanner
     url: https://google.github.io/osv-scanner/

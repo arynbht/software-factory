@@ -13,7 +13,7 @@ Continuous integration, caching, action pinning, versioning, and release automat
 ### `ci.actions-pinned-sha` — GitHub Actions pinned by commit SHA
 
 - **phase**: harden · **severity**: medium · **effort**: medium
-- **detect**: `file-matches` · **fix**: —
+- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 Pinning third-party actions to a full commit SHA, not a mutable tag, stops a compromised or retagged action from silently executing new code in CI.
 
@@ -45,7 +45,7 @@ References:
 ### `ci.dependency-caching` — CI caches dependencies
 
 - **phase**: build · **severity**: low · **effort**: small
-- **detect**: `file-matches` · **fix**: —
+- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 Caching dependencies cuts CI time and cost and reduces load on upstream registries, keeping the feedback loop fast as the project grows.
 

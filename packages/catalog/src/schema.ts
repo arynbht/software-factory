@@ -137,6 +137,19 @@ export type DetectorType = DetectorConfig["type"];
 /* Fix configs — parsed in M1, consumed by generators in M3.                   */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Per-stack override for a merge value. The generator resolves the audited repo's
+ * stack (node vs python) and, when a matching entry is present, appends/sets that
+ * fragment instead of the default `value` — so one control can carry a `pytest`
+ * step for Python repos and an `npm test` step for Node repos.
+ */
+const ByStackSchema = z
+  .object({
+    node: z.unknown().optional(),
+    python: z.unknown().optional(),
+  })
+  .describe("Per-stack value overrides (node/python); falls back to `value`.");
+
 export const FixConfigSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("template"), template: z.string().min(1) }),
   z.object({
@@ -144,6 +157,20 @@ export const FixConfigSchema = z.discriminatedUnion("type", [
     file: z.string().min(1),
     path: z.string().min(1),
     value: z.unknown().optional(),
+    byStack: ByStackSchema.optional(),
+    mergeStrategy: z
+      .enum(["set", "append-if-missing"])
+      .optional()
+      .describe(
+        "`set` (default) replaces the node at `path`. `append-if-missing` treats the node at `path` as an array and appends `value` only if no existing item matches `dedupeKey`.",
+      ),
+    dedupeKey: z
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        "For append-if-missing: the item field used to detect a duplicate (e.g. `uses` or `name`). An item is skipped if an existing item shares this key's value.",
+      ),
   }),
   z.object({
     type: z.literal("merge-json"),
@@ -237,19 +264,39 @@ export const ControlSchema = ControlObjectSchema.refine(
       "control id prefix must be the lane's code (see LANES in taxonomy.ts)",
     path: ["id"],
   },
-).refine(
-  // A merge fix with no `value` has nothing to merge — the generator silently
-  // produces no change, so such a fix is misleading and rejected at load time.
-  (control) =>
-    !(
-      (control.fix?.type === "merge-yaml" ||
-        control.fix?.type === "merge-json") &&
-      control.fix.value === undefined
-    ),
-  {
-    message: "a merge-yaml/merge-json fix must specify a 'value' to merge",
-    path: ["fix", "value"],
-  },
-);
+).superRefine((control, ctx) => {
+  const fix = control.fix;
+  if (fix?.type !== "merge-yaml" && fix?.type !== "merge-json") return;
+
+  // A merge fix must carry something to merge. `value` is the default; a
+  // merge-yaml fix may instead (or additionally) supply per-stack fragments via
+  // `byStack`. A fix with neither is a silent no-op and rejected at load time.
+  const hasByStack =
+    fix.type === "merge-yaml" &&
+    fix.byStack !== undefined &&
+    (fix.byStack.node !== undefined || fix.byStack.python !== undefined);
+  if (fix.value === undefined && !hasByStack) {
+    ctx.addIssue({
+      code: "custom",
+      message:
+        "a merge-yaml/merge-json fix must specify a 'value' (or 'byStack') to merge",
+      path: ["fix", "value"],
+    });
+  }
+
+  // append-if-missing dedups array items by a field; without a `dedupeKey` it
+  // can't tell a duplicate from a new item, so it would append on every run.
+  if (
+    fix.type === "merge-yaml" &&
+    fix.mergeStrategy === "append-if-missing" &&
+    fix.dedupeKey === undefined
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      message: "append-if-missing requires a 'dedupeKey' to dedupe array items",
+      path: ["fix", "dedupeKey"],
+    });
+  }
+});
 
 export type Control = z.infer<typeof ControlSchema>;

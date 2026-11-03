@@ -9,6 +9,20 @@ detect:
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
     pattern: 'uses:\s+\S+@[0-9a-f]{40}'
 evidence: none
+# Appends a SHA-pinned hardening step. This cannot rewrite existing tag-pinned
+# `uses:` lines (Renovate's `helpers:pinGitHubActionDigests` does that), but it
+# seeds the workflow with a correctly SHA-pinned action and an auditing step.
+fix:
+  type: merge-yaml
+  file: .github/workflows/ci.yml
+  path: jobs.ci.steps
+  mergeStrategy: append-if-missing
+  dedupeKey: name
+  value:
+    name: Harden the runner
+    uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+    with:
+      egress-policy: audit
 references:
   - name: OpenSSF Scorecard
     url: https://github.com/ossf/scorecard/blob/main/docs/checks.md

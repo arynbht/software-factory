@@ -37,7 +37,7 @@ export function templateVars(
 }
 
 /** The stack bucket to select stack-specific template files from. */
-function pickStack(stack: string[]): "node" | "python" {
+export function pickStack(stack: string[]): "node" | "python" {
   return stack.some((s) => /python|pytest|django|flask|fastapi/i.test(s))
     ? "python"
     : "node";

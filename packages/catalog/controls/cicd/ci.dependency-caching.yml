@@ -9,6 +9,27 @@ detect:
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
     pattern: '(?i)(actions/cache|cache:\s|cache-dependency-path)'
 evidence: none
+fix:
+  type: merge-yaml
+  file: .github/workflows/ci.yml
+  path: jobs.ci.steps
+  mergeStrategy: append-if-missing
+  dedupeKey: name
+  byStack:
+    node:
+      name: Cache dependencies
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+      with:
+        path: ~/.npm
+        key: "${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}"
+        restore-keys: "${{ runner.os }}-npm-"
+    python:
+      name: Cache dependencies
+      uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+      with:
+        path: ~/.cache/pip
+        key: "${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}"
+        restore-keys: "${{ runner.os }}-pip-"
 references:
   - name: GitHub Docs — Caching dependencies to speed up workflows
     url: https://docs.github.com/actions/using-workflows/caching-dependencies-to-speed-up-workflows

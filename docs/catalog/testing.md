@@ -63,7 +63,7 @@ References:
 ### `test.runner.in-ci` — Tests run in CI
 
 - **phase**: build · **severity**: medium · **effort**: small
-- **detect**: `file-matches` · **fix**: —
+- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 Tests that only run locally do not protect the main line; running them in CI is what makes a green suite a precondition for merging.
 
