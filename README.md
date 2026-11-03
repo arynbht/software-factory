@@ -16,9 +16,48 @@ pull requests. It works identically on an empty repo and a half-built one.
 - **Claude drafts, humans sign.** Every AI-generated artifact lands as a
   reviewable PR and still requires human evidence to pass a gate.
 
-> Status: early development. See
-> [`software-factory-build-plan.md`](./software-factory-build-plan.md) for the
-> full product definition, milestones, and control catalog.
+> Status: 1.0 — first stable release. See
+> [`software-factory-build-plan.md`](./software-factory-build-plan.md) for the full
+> product definition, milestones, and control catalog, and
+> [`docs/catalog/`](./docs/catalog/) for the rendered controls.
+
+## Using the factory
+
+Pick the client that fits — all three run the same engine over the same catalog.
+
+### GitHub Action (audit in CI)
+
+Add a workflow that runs the audit on every pull request and fails the job when the
+phase gate is red:
+
+```yaml
+# .github/workflows/factory.yml
+name: factory
+on: [pull_request]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arynbht/software-factory@v1
+```
+
+`factory init` scaffolds this workflow for you.
+
+### CLI (`factory`)
+
+The `@arynbht/factory` package publishes to GitHub Packages (ADR-0010). After the
+one-time registry auth, run it in a repo:
+
+```sh
+factory init            # interactive profile + self-audit workflow
+factory audit           # scorecard by lane; phase gate verdict
+factory fix --pr        # open remediation PRs for the gaps it can fix
+factory ai threat-model # draft an artifact for review (20 tasks available)
+```
 
 ## Desktop app
 
