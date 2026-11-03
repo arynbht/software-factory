@@ -17,6 +17,9 @@ import {
   AiRunRequest,
   AiTasks,
   AuditRunRequest,
+  DocList,
+  DocsListRequest,
+  DocsReadRequest,
   AuthStatus,
   type AuthUpdate,
   DeviceCodeInfo,
@@ -42,6 +45,7 @@ import {
 import { applyAiDraft, listAiTasks, openAiPr, runAiTask } from "./engine/ai";
 import { clearToken, loadToken, saveToken } from "./auth/token-store";
 import { runAudit } from "./engine/audit";
+import { listDocs, readDoc } from "./engine/docs";
 import { applyFix, openFixPrForRepo, planFix } from "./engine/fix";
 import { attachEvidence, computeGates, waiveControl } from "./engine/gates";
 import { addRepo, listRepos, removeRepo } from "./store/repos";
@@ -381,6 +385,16 @@ function registerIpcHandlers(): void {
       contents,
       (await loadToken()) ?? undefined,
     );
+  });
+
+  ipcMain.handle(IpcChannel.DocsList, async (_event, raw: unknown) => {
+    const { repoPath } = DocsListRequest.parse(raw);
+    return DocList.parse(await listDocs(repoPath));
+  });
+
+  ipcMain.handle(IpcChannel.DocsRead, async (_event, raw: unknown) => {
+    const { repoPath, path } = DocsReadRequest.parse(raw);
+    return readDoc(repoPath, path);
   });
 }
 

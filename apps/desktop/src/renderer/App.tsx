@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { Ai } from "@/components/Ai";
 import { AuthControls } from "@/components/AuthControls";
+import { Docs } from "@/components/Docs";
 import { Fix } from "@/components/Fix";
 import { Gates } from "@/components/Gates";
 import { ProfileForm } from "@/components/ProfileForm";
@@ -10,7 +11,7 @@ import { Scorecard } from "@/components/Scorecard";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/errors";
 
-type View = "scorecard" | "profile" | "gates" | "fix" | "ai";
+type View = "scorecard" | "profile" | "gates" | "fix" | "ai" | "docs";
 
 import type { RepoEntry, Scorecard as ScorecardData } from "../shared/ipc";
 
@@ -179,22 +180,22 @@ export function App() {
             </div>
 
             <div className="flex gap-4 border-b border-border text-sm">
-              {(["scorecard", "profile", "gates", "fix", "ai"] as const).map(
-                (v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => showView(v)}
-                    className={`-mb-px border-b-2 px-1 pb-2 capitalize ${
-                      view === v
-                        ? "border-sky-500 text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {v}
-                  </button>
-                ),
-              )}
+              {(
+                ["scorecard", "profile", "gates", "fix", "ai", "docs"] as const
+              ).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => showView(v)}
+                  className={`-mb-px border-b-2 px-1 pb-2 capitalize ${
+                    view === v
+                      ? "border-sky-500 text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
             </div>
 
             {/* Each panel stays mounted once opened (hidden when inactive), so
@@ -243,6 +244,12 @@ export function App() {
             {opened.has("ai") && (
               <div className={view === "ai" ? "" : "hidden"}>
                 <Ai repoPath={selectedRepo.path} />
+              </div>
+            )}
+
+            {opened.has("docs") && (
+              <div className={view === "docs" ? "" : "hidden"}>
+                <Docs repoPath={selectedRepo.path} />
               </div>
             )}
           </div>
