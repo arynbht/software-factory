@@ -26,6 +26,10 @@ export const IpcChannel = {
   FixPlan: "fix:plan",
   FixApply: "fix:apply",
   FixOpenPr: "fix:openPr",
+  AiTasks: "ai:tasks",
+  AiRun: "ai:run",
+  AiApply: "ai:apply",
+  AiOpenPr: "ai:openPr",
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
@@ -250,3 +254,40 @@ export const FixPrOutcome = z.object({
 export type FixPrOutcome = z.infer<typeof FixPrOutcome>;
 
 export const FixPlanRequest = z.object({ repoPath: z.string().min(1) });
+
+// AI — Claude-drafted artifacts (runs on the subscription CLI by default).
+export const AiTaskInfo = z.object({ task: z.string(), output: z.string() });
+export type AiTaskInfo = z.infer<typeof AiTaskInfo>;
+export const AiTasks = z.array(AiTaskInfo);
+
+export const AiRunResult = z.object({
+  task: z.string(),
+  outputPath: z.string(),
+  model: z.string(),
+  inputTokens: z.number().int(),
+  outputTokens: z.number().int(),
+  /** API-equivalent cost estimate (subscription runs aren't metered per token). */
+  costUsd: z.number(),
+  includedFiles: z.array(z.string()),
+  truncated: z.boolean(),
+  /** The drafted artifact (not yet written — apply or open a PR to persist it). */
+  contents: z.string(),
+});
+export type AiRunResult = z.infer<typeof AiRunResult>;
+
+export const AiRunRequest = z.object({
+  repoPath: z.string().min(1),
+  task: z.string().min(1),
+});
+export const AiApplyRequest = z.object({
+  repoPath: z.string().min(1),
+  task: z.string().min(1),
+  outputPath: z.string().min(1),
+  contents: z.string(),
+});
+export type AiApplyRequest = z.infer<typeof AiApplyRequest>;
+
+export const AiApplyResult = z.object({
+  action: z.string(),
+  path: z.string(),
+});

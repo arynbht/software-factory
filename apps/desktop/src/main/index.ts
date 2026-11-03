@@ -13,6 +13,9 @@ import {
 import { loadProfile, updateProfile } from "@arynbht/factory-engine";
 
 import {
+  AiApplyRequest,
+  AiRunRequest,
+  AiTasks,
   AuditRunRequest,
   AuthStatus,
   type AuthUpdate,
@@ -36,6 +39,7 @@ import {
   pollForToken,
   requestDeviceCode,
 } from "./auth/device-flow";
+import { applyAiDraft, listAiTasks, openAiPr, runAiTask } from "./engine/ai";
 import { clearToken, loadToken, saveToken } from "./auth/token-store";
 import { runAudit } from "./engine/audit";
 import { applyFix, openFixPrForRepo, planFix } from "./engine/fix";
@@ -352,6 +356,31 @@ function registerIpcHandlers(): void {
     const { repoPath } = FixPlanRequest.parse(raw);
     const date = new Date().toISOString().slice(0, 10);
     return openFixPrForRepo(repoPath, date, (await loadToken()) ?? undefined);
+  });
+
+  ipcMain.handle(IpcChannel.AiTasks, async () =>
+    AiTasks.parse(await listAiTasks()),
+  );
+
+  ipcMain.handle(IpcChannel.AiRun, async (_event, raw: unknown) => {
+    const { repoPath, task } = AiRunRequest.parse(raw);
+    return runAiTask(repoPath, task, (await loadToken()) ?? undefined);
+  });
+
+  ipcMain.handle(IpcChannel.AiApply, async (_event, raw: unknown) => {
+    const { repoPath, task, outputPath, contents } = AiApplyRequest.parse(raw);
+    return applyAiDraft(repoPath, task, outputPath, contents);
+  });
+
+  ipcMain.handle(IpcChannel.AiOpenPr, async (_event, raw: unknown) => {
+    const { repoPath, task, outputPath, contents } = AiApplyRequest.parse(raw);
+    return openAiPr(
+      repoPath,
+      task,
+      outputPath,
+      contents,
+      (await loadToken()) ?? undefined,
+    );
   });
 }
 
