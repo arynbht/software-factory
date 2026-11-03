@@ -20,7 +20,16 @@ import {
   DocList,
   DocsListRequest,
   DocsReadRequest,
+  BuildPlanRequest,
+  BuildPlanView,
+  BuildProgress,
+  BuildResult,
+  BuildRunRequest,
   EvidenceRequest,
+  FloorPlanGetRequest,
+  FloorPlanProgress,
+  FloorPlanRunRequest,
+  FloorPlanView,
   FixPlan,
   FixPlanRequest,
   FixPrOutcome,
@@ -244,6 +253,71 @@ const api = {
         request,
       );
       return DocContent.parse(raw);
+    },
+  },
+
+  floorplan: {
+    /** The last persisted floor plan + whether a deep audit can run + staleness. */
+    async get(repoPath: string) {
+      const request = FloorPlanGetRequest.parse({ repoPath });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.FloorPlanGet,
+        request,
+      );
+      return FloorPlanView.parse(raw);
+    },
+    /** Run the deep-audit swarm (subscription CLI); persists + returns the model. */
+    async run(repoPath: string) {
+      const request = FloorPlanRunRequest.parse({ repoPath });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.FloorPlanRun,
+        request,
+      );
+      return FloorPlanView.parse(raw);
+    },
+    /** Subscribe to swarm progress; returns an unsubscribe fn. */
+    onProgress(callback: (progress: FloorPlanProgress) => void) {
+      const listener = (_event: unknown, payload: unknown): void => {
+        // A malformed push is dropped rather than thrown into the IPC event loop.
+        const parsed = FloorPlanProgress.safeParse(payload);
+        if (parsed.success) callback(parsed.data);
+      };
+      ipcRenderer.on(IpcChannel.FloorPlanProgress, listener);
+      return () => {
+        ipcRenderer.removeListener(IpcChannel.FloorPlanProgress, listener);
+      };
+    },
+  },
+
+  build: {
+    /** Draft a plan for a feature/fix (read-only) for the user to approve. */
+    async plan(repoPath: string, description: string) {
+      const request = BuildPlanRequest.parse({ repoPath, description });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.BuildPlan,
+        request,
+      );
+      return BuildPlanView.parse(raw);
+    },
+    /** Run an approved plan to a gated PR (write-agents in an isolated worktree). */
+    async run(repoPath: string, plan: BuildPlanView["plan"]) {
+      const request = BuildRunRequest.parse({ repoPath, plan });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.BuildRun,
+        request,
+      );
+      return BuildResult.parse(raw);
+    },
+    /** Subscribe to build progress; returns an unsubscribe fn. */
+    onProgress(callback: (progress: BuildProgress) => void) {
+      const listener = (_event: unknown, payload: unknown): void => {
+        const parsed = BuildProgress.safeParse(payload);
+        if (parsed.success) callback(parsed.data);
+      };
+      ipcRenderer.on(IpcChannel.BuildProgress, listener);
+      return () => {
+        ipcRenderer.removeListener(IpcChannel.BuildProgress, listener);
+      };
     },
   },
 

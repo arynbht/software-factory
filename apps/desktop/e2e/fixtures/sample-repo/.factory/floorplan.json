@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "generatedAt": "2026-11-03T00:00:00.000Z",
+  "repoPath": "sample-repo",
+  "summary": {
+    "nodeCount": 3,
+    "edgeCount": 1,
+    "systemCount": 1,
+    "partial": false
+  },
+  "nodes": [
+    {
+      "id": "system:app",
+      "kind": "system",
+      "title": "App",
+      "summary": "The sample application.",
+      "paths": ["."]
+    },
+    {
+      "id": "app/api",
+      "kind": "api",
+      "title": "HTTP API",
+      "summary": "Request handlers.",
+      "paths": ["src/api.ts"],
+      "tech": ["typescript"],
+      "parent": "system:app"
+    },
+    {
+      "id": "app/db",
+      "kind": "datastore",
+      "title": "Database",
+      "summary": "Persistent storage.",
+      "paths": ["src/db.ts"],
+      "parent": "system:app"
+    }
+  ],
+  "edges": [{ "from": "app/api", "to": "app/db", "kind": "reads" }],
+  "detected": {
+    "type": "api",
+    "stack": ["typescript"],
+    "flags": { "uses-ai": false },
+    "confidence": 0.6
+  },
+  "slices": [{ "key": "app", "nodeIds": ["system:app", "app/api", "app/db"] }]
+}

@@ -10,7 +10,14 @@ import type { AiRunResult, AiTaskInfo, FixPrOutcome } from "../../shared/ipc";
 const selectClass =
   "rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-export function Ai({ repoPath }: { repoPath: string }) {
+export function Ai({
+  repoPath,
+  onChanged,
+}: {
+  repoPath: string;
+  /** Called after a draft is applied locally, so the floor plan can refresh. */
+  onChanged?: () => void;
+}) {
   const [tasks, setTasks] = useState<AiTaskInfo[] | null>(null);
   const [task, setTask] = useState("");
   const [result, setResult] = useState<AiRunResult | null>(null);
@@ -69,6 +76,7 @@ export function Ai({ repoPath }: { repoPath: string }) {
         contents: result.contents,
       });
       setNotice(`${applied.action} ${applied.path}`);
+      onChanged?.();
     });
   }
 
