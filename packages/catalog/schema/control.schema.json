@@ -323,7 +323,29 @@
               "type": "string",
               "minLength": 1
             },
-            "value": {}
+            "value": {},
+            "byStack": {
+              "type": "object",
+              "properties": {
+                "node": {},
+                "python": {}
+              },
+              "additionalProperties": false,
+              "description": "Per-stack value overrides (node/python); falls back to `value`."
+            },
+            "mergeStrategy": {
+              "description": "`set` (default) replaces the node at `path`. `append-if-missing` treats the node at `path` as an array and appends `value` only if no existing item matches `dedupeKey`.",
+              "type": "string",
+              "enum": [
+                "set",
+                "append-if-missing"
+              ]
+            },
+            "dedupeKey": {
+              "description": "For append-if-missing: the item field used to detect a duplicate (e.g. `uses` or `name`). An item is skipped if an existing item shares this key's value.",
+              "type": "string",
+              "minLength": 1
+            }
           },
           "required": [
             "type",

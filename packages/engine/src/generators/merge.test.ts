@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -181,5 +181,155 @@ describe("merge generators", () => {
     expect(yaml).toEqual([]);
     // And nothing was written.
     await expect(readFile(join(dir, "package.json"), "utf8")).rejects.toThrow();
+  });
+
+  // A hand-edited CI workflow with a top comment, a flow collection, and two
+  // existing steps — the realistic target for an append-if-missing step fix.
+  const CI_WORKFLOW = `# a hand-written workflow
+name: CI
+on:
+  push:
+    branches: [main]
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build # keep this
+        run: npm run build
+`;
+
+  const appendControl = (
+    value: unknown,
+    extra: Record<string, unknown> = {},
+  ): Control =>
+    control({
+      type: "merge-yaml",
+      file: "ci.yml",
+      path: "jobs.ci.steps",
+      mergeStrategy: "append-if-missing",
+      dedupeKey: "name",
+      value,
+      ...extra,
+    } as Control["fix"]);
+
+  describe("merge-yaml append-if-missing", () => {
+    it("appends a missing step without clobbering existing steps or comments", async () => {
+      const dir = await tmp();
+      await writeFile(join(dir, "ci.yml"), CI_WORKFLOW, "utf8");
+      const changes = await mergeYamlGenerator(
+        buildContext(dir),
+        appendControl({ name: "Test", run: "npm test --if-present" }),
+      );
+      await applyChanges(dir, changes, { mode: "write" });
+      const out = await readFile(join(dir, "ci.yml"), "utf8");
+      // The new step is present...
+      expect(out).toContain("name: Test");
+      expect(out).toContain("run: npm test --if-present");
+      // ...and every existing step and comment survives.
+      expect(out).toContain("# a hand-written workflow");
+      expect(out).toContain("uses: actions/checkout@v4");
+      expect(out).toContain("name: Build # keep this");
+      expect(out).toContain("run: npm run build");
+    });
+
+    it("is idempotent: re-running adds nothing (dedup by key)", async () => {
+      const dir = await tmp();
+      await writeFile(join(dir, "ci.yml"), CI_WORKFLOW, "utf8");
+      const ctl = appendControl({ name: "Test", run: "npm test --if-present" });
+      const first = await mergeYamlGenerator(buildContext(dir), ctl);
+      await applyChanges(dir, first, { mode: "write" });
+      // Second run against the now-updated file produces no change.
+      const second = await mergeYamlGenerator(buildContext(dir), ctl);
+      expect(second).toEqual([]);
+    });
+
+    it("does not re-add a step that already exists (matched by dedupeKey)", async () => {
+      const dir = await tmp();
+      await writeFile(join(dir, "ci.yml"), CI_WORKFLOW, "utf8");
+      // "Build" already exists in the fixture.
+      const changes = await mergeYamlGenerator(
+        buildContext(dir),
+        appendControl({ name: "Build", run: "something else" }),
+      );
+      expect(changes).toEqual([]);
+    });
+
+    it("appends a list of steps, adding only the missing ones", async () => {
+      const dir = await tmp();
+      await writeFile(join(dir, "ci.yml"), CI_WORKFLOW, "utf8");
+      const changes = await mergeYamlGenerator(
+        buildContext(dir),
+        appendControl([
+          { name: "Build", run: "dup" }, // already present → skipped
+          { name: "Lint", run: "npm run lint --if-present" }, // new → added
+        ]),
+      );
+      await applyChanges(dir, changes, { mode: "write" });
+      const out = await readFile(join(dir, "ci.yml"), "utf8");
+      expect(out).toContain("name: Lint");
+      // Build appears exactly once (not duplicated).
+      expect(out.match(/name: Build/g)?.length).toBe(1);
+    });
+
+    it("selects the per-stack fragment from the profile (byStack)", async () => {
+      const dir = await tmp();
+      await writeFile(join(dir, "ci.yml"), CI_WORKFLOW, "utf8");
+      await mkdir(join(dir, ".factory"), { recursive: true });
+      await writeFile(
+        join(dir, ".factory", "profile.yml"),
+        "version: 1\nname: demo\ntype: library\nstack: [python]\n",
+        "utf8",
+      );
+      const changes = await mergeYamlGenerator(
+        buildContext(dir),
+        appendControl(undefined, {
+          byStack: {
+            node: { name: "Test", run: "npm test --if-present" },
+            python: { name: "Test", run: "pytest" },
+          },
+        }),
+      );
+      await applyChanges(dir, changes, { mode: "write" });
+      const out = await readFile(join(dir, "ci.yml"), "utf8");
+      expect(out).toContain("run: pytest");
+      expect(out).not.toContain("npm test");
+    });
+  });
+
+  describe("merge-yaml round-trip fidelity (#59)", () => {
+    it("leaves an untouched flow collection verbatim (no padding)", async () => {
+      const dir = await tmp();
+      await writeFile(join(dir, "ci.yml"), CI_WORKFLOW, "utf8");
+      const changes = await mergeYamlGenerator(
+        buildContext(dir),
+        control({
+          type: "merge-yaml",
+          file: "ci.yml",
+          path: "permissions",
+          value: { contents: "read" },
+        }),
+      );
+      const next = changes[0]?.type === "file" ? changes[0].contents : "";
+      // The untouched `branches: [main]` is not reformatted to `[ main ]`.
+      expect(next).toContain("branches: [main]");
+      expect(next).not.toContain("[ main ]");
+    });
+
+    it("preserves a leading BOM", async () => {
+      const dir = await tmp();
+      await writeFile(join(dir, "ci.yml"), `\uFEFF${CI_WORKFLOW}`, "utf8");
+      const changes = await mergeYamlGenerator(
+        buildContext(dir),
+        control({
+          type: "merge-yaml",
+          file: "ci.yml",
+          path: "permissions",
+          value: { contents: "read" },
+        }),
+      );
+      const next = changes[0]?.type === "file" ? changes[0].contents : "";
+      expect(next.charCodeAt(0)).toBe(0xfeff);
+    });
   });
 });

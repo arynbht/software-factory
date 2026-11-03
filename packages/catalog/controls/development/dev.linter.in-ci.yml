@@ -9,6 +9,19 @@ detect:
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
     pattern: '(?i)(eslint|biome|ruff|golangci-lint|\blint\b)'
 evidence: none
+fix:
+  type: merge-yaml
+  file: .github/workflows/ci.yml
+  path: jobs.ci.steps
+  mergeStrategy: append-if-missing
+  dedupeKey: name
+  byStack:
+    node:
+      name: Lint
+      run: npm run lint --if-present
+    python:
+      name: Lint
+      run: ruff check .
 references:
   - name: DORA — Continuous integration
     url: https://dora.dev/capabilities/continuous-integration/
