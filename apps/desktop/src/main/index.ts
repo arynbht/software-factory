@@ -1,4 +1,4 @@
-import { appendFileSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -114,27 +114,6 @@ const isDev = Boolean(DEV_RENDERER_URL);
 // routes sign-in through a canned device flow so the suite runs without the network.
 // Never set in a real session — it gates test-only seams, nothing user-facing.
 const isE2E = process.env.FACTORY_E2E === "1";
-
-// Diagnostic breadcrumbs for the headless CI e2e. The app's own stdout/stderr never
-// reached Playwright on Linux CI (no marker survived), so write lifecycle markers to
-// a file the test reads on failure — fs is unbuffered and immune to the stdio-pipe
-// quirk. Reaching this line at all proves the module body ran (imports didn't block).
-const E2E_DIAG = process.env.FACTORY_E2E_DIAG;
-function e2eLog(m: string): void {
-  if (!E2E_DIAG) return;
-  try {
-    appendFileSync(E2E_DIAG, `${m}\n`);
-  } catch {
-    /* diagnostic only — never fail the app over it */
-  }
-}
-e2eLog("module-body-reached");
-if (isE2E) {
-  app.whenReady().then(
-    () => e2eLog("whenReady-resolved"),
-    (err) => e2eLog(`whenReady-rejected: ${String(err)}`),
-  );
-}
 
 /** Canned responses for the GitHub device-flow + user endpoints (E2E only). */
 function e2eDeviceFlowFetch(input: unknown): Promise<Response> {
@@ -402,22 +381,17 @@ function registerIpcHandlers(): void {
     void (async () => {
       try {
         const token = await pollForToken(GITHUB_CLIENT_ID, code, deps, signal);
-        e2eLog("signin: token received");
         if (signal.aborted) return;
         await saveToken(token);
-        e2eLog("signin: token saved");
         let login = "";
         try {
           login = await fetchUserLogin(token, authFetch);
         } catch {
           // keep login empty; the status call will refresh it
         }
-        e2eLog(`signin: login=${login}`);
         if (signal.aborted) return;
         sendAuthUpdate({ status: "signed-in", login });
-        e2eLog("signin: signed-in update sent");
       } catch (err) {
-        e2eLog(`signin: error ${err instanceof Error ? err.message : err}`);
         if (signal.aborted) return;
         sendAuthUpdate({
           status: "error",
@@ -587,10 +561,8 @@ function registerIpcHandlers(): void {
   });
 }
 
-e2eLog("registering app.whenReady handler");
 app.whenReady().then(
   () => {
-    e2eLog("ready handler entered → creating window");
     // Enforce a CSP on every response. Strict in prod; dev loosens only enough for
     // Vite's inline bootstrap + HMR websocket (see contentSecurityPolicy). The Docs
     // screen renders arbitrary repo Markdown, so even dev keeps a policy backstop.
@@ -605,7 +577,6 @@ app.whenReady().then(
 
     registerIpcHandlers();
     createWindow();
-    e2eLog("window-created");
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -613,7 +584,6 @@ app.whenReady().then(
   },
   (err: unknown) => {
     // Make a startup failure loud (it otherwise manifests as "no window" in E2E).
-    e2eLog(`app-failed-to-start: ${String(err)}`);
     process.stderr.write(`[main] app failed to start: ${String(err)}\n`);
     console.error(err);
   },

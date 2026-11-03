@@ -119,18 +119,12 @@ jobs:
       - name: Install Electron runtime libraries + xvfb
         run: |
           pnpm --filter @arynbht/factory-desktop exec playwright install-deps
-          sudo apt-get install -y xvfb dbus
-          # Ubuntu 24.04 runners restrict unprivileged user namespaces via AppArmor,
-          # which Chromium's zygote/GPU helpers probe at startup — Electron can stall
-          # before `ready` even with --no-sandbox. Lift the restriction on the runner.
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo apt-get install -y xvfb
 
       - name: Run desktop e2e (xvfb)
         # Force 24-bit color depth — Chromium/Electron won't render on xvfb's 8-bit
-        # default, which otherwise leaves the window (and firstWindow) hanging. Wrap in
-        # dbus-run-session: with no session bus, Electron can block before `ready`
-        # (the only runtime log we saw at the stall was a D-Bus bus.cc line).
-        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" dbus-run-session -- pnpm --filter @arynbht/factory-desktop e2e
+        # default, which otherwise leaves the window (and firstWindow) hanging.
+        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" pnpm --filter @arynbht/factory-desktop e2e
 
   # Single required status check ("ci") that gates on every matrix leg, so branch
   # protection needs just one context regardless of how many OSes the matrix runs.
