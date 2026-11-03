@@ -115,6 +115,32 @@ const isDev = Boolean(DEV_RENDERER_URL);
 // Never set in a real session — it gates test-only seams, nothing user-facing.
 const isE2E = process.env.FACTORY_E2E === "1";
 
+// Diagnostic breadcrumbs for the headless CI e2e: prove whether the main event loop
+// is alive (heartbeats) and whether Electron's `ready` ever fires (it doesn't appear
+// to, under xvfb). Removed once the launch is stable. No-op outside E2E.
+const e2eLog = isE2E
+  ? (m: string) => process.stderr.write(`[e2e] ${m}\n`)
+  : () => {};
+// Playwright attaches its own stdio handling on spawn and our forwarder only
+// attaches after launch() resolves, so early writes are missed. Carry the state in
+// a 2s heartbeat (fires after the forwarder is live) so CI reliably shows whether
+// the loop is alive and whether `ready` ever fired.
+let e2eReadyFired = false;
+if (isE2E) {
+  let beats = 0;
+  const hb = setInterval(() => {
+    const wins = BrowserWindow.getAllWindows().length;
+    e2eLog(`heartbeat ${++beats}: readyFired=${e2eReadyFired} windows=${wins}`);
+  }, 2000);
+  hb.unref();
+  app.whenReady().then(
+    () => {
+      e2eReadyFired = true;
+    },
+    (err) => e2eLog(`whenReady rejected: ${String(err)}`),
+  );
+}
+
 /** Canned responses for the GitHub device-flow + user endpoints (E2E only). */
 function e2eDeviceFlowFetch(input: unknown): Promise<Response> {
   const href = String(input);
@@ -561,8 +587,10 @@ function registerIpcHandlers(): void {
   });
 }
 
+e2eLog("registering app.whenReady handler");
 app.whenReady().then(
   () => {
+    e2eLog("ready handler entered → creating window");
     // Enforce a CSP on every response. Strict in prod; dev loosens only enough for
     // Vite's inline bootstrap + HMR websocket (see contentSecurityPolicy). The Docs
     // screen renders arbitrary repo Markdown, so even dev keeps a policy backstop.
