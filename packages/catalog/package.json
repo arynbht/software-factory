@@ -18,7 +18,8 @@
     "gates",
     "templates",
     "prompts",
-    "schema"
+    "schema",
+    "skill"
   ],
   "scripts": {},
   "dependencies": {
