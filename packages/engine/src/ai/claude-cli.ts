@@ -26,7 +26,7 @@ export interface ClaudeCliOptions {
 }
 
 /** Resolve the `claude` invocation, handling a Windows `.cmd`/`.bat` shim. */
-async function claudeCommand(
+export async function claudeCommand(
   args: string[],
 ): Promise<{ command: string; argv: string[] }> {
   if (process.platform !== "win32") return { command: "claude", argv: args };

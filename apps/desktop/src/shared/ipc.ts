@@ -36,6 +36,10 @@ export const IpcChannel = {
   AiOpenPr: "ai:openPr",
   DocsList: "docs:list",
   DocsRead: "docs:read",
+  FloorPlanGet: "floorplan:get",
+  FloorPlanRun: "floorplan:run",
+  /** Push channel (main → renderer): deep-audit swarm progress. */
+  FloorPlanProgress: "floorplan:progress",
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
@@ -322,6 +326,110 @@ export const DocContent = z.object({
   markdown: z.string(),
 });
 export type DocContent = z.infer<typeof DocContent>;
+
+// Floor Plan — the deep-audit swarm's repository model, drawn with Cytoscape. The
+// model is produced by the engine swarm and persisted as managed state in
+// `.factory/floorplan.json`; this boundary re-validates its full shape before the
+// renderer draws it.
+export const FloorPlanNodeKind = z.enum([
+  "system",
+  "subsystem",
+  "feature",
+  "service",
+  "api",
+  "connector",
+  "datastore",
+  "external",
+  "package",
+]);
+export const FloorPlanEdgeKind = z.enum([
+  "depends-on",
+  "calls",
+  "exposes",
+  "reads",
+  "writes",
+  "imports",
+  "deploys",
+]);
+
+export const FloorPlanNode = z.object({
+  id: z.string(),
+  kind: FloorPlanNodeKind,
+  title: z.string(),
+  summary: z.string(),
+  paths: z.array(z.string()),
+  tech: z.array(z.string()).optional(),
+  parent: z.string().optional(),
+  metrics: z
+    .object({ files: z.number().optional(), loc: z.number().optional() })
+    .optional(),
+});
+export type FloorPlanNode = z.infer<typeof FloorPlanNode>;
+
+export const FloorPlanEdge = z.object({
+  from: z.string(),
+  to: z.string(),
+  kind: FloorPlanEdgeKind,
+  label: z.string().optional(),
+});
+export type FloorPlanEdge = z.infer<typeof FloorPlanEdge>;
+
+export const DetectedProfile = z.object({
+  type: z.string().optional(),
+  stack: z.array(z.string()),
+  flags: z.record(z.string(), z.boolean()),
+  phase: z.string().optional(),
+  confidence: z.number(),
+});
+export type DetectedProfile = z.infer<typeof DetectedProfile>;
+
+export const SliceReport = z.object({
+  key: z.string(),
+  nodeIds: z.array(z.string()),
+  note: z.string().optional(),
+});
+
+export const RepositoryModel = z.object({
+  version: z.literal(1),
+  generatedAt: z.string(),
+  repoPath: z.string(),
+  commit: z.string().optional(),
+  summary: z.object({
+    nodeCount: z.number().int(),
+    edgeCount: z.number().int(),
+    systemCount: z.number().int(),
+    partial: z.boolean(),
+  }),
+  nodes: z.array(FloorPlanNode),
+  edges: z.array(FloorPlanEdge),
+  detected: DetectedProfile,
+  slices: z.array(SliceReport),
+});
+export type RepositoryModel = z.infer<typeof RepositoryModel>;
+
+/**
+ * The get/run response: the persisted model (null if never built), whether the
+ * deep-audit swarm can run at all (the Claude CLI must be installed), and whether
+ * the persisted model is out of date for the repo's current HEAD.
+ */
+export const FloorPlanView = z.object({
+  model: RepositoryModel.nullable(),
+  deepAuditAvailable: z.boolean(),
+  stale: z.boolean(),
+});
+export type FloorPlanView = z.infer<typeof FloorPlanView>;
+
+export const FloorPlanGetRequest = z.object({ repoPath: z.string().min(1) });
+export const FloorPlanRunRequest = z.object({ repoPath: z.string().min(1) });
+
+/** floorplan:progress push payload — one step of the swarm. */
+export const FloorPlanProgress = z.object({
+  phase: z.enum(["slice", "map", "reduce", "done"]),
+  message: z.string(),
+  done: z.number().int(),
+  total: z.number().int(),
+});
+export type FloorPlanProgress = z.infer<typeof FloorPlanProgress>;
 
 // Settings — personal preferences in `userData` (never the repo). The Anthropic
 // API key is NOT in this object: like the GitHub token it lives in safeStorage and

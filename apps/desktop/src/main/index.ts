@@ -22,6 +22,9 @@ import {
   DocList,
   DocsListRequest,
   DocsReadRequest,
+  FloorPlanGetRequest,
+  FloorPlanRunRequest,
+  FloorPlanView,
   AuthStatus,
   type AuthUpdate,
   DeviceCodeInfo,
@@ -62,6 +65,7 @@ import {
 } from "./engine/ai";
 import { clearToken, loadToken, saveToken } from "./auth/token-store";
 import { runAudit } from "./engine/audit";
+import { getFloorPlan, runFloorPlan } from "./engine/floorplan";
 import { listDocs, readDoc } from "./engine/docs";
 import { applyFix, openFixPrForRepo, planFix } from "./engine/fix";
 import { attachEvidence, computeGates, waiveControl } from "./engine/gates";
@@ -177,6 +181,9 @@ let mainWindow: BrowserWindow | null = null;
  * late outcome to the renderer.
  */
 let signInAbort: AbortController | null = null;
+
+/** Cancels an in-flight deep-audit swarm when a newer run supersedes it. */
+let floorPlanAbort: AbortController | null = null;
 
 function sendAuthUpdate(update: AuthUpdate): void {
   mainWindow?.webContents.send(IpcChannel.AuthUpdate, update);
@@ -342,6 +349,29 @@ function registerIpcHandlers(): void {
     const { repoPath } = AuditRunRequest.parse(raw);
     const token = (await loadToken()) ?? undefined;
     return Scorecard.parse(await runAudit(repoPath, token));
+  });
+
+  ipcMain.handle(IpcChannel.FloorPlanGet, async (_event, raw: unknown) => {
+    const { repoPath } = FloorPlanGetRequest.parse(raw);
+    return FloorPlanView.parse(await getFloorPlan(repoPath));
+  });
+
+  ipcMain.handle(IpcChannel.FloorPlanRun, async (_event, raw: unknown) => {
+    const { repoPath } = FloorPlanRunRequest.parse(raw);
+    // Supersede any swarm already running (e.g. a second Run audit click).
+    floorPlanAbort?.abort();
+    const controller = new AbortController();
+    floorPlanAbort = controller;
+    try {
+      const view = await runFloorPlan(
+        repoPath,
+        (p) => mainWindow?.webContents.send(IpcChannel.FloorPlanProgress, p),
+        controller.signal,
+      );
+      return FloorPlanView.parse(view);
+    } finally {
+      if (floorPlanAbort === controller) floorPlanAbort = null;
+    }
   });
 
   ipcMain.handle(IpcChannel.AuthStatus, async () => {

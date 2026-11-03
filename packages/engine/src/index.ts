@@ -129,3 +129,19 @@ export {
   estimateCost,
 } from "./ai/usage.js";
 export type { UsageEntry, UsageSummary } from "./ai/usage.js";
+// Deep-audit swarm + floor-plan model (the agentic repository map).
+export { runSwarm, defaultListSlices } from "./floorplan/swarm.js";
+export type { Slice, SwarmOptions, SwarmInvoke } from "./floorplan/swarm.js";
+export { runAgent, extractJson, READ_ONLY_TOOLS } from "./floorplan/agent.js";
+export type { AgentRunner, AgentSpec } from "./floorplan/agent.js";
+export { loadFloorPlan, saveFloorPlan, isStale } from "./floorplan/store.js";
+export type {
+  RepositoryModel,
+  FloorPlanNode,
+  FloorPlanEdge,
+  FloorPlanNodeKind,
+  FloorPlanEdgeKind,
+  DetectedProfile,
+  SliceReport,
+  SwarmProgress,
+} from "./floorplan/types.js";

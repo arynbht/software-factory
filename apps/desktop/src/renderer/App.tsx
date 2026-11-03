@@ -11,6 +11,7 @@ import { Ai } from "@/components/Ai";
 import { AuthControls } from "@/components/AuthControls";
 import { Docs } from "@/components/Docs";
 import { Fix } from "@/components/Fix";
+import { FloorPlan } from "@/components/FloorPlan";
 import { Gates } from "@/components/Gates";
 import { ProfileForm } from "@/components/ProfileForm";
 import { Scorecard } from "@/components/Scorecard";
@@ -19,10 +20,12 @@ import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/errors";
 import { applyTheme } from "@/lib/theme";
 
-type View = "scorecard" | "profile" | "gates" | "fix" | "ai" | "docs";
+type View =
+  "scorecard" | "floorplan" | "profile" | "gates" | "fix" | "ai" | "docs";
 
 const TABS: { id: View; label: string }[] = [
   { id: "scorecard", label: "Scorecard" },
+  { id: "floorplan", label: "Floor Plan" },
   { id: "profile", label: "Profile" },
   { id: "gates", label: "Gates" },
   { id: "fix", label: "Fix" },
@@ -103,6 +106,11 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [scorecard, setScorecard] = useState<ScorecardData | null>(null);
   const [running, setRunning] = useState(false);
+  // The deep-audit swarm runs independently of the (instant) scorecard: `running`
+  // above never waits on it. `floorPlanVersion` bumps when a run finishes so the
+  // Floor Plan tab reloads the freshly-persisted model.
+  const [floorPlanRunning, setFloorPlanRunning] = useState(false);
+  const [floorPlanVersion, setFloorPlanVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("scorecard");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -186,13 +194,32 @@ export function App() {
     setScorecard(null);
     setError(null);
     setView("scorecard");
+    setFloorPlanRunning(false);
+    setFloorPlanVersion((v) => v + 1); // make the Floor Plan tab reload for the new repo
     setOpened(new Set<View>(["scorecard"])); // fresh state for the new repo
+  }
+
+  /**
+   * Kick off the deep-audit swarm for a repo (Run audit, a manual refresh, or
+   * after a Fix/AI change lands). Non-blocking and independent of the scorecard;
+   * main persists the model, so we just bump the version to reload it. Errors are
+   * surfaced inside the Floor Plan tab via its own load, so they're swallowed here.
+   */
+  function triggerFloorPlan(path: string): void {
+    setFloorPlanRunning(true);
+    window.factory.floorplan.run(path).finally(() => {
+      setFloorPlanRunning(false);
+      setFloorPlanVersion((v) => v + 1);
+    });
   }
 
   async function handleAudit(): Promise<void> {
     if (!selected) return;
     setRunning(true);
     setError(null);
+    // Fire the swarm alongside the scorecard; it fills the Floor Plan tab in the
+    // background while the (instant) scorecard renders.
+    triggerFloorPlan(selected);
     try {
       setScorecard(await window.factory.audit.run(selected));
     } catch (err) {
@@ -369,6 +396,24 @@ export function App() {
               )}
             </div>
 
+            {opened.has("floorplan") && (
+              <div
+                id="panel-floorplan"
+                role="tabpanel"
+                aria-labelledby="tab-floorplan"
+                tabIndex={0}
+                hidden={view !== "floorplan"}
+              >
+                <FloorPlan
+                  key={selectedRepo.path}
+                  repoPath={selectedRepo.path}
+                  running={floorPlanRunning}
+                  version={floorPlanVersion}
+                  onRefresh={() => triggerFloorPlan(selectedRepo.path)}
+                />
+              </div>
+            )}
+
             {opened.has("profile") && (
               <div
                 id="panel-profile"
@@ -405,7 +450,11 @@ export function App() {
                 hidden={view !== "fix"}
               >
                 {/* key resets the panel's run/PR state when the repo changes. */}
-                <Fix key={selectedRepo.path} repoPath={selectedRepo.path} />
+                <Fix
+                  key={selectedRepo.path}
+                  repoPath={selectedRepo.path}
+                  onChanged={() => triggerFloorPlan(selectedRepo.path)}
+                />
               </div>
             )}
 
@@ -418,7 +467,11 @@ export function App() {
                 hidden={view !== "ai"}
               >
                 {/* key resets the panel's draft/run state when the repo changes. */}
-                <Ai key={selectedRepo.path} repoPath={selectedRepo.path} />
+                <Ai
+                  key={selectedRepo.path}
+                  repoPath={selectedRepo.path}
+                  onChanged={() => triggerFloorPlan(selectedRepo.path)}
+                />
               </div>
             )}
 
