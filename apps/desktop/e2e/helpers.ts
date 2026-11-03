@@ -96,6 +96,10 @@ export async function launchApp(
       // Use the plaintext credential store so safeStorage works headless (no OS
       // keyring in CI). Test-only — the packaged app uses the real keychain.
       "--password-store=basic",
+      // Surface Chromium's own startup logs to stderr so a pre-`ready` stall under
+      // xvfb (GPU/zygote/display) is diagnosable in CI rather than a silent timeout.
+      "--enable-logging=stderr",
+      "--v=1",
     ],
     env: {
       ...process.env,
