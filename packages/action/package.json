@@ -1,6 +1,6 @@
 {
   "name": "@arynbht/factory-action",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Composite GitHub Action that runs the factory audit in CI and comments on PRs.",
   "license": "MIT",
   "private": true,

@@ -1,6 +1,6 @@
 {
   "name": "@arynbht/factory-desktop",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Electron desktop shell over the factory engine.",
   "author": "Aryan Bhatia",
   "license": "MIT",

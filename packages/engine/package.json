@@ -1,6 +1,6 @@
 {
   "name": "@arynbht/factory-engine",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Headless engine: resolves a profile, runs detectors, evaluates gates, and runs generators.",
   "license": "MIT",
   "type": "module",
