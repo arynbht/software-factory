@@ -9,12 +9,21 @@
 //               features, APIs, connectors, datastores and intra-slice edges.
 //   3. reduce — a deterministic merge of all slice nodes, then one agent resolves
 //               cross-system connections and infers the project profile.
+//   4. verify — (opt-in) a reviewer agent prunes implausible cross-system edges, so
+//               the reduce step isn't trusted single-pass.
+//
+// Incremental refresh: each slice carries a content fingerprint. Given the previous
+// model, slices whose fingerprint is unchanged are REUSED verbatim (no agent run);
+// only changed/new slices are re-mapped, and the reduce is skipped entirely when
+// nothing changed. This is what keeps repeated refreshes cheap.
 //
 // Every model call goes through an injectable seam (`invoke`), so the whole
 // pipeline is unit-tested with canned payloads and no `claude` process. Slice
-// discovery and the git HEAD read are injectable for the same reason.
-import { readdir } from "node:fs/promises";
-import { resolve } from "node:path";
+// discovery, fingerprinting, and the git HEAD read are injectable for the same
+// reason.
+import { createHash } from "node:crypto";
+import { readdir, stat } from "node:fs/promises";
+import { join, resolve } from "node:path";
 
 import { runTool } from "../detectors/exec.js";
 import { type AgentRunner, type AgentSpec, runAgent } from "./agent.js";
@@ -41,7 +50,7 @@ export interface Slice {
 
 /** The seam the swarm calls per agent; the default runs a real read-only agent. */
 export type SwarmInvoke = (
-  spec: AgentSpec & { role: "map" | "reduce"; slice?: Slice },
+  spec: AgentSpec & { role: "map" | "reduce" | "verify"; slice?: Slice },
 ) => Promise<unknown>;
 
 export interface SwarmOptions {
@@ -58,6 +67,12 @@ export interface SwarmOptions {
   listSlices?: (repoPath: string) => Promise<Slice[]>;
   /** Override the git HEAD read (tests). */
   gitHead?: (repoPath: string) => Promise<string | undefined>;
+  /** Override per-slice fingerprinting (tests). */
+  fingerprint?: (repoPath: string, slice: Slice) => Promise<string>;
+  /** The prior model, enabling incremental reuse of unchanged slices. */
+  previous?: RepositoryModel | null;
+  /** Run the (extra, bounded) verification pass over cross-system edges. */
+  verify?: boolean;
   /** Cap on slices analyzed (default 12) to bound cost; extras are dropped. */
   maxSlices?: number;
   /** For deterministic timestamps in tests. */
@@ -159,6 +174,44 @@ async function defaultGitHead(repoPath: string): Promise<string | undefined> {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Fingerprint a slice from its files' relative paths, sizes and mtimes — fast and
+ * sensitive to any working-tree edit (unlike a commit hash, which misses unstaged
+ * changes). Bounded so a pathological tree can't stall the scan.
+ */
+export async function fingerprintSlice(
+  repoPath: string,
+  slice: Slice,
+): Promise<string> {
+  const root = resolve(repoPath, slice.dir);
+  const parts: string[] = [];
+  let count = 0;
+  const LIMIT = 4000;
+
+  async function walk(abs: string, rel: string): Promise<void> {
+    if (count >= LIMIT) return;
+    const entries = await readdir(abs, { withFileTypes: true }).catch(() => []);
+    for (const e of [...entries].sort((a, b) => a.name.localeCompare(b.name))) {
+      if (count >= LIMIT) return;
+      if (e.isDirectory()) {
+        if (IGNORED_DIRS.has(e.name)) continue;
+        await walk(join(abs, e.name), `${rel}${e.name}/`);
+      } else if (e.isFile()) {
+        try {
+          const s = await stat(join(abs, e.name));
+          parts.push(`${rel}${e.name}:${s.size}:${Math.floor(s.mtimeMs)}`);
+          count += 1;
+        } catch {
+          // unreadable entry — skip
+        }
+      }
+    }
+  }
+
+  await walk(root, "");
+  return createHash("sha256").update(parts.join("\n")).digest("hex");
 }
 
 // ---------------------------------------------------------------------------
@@ -336,16 +389,25 @@ const REDUCE_SYSTEM = [
   '{"edges":[{"from":systemId,"to":systemId,"kind":"depends-on|calls|exposes|reads|writes|imports|deploys","label":string}],"detected":{"type":"web-app|api|cli|library|mobile|desktop|data-pipeline|monorepo","stack":[string],"flags":{"uses-ai":boolean,"multi-service":boolean,"handles-pii":boolean,"open-source":boolean,"public-facing":boolean},"phase":"discovery|requirements|architecture|design|scaffold|build|harden|launch|operate","confidence":number}}',
 ].join("\n");
 
+const VERIFY_SYSTEM = [
+  "You are reviewing the inferred cross-system connections of a repository floor plan for plausibility.",
+  "Given the systems and a numbered list of proposed edges, identify which edges are implausible or unsupported and should be dropped.",
+  "Be conservative: only drop an edge you are fairly confident is wrong. Reply with ONLY a JSON object (no prose, no code fence):",
+  '{"drop":[number],"confidence":number}',
+  "where `drop` holds the indices (from the numbered list) of edges to remove, and `confidence` (0–1) is your overall trust in the remaining graph.",
+].join("\n");
+
 // ---------------------------------------------------------------------------
-// Orchestration
+// Detected-profile merge
 // ---------------------------------------------------------------------------
 
 function mergeDetected(
   signals: MapPayload["signals"][],
   reduceDetected: Record<string, unknown> | undefined,
+  previous: DetectedProfile | undefined,
 ): DetectedProfile {
-  const stack = new Set<string>();
-  const flags: Record<string, boolean> = {};
+  const stack = new Set<string>(previous?.stack ?? []);
+  const flags: Record<string, boolean> = { ...(previous?.flags ?? {}) };
   const typeVotes = new Map<string, number>();
   for (const s of signals) {
     s.stack.forEach((t) => stack.add(t));
@@ -354,7 +416,6 @@ function mergeDetected(
   }
 
   const rd = reduceDetected ?? {};
-  // Reduce-level stack/flags are merged on top of the slice signals.
   for (const t of asStringArray(rd.stack)) stack.add(t);
   if (rd.flags && typeof rd.flags === "object") {
     for (const [k, v] of Object.entries(rd.flags as Record<string, unknown>)) {
@@ -363,12 +424,12 @@ function mergeDetected(
   }
 
   const topVote = [...typeVotes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-  const type = asString(rd.type) || topVote;
-  const phase = asString(rd.phase);
+  const type = asString(rd.type) || topVote || previous?.type;
+  const phase = asString(rd.phase) || previous?.phase;
   const confidence =
     typeof rd.confidence === "number"
       ? Math.max(0, Math.min(1, rd.confidence))
-      : 0.5;
+      : (previous?.confidence ?? 0.5);
 
   return {
     ...(type ? { type } : {}),
@@ -376,6 +437,53 @@ function mergeDetected(
     flags,
     ...(phase ? { phase } : {}),
     confidence,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Orchestration
+// ---------------------------------------------------------------------------
+
+const isSystemId = (id: string): boolean => id.startsWith("system:");
+
+/** One slice's resolved contribution, whether freshly mapped or reused. */
+interface SliceOutcome {
+  slice: Slice;
+  fingerprint: string;
+  systemNode: FloorPlanNode;
+  childNodes: FloorPlanNode[];
+  edges: FloorPlanEdge[];
+  signals?: MapPayload["signals"];
+  error?: string;
+  reused: boolean;
+}
+
+/** Pull a slice's nodes + intra-slice edges out of the previous model. */
+function reuseOutcome(
+  previous: RepositoryModel,
+  slice: Slice,
+  prevReport: SliceReport,
+  fingerprint: string,
+): SliceOutcome {
+  const ids = new Set(prevReport.nodeIds);
+  const nodes = previous.nodes.filter((n) => ids.has(n.id));
+  const systemNode = nodes.find((n) => n.id === `system:${slice.key}`) ??
+    nodes.find((n) => n.kind === "system") ?? {
+      id: `system:${slice.key}`,
+      kind: "system" as const,
+      title: slice.title,
+      summary: "",
+      paths: [slice.dir],
+    };
+  const childNodes = nodes.filter((n) => n.id !== systemNode.id);
+  const edges = previous.edges.filter((e) => ids.has(e.from) && ids.has(e.to));
+  return {
+    slice,
+    fingerprint,
+    systemNode,
+    childNodes,
+    edges,
+    reused: true,
   };
 }
 
@@ -390,10 +498,13 @@ export async function runSwarm(
     onProgress,
     signal,
     maxSlices = 12,
+    previous = null,
+    verify = false,
     now = () => new Date(),
   } = options;
   const listSlices = options.listSlices ?? defaultListSlices;
   const gitHead = options.gitHead ?? defaultGitHead;
+  const fingerprint = options.fingerprint ?? fingerprintSlice;
   // The default seam ignores role/slice (they're only there to help test stubs
   // branch) and runs a real read-only agent from the rest of the spec.
   const invoke: SwarmInvoke =
@@ -404,30 +515,53 @@ export async function runSwarm(
     onProgress?.(p);
   };
 
-  // 1. Slice ----------------------------------------------------------------
+  // 1. Slice + fingerprint ---------------------------------------------------
   report({ phase: "slice", message: "Planning slices…", done: 0, total: 0 });
   const allSlices = await listSlices(repoPath);
   const slices = allSlices.slice(0, maxSlices);
   const dropped = allSlices.length - slices.length;
+
+  const fingerprints = await mapPool(slices, concurrency, (s) =>
+    fingerprint(repoPath, s),
+  );
+  const prevByKey = new Map(
+    (previous?.slices ?? []).map((r) => [r.key, r] as const),
+  );
+
+  // Decide reuse vs re-map per slice.
+  const outcomes = new Array<SliceOutcome | null>(slices.length).fill(null);
+  const toRemap: { slice: Slice; index: number; fingerprint: string }[] = [];
+  slices.forEach((slice, i) => {
+    const fp = fingerprints[i]!;
+    const prev = prevByKey.get(slice.key);
+    if (previous && prev && !prev.note && prev.fingerprint === fp) {
+      outcomes[i] = reuseOutcome(previous, slice, prev, fp);
+    } else {
+      toRemap.push({ slice, index: i, fingerprint: fp });
+    }
+  });
+  const reusedCount = slices.length - toRemap.length;
   report({
     phase: "slice",
     message:
-      dropped > 0
-        ? `${slices.length} slices (dropped ${dropped} over the cap)`
-        : `${slices.length} slices`,
+      `${slices.length} slices` +
+      (reusedCount > 0 ? `, ${reusedCount} unchanged (reused)` : "") +
+      (dropped > 0 ? `, dropped ${dropped} over the cap` : ""),
     done: slices.length,
     total: slices.length,
   });
 
-  // 2. Map (bounded concurrency) -------------------------------------------
+  // 2. Map the changed/new slices (bounded concurrency) ----------------------
   let mapped = 0;
-  const maps = await mapPool(slices, concurrency, async (slice) => {
+  const remapped = await mapPool(toRemap, concurrency, async (item) => {
+    const { slice } = item;
     report({
       phase: "map",
       message: `Analyzing ${slice.key}…`,
       done: mapped,
-      total: slices.length,
+      total: toRemap.length,
     });
+    let outcome: SliceOutcome;
     try {
       const raw = await invoke({
         role: "map",
@@ -438,16 +572,37 @@ export async function runSwarm(
         ...(model ? { model } : {}),
         ...(signal ? { signal } : {}),
       });
-      return {
+      const payload = normalizeMap(slice, raw);
+      outcome = {
         slice,
-        payload: normalizeMap(slice, raw),
-        error: undefined as string | undefined,
+        fingerprint: item.fingerprint,
+        systemNode: {
+          id: `system:${slice.key}`,
+          kind: "system",
+          title: payload.system.title,
+          summary: payload.system.summary,
+          paths: [slice.dir],
+        },
+        childNodes: payload.nodes,
+        edges: payload.edges,
+        signals: payload.signals,
+        reused: false,
       };
     } catch (err) {
-      return {
+      outcome = {
         slice,
-        payload: null as MapPayload | null,
+        fingerprint: item.fingerprint,
+        systemNode: {
+          id: `system:${slice.key}`,
+          kind: "system",
+          title: slice.title,
+          summary: `analysis failed: ${err instanceof Error ? err.message : String(err)}`,
+          paths: [slice.dir],
+        },
+        childNodes: [],
+        edges: [],
         error: err instanceof Error ? err.message : String(err),
+        reused: false,
       };
     } finally {
       mapped += 1;
@@ -455,12 +610,14 @@ export async function runSwarm(
         phase: "map",
         message: `Analyzed ${slice.key}`,
         done: mapped,
-        total: slices.length,
+        total: toRemap.length,
       });
     }
+    return outcome;
   });
+  toRemap.forEach((item, k) => (outcomes[item.index] = remapped[k]!));
 
-  // Assemble nodes: one system node per slice + the slice's own nodes.
+  // Assemble nodes/edges from all outcomes (reused + fresh), in slice order.
   const nodes: FloorPlanNode[] = [];
   const edges: FloorPlanEdge[] = [];
   const sliceReports: SliceReport[] = [];
@@ -474,93 +631,129 @@ export async function runSwarm(
   const signals: MapPayload["signals"][] = [];
   let partial = false;
 
-  for (const m of maps) {
-    const systemId = `system:${m.slice.key}`;
-    systemIds.push(systemId);
-    if (m.error || !m.payload) {
-      partial = true;
-      nodes.push({
-        id: systemId,
-        kind: "system",
-        title: m.slice.title,
-        summary: m.error ? `analysis failed: ${m.error}` : "no analysis",
-        paths: [m.slice.dir],
-      });
-      sliceReports.push({
-        key: m.slice.key,
-        nodeIds: [systemId],
-        ...(m.error ? { note: m.error } : {}),
-      });
-      systemSummaries.push({
-        id: systemId,
-        title: m.slice.title,
-        summary: "",
-        children: [],
-      });
-      continue;
-    }
-    nodes.push({
-      id: systemId,
-      kind: "system",
-      title: m.payload.system.title,
-      summary: m.payload.system.summary,
-      paths: [m.slice.dir],
+  for (const outcome of outcomes as SliceOutcome[]) {
+    systemIds.push(outcome.systemNode.id);
+    nodes.push(outcome.systemNode, ...outcome.childNodes);
+    edges.push(...outcome.edges);
+    if (outcome.signals) signals.push(outcome.signals);
+    if (outcome.error) partial = true;
+    sliceReports.push({
+      key: outcome.slice.key,
+      nodeIds: [outcome.systemNode.id, ...outcome.childNodes.map((n) => n.id)],
+      fingerprint: outcome.fingerprint,
+      ...(outcome.error ? { note: outcome.error } : {}),
+      ...(outcome.reused ? { reused: true } : {}),
     });
-    nodes.push(...m.payload.nodes);
-    edges.push(...m.payload.edges);
-    signals.push(m.payload.signals);
-    const childIds = m.payload.nodes.map((n) => n.id);
-    sliceReports.push({ key: m.slice.key, nodeIds: [systemId, ...childIds] });
     systemSummaries.push({
-      id: systemId,
-      title: m.payload.system.title,
-      summary: m.payload.system.summary,
-      children: m.payload.nodes.map((n) => `${n.title} (${n.kind})`),
+      id: outcome.systemNode.id,
+      title: outcome.systemNode.title,
+      summary: outcome.systemNode.summary,
+      children: outcome.childNodes.map((n) => `${n.title} (${n.kind})`),
     });
   }
 
-  // 3. Reduce ---------------------------------------------------------------
-  report({
-    phase: "reduce",
-    message: "Resolving connections…",
-    done: 0,
-    total: 1,
-  });
-  let reduceDetected: Record<string, unknown> | undefined;
+  // 3. Reduce ----------------------------------------------------------------
+  // Skip the reduce agent entirely when every slice was reused: the cross-system
+  // edges and detected profile from the previous model still hold.
   const nodeIds = new Set(nodes.map((n) => n.id));
-  try {
-    const raw = (await invoke({
-      role: "reduce",
-      cwd: repoPath,
-      system: REDUCE_SYSTEM,
-      prompt: JSON.stringify({ systems: systemSummaries }),
-      ...(model ? { model } : {}),
-      ...(signal ? { signal } : {}),
-    })) as Record<string, unknown>;
-    reduceDetected = (raw?.detected as Record<string, unknown>) ?? undefined;
-    for (const e of Array.isArray(raw?.edges) ? raw.edges : []) {
-      const ee = (e ?? {}) as Record<string, unknown>;
-      const from = asString(ee.from);
-      const to = asString(ee.to);
-      if (nodeIds.has(from) && nodeIds.has(to) && from !== to) {
-        const edge: FloorPlanEdge = { from, to, kind: edgeKind(ee.kind) };
-        if (asString(ee.label)) edge.label = asString(ee.label);
-        edges.push(edge);
-      }
-    }
-  } catch (err) {
-    partial = true;
+  let detected: DetectedProfile;
+
+  if (previous && toRemap.length === 0) {
     report({
       phase: "reduce",
-      message: `Reduce failed: ${err instanceof Error ? err.message : String(err)}`,
+      message: "All slices unchanged — reusing connections",
       done: 1,
       total: 1,
     });
+    edges.push(
+      ...previous.edges.filter(
+        (e) =>
+          isSystemId(e.from) &&
+          isSystemId(e.to) &&
+          nodeIds.has(e.from) &&
+          nodeIds.has(e.to),
+      ),
+    );
+    detected = mergeDetected([], undefined, previous.detected);
+  } else {
+    report({
+      phase: "reduce",
+      message: "Resolving connections…",
+      done: 0,
+      total: 1,
+    });
+    let reduceDetected: Record<string, unknown> | undefined;
+    const crossEdges: FloorPlanEdge[] = [];
+    try {
+      const raw = (await invoke({
+        role: "reduce",
+        cwd: repoPath,
+        system: REDUCE_SYSTEM,
+        prompt: JSON.stringify({ systems: systemSummaries }),
+        ...(model ? { model } : {}),
+        ...(signal ? { signal } : {}),
+      })) as Record<string, unknown>;
+      reduceDetected = (raw?.detected as Record<string, unknown>) ?? undefined;
+      for (const e of Array.isArray(raw?.edges) ? raw.edges : []) {
+        const ee = (e ?? {}) as Record<string, unknown>;
+        const from = asString(ee.from);
+        const to = asString(ee.to);
+        if (nodeIds.has(from) && nodeIds.has(to) && from !== to) {
+          const edge: FloorPlanEdge = { from, to, kind: edgeKind(ee.kind) };
+          if (asString(ee.label)) edge.label = asString(ee.label);
+          crossEdges.push(edge);
+        }
+      }
+    } catch (err) {
+      partial = true;
+      report({
+        phase: "reduce",
+        message: `Reduce failed: ${err instanceof Error ? err.message : String(err)}`,
+        done: 1,
+        total: 1,
+      });
+    }
+
+    // 4. Verify (opt-in): prune implausible cross-system edges ----------------
+    let keptCross = crossEdges;
+    if (verify && crossEdges.length > 0) {
+      report({
+        phase: "reduce",
+        message: "Verifying connections…",
+        done: 1,
+        total: 1,
+      });
+      try {
+        const raw = (await invoke({
+          role: "verify",
+          cwd: repoPath,
+          system: VERIFY_SYSTEM,
+          prompt: JSON.stringify({
+            systems: systemSummaries.map((s) => ({ id: s.id, title: s.title })),
+            edges: crossEdges.map((e, i) => ({ i, ...e })),
+          }),
+          ...(model ? { model } : {}),
+          ...(signal ? { signal } : {}),
+        })) as Record<string, unknown>;
+        const drop = new Set(
+          (Array.isArray(raw?.drop) ? raw.drop : []).filter(
+            (n): n is number => typeof n === "number",
+          ),
+        );
+        keptCross = crossEdges.filter((_e, i) => !drop.has(i));
+      } catch {
+        // A failed verify leaves the edges as-is rather than dropping the model.
+      }
+    }
+    edges.push(...keptCross);
+    detected = mergeDetected(
+      signals,
+      reduceDetected,
+      previous?.detected ?? undefined,
+    );
   }
 
-  const detected = mergeDetected(signals, reduceDetected);
   const commit = await gitHead(repoPath);
-
   report({ phase: "done", message: "Floor plan ready", done: 1, total: 1 });
 
   return {

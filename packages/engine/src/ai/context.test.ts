@@ -178,6 +178,43 @@ describe("packContext", () => {
     expect(packed.text).toContain("attack surface");
     expect(packed.text).toContain("Current gaps");
   });
+
+  it("grounds the context in the floor plan when one exists", async () => {
+    const model = {
+      version: 1,
+      nodes: [
+        { id: "system:api", kind: "system", title: "API Service" },
+        {
+          id: "api/routes",
+          kind: "api",
+          title: "Routes",
+          parent: "system:api",
+        },
+        { id: "system:db", kind: "system", title: "Database" },
+      ],
+      edges: [{ from: "system:api", to: "system:db", kind: "reads" }],
+    };
+    const dir = await repo({
+      ".factory/floorplan.json": JSON.stringify(model),
+    });
+    const ctx = buildContext(dir);
+
+    const packed = await packContext(ctx, { task: "c4" });
+
+    expect(packed.text).toContain(
+      "Architecture (from the deep-audit floor plan)",
+    );
+    expect(packed.text).toContain("API Service");
+    expect(packed.text).toContain("Routes (api)");
+    expect(packed.text).toContain("API Service —reads→ Database");
+  });
+
+  it("omits the architecture section when there is no floor plan", async () => {
+    const dir = await repo({ "src/app.ts": "export const x = 1;\n" });
+    const ctx = buildContext(dir);
+    const packed = await packContext(ctx, { task: "c4", globs: ["src/*.ts"] });
+    expect(packed.text).not.toContain("Architecture (from the deep-audit");
+  });
 });
 
 interface ControlResultLike {

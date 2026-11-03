@@ -344,7 +344,12 @@ export function App() {
         {settingsOpen ? (
           <Settings onThemeChange={setTheme} />
         ) : selectedRepo ? (
-          <div className="mx-auto max-w-4xl space-y-5 p-6">
+          // The Floor Plan needs room to breathe; other tabs read best narrower.
+          <div
+            className={`mx-auto space-y-5 p-6 ${
+              view === "floorplan" ? "max-w-7xl" : "max-w-4xl"
+            }`}
+          >
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="truncate text-xl font-semibold">

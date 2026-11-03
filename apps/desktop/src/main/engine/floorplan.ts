@@ -54,8 +54,13 @@ export async function runFloorPlan(
       stale: await isStale(repoPath, model),
     };
   }
+  // Feed the prior model in so unchanged slices are reused (incremental refresh),
+  // and run the bounded verification pass over the inferred cross-system edges.
+  const previous = await loadFloorPlan(repoPath);
   const model = await runSwarm(repoPath, {
     onProgress,
+    previous,
+    verify: true,
     ...(signal ? { signal } : {}),
   });
   await saveFloorPlan(repoPath, model);

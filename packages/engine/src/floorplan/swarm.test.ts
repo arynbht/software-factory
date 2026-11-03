@@ -138,3 +138,80 @@ describe("runSwarm", () => {
     expect(phases).toContain("done");
   });
 });
+
+describe("runSwarm — incremental reuse", () => {
+  const stableFp = { ...opts, fingerprint: () => Promise.resolve("fp1") };
+
+  it("reuses every slice and skips map + reduce when nothing changed", async () => {
+    const base = await runSwarm("/repo", stableFp);
+    const invoke2 = vi.fn(invoke);
+    const model2 = await runSwarm("/repo", {
+      ...stableFp,
+      previous: base,
+      invoke: invoke2,
+    });
+
+    const roles = invoke2.mock.calls.map((c) => c[0].role);
+    expect(roles).not.toContain("map"); // no slice re-mapped
+    expect(roles).not.toContain("reduce"); // connections reused
+    // The model is still complete.
+    expect(model2.nodes.some((n) => n.id === "pkg-a/api")).toBe(true);
+    expect(model2.edges).toContainEqual({
+      from: "system:pkg-a",
+      to: "system:pkg-b",
+      kind: "depends-on",
+    });
+    expect(model2.slices.every((s) => s.reused)).toBe(true);
+  });
+
+  it("re-maps only the changed slice and re-runs reduce", async () => {
+    const base = await runSwarm("/repo", stableFp);
+    const invoke3 = vi.fn(invoke);
+    const model3 = await runSwarm("/repo", {
+      ...opts,
+      previous: base,
+      invoke: invoke3,
+      // pkg-b changed; pkg-a unchanged.
+      fingerprint: (_r, s) =>
+        Promise.resolve(s.key === "pkg-b" ? "fp-new" : "fp1"),
+    });
+
+    const mapped = invoke3.mock.calls
+      .filter((c) => c[0].role === "map")
+      .map((c) => c[0].slice?.key);
+    expect(mapped).toEqual(["pkg-b"]);
+    expect(invoke3.mock.calls.some((c) => c[0].role === "reduce")).toBe(true);
+    // pkg-a was reused, pkg-b re-mapped.
+    expect(model3.slices.find((s) => s.key === "pkg-a")?.reused).toBe(true);
+    expect(
+      model3.slices.find((s) => s.key === "pkg-b")?.reused,
+    ).toBeUndefined();
+  });
+});
+
+describe("runSwarm — verification pass", () => {
+  it("drops cross-system edges the verifier rejects", async () => {
+    const withVerify: SwarmInvoke = (spec) =>
+      spec.role === "verify"
+        ? Promise.resolve({ drop: [0], confidence: 0.9 })
+        : invoke(spec);
+    const model = await runSwarm("/repo", {
+      ...opts,
+      verify: true,
+      invoke: withVerify,
+    });
+
+    // The single reduce cross-edge (index 0) is pruned…
+    expect(
+      model.edges.some(
+        (e) => e.from === "system:pkg-a" && e.to === "system:pkg-b",
+      ),
+    ).toBe(false);
+    // …but intra-slice edges from file exploration are untouched.
+    expect(model.edges).toContainEqual({
+      from: "pkg-a/api",
+      to: "pkg-a/db",
+      kind: "reads",
+    });
+  });
+});

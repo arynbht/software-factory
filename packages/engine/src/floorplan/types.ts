@@ -73,8 +73,16 @@ export interface SliceReport {
   key: string;
   /** Node ids this slice contributed. */
   nodeIds: string[];
+  /**
+   * Content fingerprint of the slice at scan time. A later run compares this to
+   * the slice's current fingerprint to decide whether to reuse this slice's nodes
+   * (unchanged) or re-map it (changed) — the incremental-refresh optimization.
+   */
+  fingerprint?: string;
   /** Agent-reported notes, or an error string if the slice agent failed. */
   note?: string;
+  /** True when this slice's nodes were reused from a prior model (not re-mapped). */
+  reused?: boolean;
 }
 
 /** The persisted floor-plan model for one repo. */

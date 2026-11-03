@@ -45,6 +45,54 @@ export interface PackContextOptions {
 
 const DEFAULT_MAX_BYTES = 60_000;
 
+/**
+ * Render a compact architecture summary from `.factory/floorplan.json` (the deep-
+ * audit model), or null when there is no floor plan / it's unreadable. Lists the
+ * systems and their top subsystems, plus the cross-system connections — enough to
+ * orient the model without blowing the context budget.
+ */
+async function architectureSection(ctx: AuditContext): Promise<string | null> {
+  const raw = await ctx.readFile(".factory/floorplan.json").catch(() => null);
+  if (!raw) return null;
+  let model: {
+    nodes?: { id: string; kind: string; title: string; parent?: string }[];
+    edges?: { from: string; to: string; kind: string }[];
+  };
+  try {
+    model = JSON.parse(raw) as typeof model;
+  } catch {
+    return null;
+  }
+  const nodes = Array.isArray(model.nodes) ? model.nodes : [];
+  const edges = Array.isArray(model.edges) ? model.edges : [];
+  const systems = nodes.filter((n) => n.kind === "system");
+  if (systems.length === 0) return null;
+
+  const title = new Map(nodes.map((n) => [n.id, n.title] as const));
+  const lines: string[] = ["## Architecture (from the deep-audit floor plan)"];
+  for (const sys of systems.slice(0, 20)) {
+    const children = nodes
+      .filter((n) => n.parent === sys.id)
+      .slice(0, 8)
+      .map((c) => `${c.title} (${c.kind})`);
+    lines.push(
+      `- **${sys.title}**${children.length ? `: ${children.join(", ")}` : ""}`,
+    );
+  }
+  const crossEdges = edges
+    .filter((e) => e.from.startsWith("system:") && e.to.startsWith("system:"))
+    .slice(0, 30);
+  if (crossEdges.length > 0) {
+    lines.push("", "Connections:");
+    for (const e of crossEdges) {
+      lines.push(
+        `- ${title.get(e.from) ?? e.from} —${e.kind}→ ${title.get(e.to) ?? e.to}`,
+      );
+    }
+  }
+  return lines.join("\n");
+}
+
 /** Assemble the task context, enforcing the secret guards and the size cap. */
 export async function packContext(
   ctx: AuditContext,
@@ -67,6 +115,12 @@ export async function packContext(
       ].join("\n"),
     );
   }
+
+  // Architecture map from the deep-audit floor plan, when one has been built. This
+  // grounds every AI task (ADR, C4, threat model, explain-gaps) in the repo's real
+  // systems and how they connect, instead of only the files the task's globs pull.
+  const archSection = await architectureSection(ctx);
+  if (archSection) sections.push(archSection);
 
   if (options.control) {
     const refs = (options.control.references ?? [])

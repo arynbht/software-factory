@@ -80,6 +80,9 @@ importers:
       cytoscape:
         specifier: ^3.30.0
         version: 3.34.4
+      cytoscape-fcose:
+        specifier: ^2.2.0
+        version: 2.2.0(cytoscape@3.34.4)
       dompurify:
         specifier: ^3.2.3
         version: 3.4.17
