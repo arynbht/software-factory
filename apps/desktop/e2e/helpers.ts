@@ -136,6 +136,16 @@ export async function launchApp(
 
 /** Tear down an app and remove its temp userData dir. */
 export async function closeApp(launched: LaunchedApp): Promise<void> {
+  // Surface the main-process lifecycle log (CI diagnosis) before the dir is removed.
+  try {
+    const diag = readFileSync(
+      join(launched.userDataDir, "e2e-diag.log"),
+      "utf8",
+    );
+    if (diag.trim()) process.stderr.write(`[e2e-diag]\n${diag}`);
+  } catch {
+    /* no diag file */
+  }
   await launched.app.close();
   rmSync(launched.userDataDir, { recursive: true, force: true });
 }

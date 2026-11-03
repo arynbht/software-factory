@@ -402,17 +402,22 @@ function registerIpcHandlers(): void {
     void (async () => {
       try {
         const token = await pollForToken(GITHUB_CLIENT_ID, code, deps, signal);
+        e2eLog("signin: token received");
         if (signal.aborted) return;
         await saveToken(token);
+        e2eLog("signin: token saved");
         let login = "";
         try {
           login = await fetchUserLogin(token, authFetch);
         } catch {
           // keep login empty; the status call will refresh it
         }
+        e2eLog(`signin: login=${login}`);
         if (signal.aborted) return;
         sendAuthUpdate({ status: "signed-in", login });
+        e2eLog("signin: signed-in update sent");
       } catch (err) {
+        e2eLog(`signin: error ${err instanceof Error ? err.message : err}`);
         if (signal.aborted) return;
         sendAuthUpdate({
           status: "error",

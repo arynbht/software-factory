@@ -42,3 +42,6 @@ Thumbs.db
 # Desktop end-to-end (Playwright) artifacts
 apps/desktop/test-results/
 apps/desktop/playwright-report/
+
+# Local agent worktrees / Claude Code session state
+.claude/
