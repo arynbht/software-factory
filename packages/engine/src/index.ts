@@ -135,6 +135,7 @@ export type { Slice, SwarmOptions, SwarmInvoke } from "./floorplan/swarm.js";
 export { runAgent, extractJson, READ_ONLY_TOOLS } from "./floorplan/agent.js";
 export type { AgentRunner, AgentSpec } from "./floorplan/agent.js";
 export { loadFloorPlan, saveFloorPlan, isStale } from "./floorplan/store.js";
+export { renderArchitectureDoc, saveArchitectureDoc } from "./floorplan/doc.js";
 export type {
   RepositoryModel,
   FloorPlanNode,

@@ -9,6 +9,7 @@ import {
   isStale,
   loadFloorPlan,
   runSwarm,
+  saveArchitectureDoc,
   saveFloorPlan,
   type SwarmProgress,
 } from "@arynbht/factory-engine";
@@ -64,5 +65,7 @@ export async function runFloorPlan(
     ...(signal ? { signal } : {}),
   });
   await saveFloorPlan(repoPath, model);
+  // Also emit the human-readable architecture doc so it appears in the Docs tab.
+  await saveArchitectureDoc(repoPath, model);
   return { model, deepAuditAvailable: true, stale: false };
 }
