@@ -98,6 +98,7 @@ export function Ai({ repoPath }: { repoPath: string }) {
         <div className="flex items-center gap-2">
           <select
             className={selectClass}
+            aria-label="AI task"
             value={task}
             onChange={(e) => setTask(e.target.value)}
             disabled={!tasks || running}
@@ -124,9 +125,13 @@ export function Ai({ repoPath }: { repoPath: string }) {
           {error}
         </p>
       )}
-      {notice && <p className="text-sm text-emerald-400">{notice}</p>}
+      {notice && (
+        <p className="text-sm text-emerald-400" aria-live="polite">
+          {notice}
+        </p>
+      )}
       {pr?.pr && (
-        <p className="text-sm text-sky-400">
+        <p className="text-sm text-sky-400" aria-live="polite">
           {pr.pr.reused ? "Updated" : "Opened"} PR #{pr.pr.number}: {pr.pr.url}
         </p>
       )}

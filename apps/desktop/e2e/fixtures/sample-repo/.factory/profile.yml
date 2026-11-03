@@ -1,0 +1,7 @@
+version: 1
+name: sample-repo
+type: cli
+stack:
+  - typescript
+flags: {}
+severity-floor: low

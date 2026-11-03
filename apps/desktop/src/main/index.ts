@@ -110,6 +110,38 @@ async function settingsView(): Promise<SettingsView> {
 // origins, ever.
 const DEV_RENDERER_URL = process.env.ELECTRON_RENDERER_URL;
 const isDev = Boolean(DEV_RENDERER_URL);
+// End-to-end test mode (Playwright): loosens the CSP enough to inject axe-core and
+// routes sign-in through a canned device flow so the suite runs without the network.
+// Never set in a real session — it gates test-only seams, nothing user-facing.
+const isE2E = process.env.FACTORY_E2E === "1";
+
+/** Canned responses for the GitHub device-flow + user endpoints (E2E only). */
+function e2eDeviceFlowFetch(input: unknown): Promise<Response> {
+  const href = String(input);
+  const body = href.includes("/device/code")
+    ? {
+        device_code: "e2e-device",
+        user_code: "E2E-CODE",
+        verification_uri: "https://github.com/login/device",
+        expires_in: 900,
+        interval: 0,
+      }
+    : href.includes("/oauth/access_token")
+      ? { access_token: "e2e-token" }
+      : href.includes("/user")
+        ? { login: "e2e-user" }
+        : {};
+  return Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve(body),
+  } as Response);
+}
+
+/** Real fetch, or the canned device-flow fetch in E2E, for auth calls only. */
+const authFetch: typeof fetch = isE2E
+  ? (e2eDeviceFlowFetch as unknown as typeof fetch)
+  : fetch;
 
 // Dev convenience: load apps/desktop/.env into process.env so config like the
 // GitHub client id persists across restarts without exporting it each time. The
@@ -172,7 +204,8 @@ function contentSecurityPolicy(): string {
     "base-uri 'none'",
     "frame-ancestors 'none'",
   ];
-  if (isDev) {
+  if (isDev || isE2E) {
+    // E2E needs inline <script> so Playwright can inject axe-core for the audit.
     base.push(
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "connect-src 'self' ws: http://localhost:*",
@@ -225,16 +258,19 @@ function createWindow(): void {
     if (mainWindow === window) mainWindow = null;
   });
 
-  window.once("ready-to-show", () => window.show());
+  // Show as soon as the first paint is ready; in E2E show immediately so a slow or
+  // non-painting headless renderer can't keep the window (and Playwright) waiting.
+  if (isE2E) window.show();
+  else window.once("ready-to-show", () => window.show());
 
-  if (isDev) {
-    window.webContents.openDevTools({ mode: "detach" });
-    // Forward renderer console + load failures to the main-process stdout so
-    // they're visible when driving the app headlessly in dev.
+  if (isDev || isE2E) {
+    if (isDev) window.webContents.openDevTools({ mode: "detach" });
+    // Forward renderer console + load failures to the main process so they're
+    // visible when driving the app headlessly (dev or E2E on CI).
     window.webContents.on(
       "console-message",
       (_event, level, message, line, sourceId) => {
-        console.log(`[renderer:${level}] ${message} (${sourceId}:${line})`);
+        console.error(`[renderer:${level}] ${message} (${sourceId}:${line})`);
       },
     );
     window.webContents.on("did-fail-load", (_event, code, desc, url) => {
@@ -312,7 +348,7 @@ function registerIpcHandlers(): void {
     const token = await loadToken();
     if (!token) return AuthStatus.parse({ signedIn: false, login: null });
     try {
-      const login = await fetchUserLogin(token, fetch);
+      const login = await fetchUserLogin(token, authFetch);
       return AuthStatus.parse({ signedIn: true, login });
     } catch {
       // Token present but unverifiable (offline / revoked) — still "signed in".
@@ -327,10 +363,11 @@ function registerIpcHandlers(): void {
           "registered GitHub App/OAuth client id (ADR-0007).",
       );
     }
-    const deps = { fetch };
+    const deps = { fetch: authFetch };
     const code = await requestDeviceCode(GITHUB_CLIENT_ID, GITHUB_SCOPE, deps);
-    // Open github.com/login/device for the user (host is allow-listed).
-    openExternalIfAllowed(code.verificationUri);
+    // Open github.com/login/device for the user (host is allow-listed). Skipped in
+    // E2E so the suite doesn't spawn a real browser.
+    if (!isE2E) openExternalIfAllowed(code.verificationUri);
 
     // Abort any previous poll before starting a new one (double sign-in click).
     signInAbort?.abort();
@@ -348,7 +385,7 @@ function registerIpcHandlers(): void {
         await saveToken(token);
         let login = "";
         try {
-          login = await fetchUserLogin(token, fetch);
+          login = await fetchUserLogin(token, authFetch);
         } catch {
           // keep login empty; the status call will refresh it
         }
@@ -524,26 +561,33 @@ function registerIpcHandlers(): void {
   });
 }
 
-app.whenReady().then(() => {
-  // Enforce a CSP on every response. Strict in prod; dev loosens only enough for
-  // Vite's inline bootstrap + HMR websocket (see contentSecurityPolicy). The Docs
-  // screen renders arbitrary repo Markdown, so even dev keeps a policy backstop.
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        "Content-Security-Policy": [contentSecurityPolicy()],
-      },
+app.whenReady().then(
+  () => {
+    // Enforce a CSP on every response. Strict in prod; dev loosens only enough for
+    // Vite's inline bootstrap + HMR websocket (see contentSecurityPolicy). The Docs
+    // screen renders arbitrary repo Markdown, so even dev keeps a policy backstop.
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": [contentSecurityPolicy()],
+        },
+      });
     });
-  });
 
-  registerIpcHandlers();
-  createWindow();
+    registerIpcHandlers();
+    createWindow();
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-}, console.error);
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  },
+  (err: unknown) => {
+    // Make a startup failure loud (it otherwise manifests as "no window" in E2E).
+    process.stderr.write(`[main] app failed to start: ${String(err)}\n`);
+    console.error(err);
+  },
+);
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

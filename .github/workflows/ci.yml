@@ -84,11 +84,53 @@ jobs:
             packages/action/skill \
             packages/action/dist/SOURCE_SHA256
 
+  # Desktop end-to-end: launch the built Electron app via Playwright and drive the
+  # sign-in, audit, and waive flows plus axe accessibility checks. Headless under
+  # xvfb; the app runs with --no-sandbox (CI has no SUID sandbox) — packaging fuses
+  # and the window sandbox are unaffected. Ubuntu only (the flows aren't OS-specific).
+  desktop-e2e:
+    name: desktop-e2e
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # The desktop main externalizes @arynbht/factory-{engine,catalog} and imports
+      # them from dist at runtime. electron-vite does NOT build those packages, and
+      # dist/ is gitignored — so without a tsc --build the ESM import fails and the
+      # main process never boots (firstWindow then times out with no window). Build
+      # just engine (which project-references catalog); avoids rebuilding the action
+      # bundle the way a full `pnpm build` would.
+      - name: Build engine + catalog dist (desktop loads them at runtime)
+        run: pnpm exec tsc --build packages/engine/tsconfig.json
+
+      - name: Install Electron runtime libraries + xvfb
+        run: |
+          pnpm --filter @arynbht/factory-desktop exec playwright install-deps
+          sudo apt-get install -y xvfb
+
+      - name: Run desktop e2e (xvfb)
+        # Force 24-bit color depth — Chromium/Electron won't render on xvfb's 8-bit
+        # default, which otherwise leaves the window (and firstWindow) hanging.
+        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" pnpm --filter @arynbht/factory-desktop e2e
+
   # Single required status check ("ci") that gates on every matrix leg, so branch
   # protection needs just one context regardless of how many OSes the matrix runs.
   ci:
     name: ci
-    needs: build-test
+    needs: [build-test, desktop-e2e]
     runs-on: ubuntu-latest
     steps:
       - run: echo "all build-test legs passed"

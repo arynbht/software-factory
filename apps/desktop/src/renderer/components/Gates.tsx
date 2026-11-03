@@ -40,6 +40,7 @@ function BlockerRow({
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const expiresId = `waive-expires-${blocker.controlId}`;
 
   async function submit(fn: () => Promise<void>): Promise<void> {
     setBusy(true);
@@ -70,6 +71,8 @@ function BlockerRow({
           <Button
             size="sm"
             variant="outline"
+            aria-label={`Waive ${blocker.title}`}
+            aria-expanded={form === "waive"}
             onClick={() => setForm(form === "waive" ? null : "waive")}
           >
             Waive
@@ -78,6 +81,8 @@ function BlockerRow({
             <Button
               size="sm"
               variant="outline"
+              aria-label={`Attach evidence for ${blocker.title}`}
+              aria-expanded={form === "evidence"}
               onClick={() => setForm(form === "evidence" ? null : "evidence")}
             >
               Evidence
@@ -87,16 +92,27 @@ function BlockerRow({
       </div>
 
       {form === "waive" && (
-        <div className="mt-2 space-y-2 rounded-md bg-background/50 p-2">
+        <div
+          className="mt-2 space-y-2 rounded-md bg-background/50 p-2"
+          role="group"
+          aria-label={`Waive ${blocker.title}`}
+        >
           <input
             className={inputClass}
             placeholder="Reason for the waiver"
+            aria-label="Waiver reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
           <div className="flex items-center gap-2">
-            <label className="text-xs text-muted-foreground">Expires</label>
+            <label
+              htmlFor={`${expiresId}`}
+              className="text-xs text-muted-foreground"
+            >
+              Expires
+            </label>
             <input
+              id={expiresId}
               type="date"
               className={inputClass}
               value={expires}
@@ -114,10 +130,15 @@ function BlockerRow({
       )}
 
       {form === "evidence" && (
-        <div className="mt-2 space-y-2 rounded-md bg-background/50 p-2">
+        <div
+          className="mt-2 space-y-2 rounded-md bg-background/50 p-2"
+          role="group"
+          aria-label={`Attach evidence for ${blocker.title}`}
+        >
           <input
             className={inputClass}
             placeholder="Evidence URL (e.g. a doc or PR link)"
+            aria-label="Evidence URL"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
           />
@@ -125,6 +146,7 @@ function BlockerRow({
             <input
               className={inputClass}
               placeholder="Note (optional)"
+              aria-label="Evidence note (optional)"
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
