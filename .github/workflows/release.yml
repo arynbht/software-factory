@@ -19,6 +19,12 @@ concurrency:
 jobs:
   version:
     runs-on: ubuntu-latest
+    # `pnpm install` runs `lefthook install` (the prepare script), so the automated
+    # "version packages" commit trips the repo's pre-commit hook — which runs gitleaks
+    # (not on the runner → exit 127) and fails the commit. Those hooks are for human
+    # commits, not this bot commit; disable lefthook for the whole job.
+    env:
+      LEFTHOOK: "0"
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
