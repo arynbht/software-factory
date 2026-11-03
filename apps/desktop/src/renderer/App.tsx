@@ -54,10 +54,15 @@ export function App() {
   }
 
   async function handleRemove(path: string): Promise<void> {
-    setRepos(await window.factory.repos.remove(path));
-    if (selected === path) {
-      setSelected(null);
-      setScorecard(null);
+    setError(null);
+    try {
+      setRepos(await window.factory.repos.remove(path));
+      if (selected === path) {
+        setSelected(null);
+        setScorecard(null);
+      }
+    } catch (err) {
+      setError(errorMessage(err));
     }
   }
 
@@ -237,13 +242,15 @@ export function App() {
 
             {opened.has("fix") && (
               <div className={view === "fix" ? "" : "hidden"}>
-                <Fix repoPath={selectedRepo.path} />
+                {/* key resets the panel's run/PR state when the repo changes. */}
+                <Fix key={selectedRepo.path} repoPath={selectedRepo.path} />
               </div>
             )}
 
             {opened.has("ai") && (
               <div className={view === "ai" ? "" : "hidden"}>
-                <Ai repoPath={selectedRepo.path} />
+                {/* key resets the panel's draft/run state when the repo changes. */}
+                <Ai key={selectedRepo.path} repoPath={selectedRepo.path} />
               </div>
             )}
 

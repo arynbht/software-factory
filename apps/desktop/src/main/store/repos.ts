@@ -11,6 +11,19 @@ function storePath(): string {
   return join(app.getPath("userData"), "repos.json");
 }
 
+// Serialize read-modify-write mutations so two concurrent add/remove calls can't
+// each read the old list and clobber the other's write. Reads don't need it.
+let writeChain: Promise<unknown> = Promise.resolve();
+function withLock<T>(fn: () => Promise<T>): Promise<T> {
+  const next = writeChain.then(fn, fn);
+  // Keep the chain alive even if a mutation rejects.
+  writeChain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
 export async function listRepos(): Promise<RepoEntry[]> {
   try {
     const raw = await readFile(storePath(), "utf8");
@@ -29,18 +42,22 @@ async function saveRepos(repos: RepoEntry[]): Promise<void> {
 }
 
 /** Add a repo folder (idempotent by path); returns the updated, sorted list. */
-export async function addRepo(path: string): Promise<RepoEntry[]> {
-  const repos = await listRepos();
-  if (!repos.some((r) => r.path === path)) {
-    repos.push({ path, name: basename(path) });
-    repos.sort((a, b) => a.name.localeCompare(b.name));
-    await saveRepos(repos);
-  }
-  return repos;
+export function addRepo(path: string): Promise<RepoEntry[]> {
+  return withLock(async () => {
+    const repos = await listRepos();
+    if (!repos.some((r) => r.path === path)) {
+      repos.push({ path, name: basename(path) });
+      repos.sort((a, b) => a.name.localeCompare(b.name));
+      await saveRepos(repos);
+    }
+    return repos;
+  });
 }
 
-export async function removeRepo(path: string): Promise<RepoEntry[]> {
-  const repos = (await listRepos()).filter((r) => r.path !== path);
-  await saveRepos(repos);
-  return repos;
+export function removeRepo(path: string): Promise<RepoEntry[]> {
+  return withLock(async () => {
+    const repos = (await listRepos()).filter((r) => r.path !== path);
+    await saveRepos(repos);
+    return repos;
+  });
 }

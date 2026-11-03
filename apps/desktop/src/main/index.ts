@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 
@@ -95,6 +96,13 @@ const GITHUB_SCOPE = "repo read:org";
 
 let mainWindow: BrowserWindow | null = null;
 
+/**
+ * Cancels the in-flight device-flow poll. A new sign-in or an explicit sign-out
+ * aborts the previous poller so a stale one can't overwrite the token or push a
+ * late outcome to the renderer.
+ */
+let signInAbort: AbortController | null = null;
+
 function sendAuthUpdate(update: AuthUpdate): void {
   mainWindow?.webContents.send(IpcChannel.AuthUpdate, update);
 }
@@ -106,18 +114,38 @@ const ALLOWED_EXTERNAL_HOSTS = new Set([
   "www.w3.org",
 ]);
 
-/** The strict production CSP (applied only to the packaged app; see below). */
+/**
+ * Content-Security-Policy applied to every response. Strict self-only in prod; in
+ * dev it's loosened only as far as Vite's HMR needs (inline/eval bootstrap + ws),
+ * never fully policy-free — the Docs screen renders arbitrary repo Markdown, so
+ * even a dev session gets a CSP backstop.
+ */
 function contentSecurityPolicy(): string {
-  return [
+  const base = [
     "default-src 'self'",
-    "script-src 'self'",
-    "connect-src 'self'",
     "img-src 'self' data:",
     "style-src 'self' 'unsafe-inline'", // bundled CSS + any injected <style>
     "object-src 'none'",
     "base-uri 'none'",
     "frame-ancestors 'none'",
-  ].join("; ");
+  ];
+  if (isDev) {
+    base.push(
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "connect-src 'self' ws: http://localhost:*",
+    );
+  } else {
+    base.push("script-src 'self'", "connect-src 'self'");
+  }
+  return base.join("; ");
+}
+
+/** The exact URL our renderer loads from (the only navigation we allow in-window). */
+function rendererUrl(): string {
+  return (
+    DEV_RENDERER_URL ??
+    pathToFileURL(join(import.meta.dirname, "../renderer/index.html")).href
+  );
 }
 
 /** Open an allow-listed https link in the OS browser; silently drop anything else. */
@@ -182,10 +210,12 @@ function createWindow(): void {
     return { action: "deny" };
   });
 
-  // Block navigation away from our own renderer origin (no drive-by nav).
+  // Block navigation anywhere but our own renderer URL (prefix covers #hash and
+  // ?query). A bare "file://" prefix would let any local file through, so match
+  // the exact renderer URL instead.
+  const allowedPrefix = rendererUrl();
   window.webContents.on("will-navigate", (event, url) => {
-    const ownOrigin = DEV_RENDERER_URL ?? "file://";
-    if (!url.startsWith(ownOrigin)) {
+    if (!url.startsWith(allowedPrefix)) {
       event.preventDefault();
       openExternalIfAllowed(url);
     }
@@ -259,10 +289,19 @@ function registerIpcHandlers(): void {
     // Open github.com/login/device for the user (host is allow-listed).
     openExternalIfAllowed(code.verificationUri);
 
+    // Abort any previous poll before starting a new one (double sign-in click).
+    signInAbort?.abort();
+    const controller = new AbortController();
+    signInAbort = controller;
+    const { signal } = controller;
+
     // Poll in the background; push the outcome to the renderer when it lands.
+    // If this poll was superseded (new sign-in) or cancelled (sign-out), it must
+    // not save a token or push a stale outcome.
     void (async () => {
       try {
-        const token = await pollForToken(GITHUB_CLIENT_ID, code, deps);
+        const token = await pollForToken(GITHUB_CLIENT_ID, code, deps, signal);
+        if (signal.aborted) return;
         await saveToken(token);
         let login = "";
         try {
@@ -270,12 +309,16 @@ function registerIpcHandlers(): void {
         } catch {
           // keep login empty; the status call will refresh it
         }
+        if (signal.aborted) return;
         sendAuthUpdate({ status: "signed-in", login });
       } catch (err) {
+        if (signal.aborted) return;
         sendAuthUpdate({
           status: "error",
           message: err instanceof Error ? err.message : String(err),
         });
+      } finally {
+        if (signInAbort === controller) signInAbort = null;
       }
     })();
 
@@ -287,6 +330,9 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle(IpcChannel.AuthSignOut, async () => {
+    // Stop any in-flight poll so it can't re-save a token after we clear it.
+    signInAbort?.abort();
+    signInAbort = null;
     await clearToken();
     return AuthStatus.parse({ signedIn: false, login: null });
   });
@@ -399,19 +445,17 @@ function registerIpcHandlers(): void {
 }
 
 app.whenReady().then(() => {
-  // Enforce the strict CSP on the packaged app. In dev the renderer is the Vite
-  // server (its own inline bootstrap + HMR websocket), so we rely on Vite +
-  // Electron defaults there rather than fighting the policy.
-  if (!isDev) {
-    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-      callback({
-        responseHeaders: {
-          ...details.responseHeaders,
-          "Content-Security-Policy": [contentSecurityPolicy()],
-        },
-      });
+  // Enforce a CSP on every response. Strict in prod; dev loosens only enough for
+  // Vite's inline bootstrap + HMR websocket (see contentSecurityPolicy). The Docs
+  // screen renders arbitrary repo Markdown, so even dev keeps a policy backstop.
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": [contentSecurityPolicy()],
+      },
     });
-  }
+  });
 
   registerIpcHandlers();
   createWindow();

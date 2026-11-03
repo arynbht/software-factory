@@ -83,13 +83,18 @@ export function Fix({ repoPath }: { repoPath: string }) {
   const [pr, setPr] = useState<FixPrOutcome | null>(null);
 
   useEffect(() => {
+    let active = true;
     setPlan(null);
     setError(null);
     setNotice(null);
     setPr(null);
-    window.factory.fix
-      .plan(repoPath)
-      .then(setPlan, (err: unknown) => setError(errorMessage(err)));
+    window.factory.fix.plan(repoPath).then(
+      (p) => active && setPlan(p),
+      (err: unknown) => active && setError(errorMessage(err)),
+    );
+    return () => {
+      active = false;
+    };
   }, [repoPath]);
 
   async function run(
@@ -99,6 +104,7 @@ export function Fix({ repoPath }: { repoPath: string }) {
     setBusy(true);
     setError(null);
     setNotice(null);
+    setPr(null); // drop any prior PR banner before a new apply/open-PR run
     try {
       await fn();
     } catch (err) {
