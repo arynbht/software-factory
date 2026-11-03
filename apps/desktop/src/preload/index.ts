@@ -6,6 +6,11 @@ import type { Profile } from "@arynbht/factory-catalog";
 import { contextBridge, ipcRenderer } from "electron";
 
 import {
+  AiApplyRequest,
+  AiApplyResult,
+  AiRunRequest,
+  AiRunResult,
+  AiTasks,
   AuditRunRequest,
   AuthStatus,
   AuthUpdate,
@@ -171,6 +176,34 @@ const api = {
       const raw: unknown = await ipcRenderer.invoke(
         IpcChannel.FixOpenPr,
         request,
+      );
+      return FixPrOutcome.parse(raw);
+    },
+  },
+
+  ai: {
+    /** The Claude-drafted tasks available (from the bundled prompts). */
+    async tasks() {
+      const raw: unknown = await ipcRenderer.invoke(IpcChannel.AiTasks);
+      return AiTasks.parse(raw);
+    },
+    /** Draft the task on the subscription CLI; returns the draft (not written). */
+    async run(repoPath: string, task: string) {
+      const request = AiRunRequest.parse({ repoPath, task });
+      const raw: unknown = await ipcRenderer.invoke(IpcChannel.AiRun, request);
+      return AiRunResult.parse(raw);
+    },
+    async apply(request: AiApplyRequest) {
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.AiApply,
+        AiApplyRequest.parse(request),
+      );
+      return AiApplyResult.parse(raw);
+    },
+    async openPr(request: AiApplyRequest) {
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.AiOpenPr,
+        AiApplyRequest.parse(request),
       );
       return FixPrOutcome.parse(raw);
     },
