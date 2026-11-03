@@ -33,7 +33,7 @@ function truncate(s: string, max = 2000): string {
 }
 
 /** Pick the package manager from the worktree's lockfile (default pnpm). */
-async function packageManager(dir: string): Promise<string> {
+export async function packageManager(dir: string): Promise<string> {
   for (const [file, pm] of [
     ["pnpm-lock.yaml", "pnpm"],
     ["yarn.lock", "yarn"],
@@ -57,6 +57,45 @@ async function readScripts(dir: string): Promise<Record<string, string>> {
     return (pkg.scripts ?? {}) as Record<string, string>;
   } catch {
     return {};
+  }
+}
+
+/**
+ * Install dependencies in a freshly-created worktree — which, unlike the main
+ * checkout, has no `node_modules`. Without this the verify step's test/lint/typecheck
+ * scripts fail for want of deps. A no-op for non-Node repos. Best-effort: a failed
+ * install is reported but never throws (the agent can retry via its pnpm Bash tool).
+ */
+export async function installDeps(
+  dir: string,
+  run: CommandRunner = runTool,
+): Promise<VerifyCheck> {
+  try {
+    await readFile(resolve(dir, "package.json"), "utf8");
+  } catch {
+    return {
+      name: "install",
+      passed: true,
+      ran: false,
+      output: "no package.json",
+    };
+  }
+  const pm = await packageManager(dir);
+  try {
+    const res = await run(pm, ["install"], dir);
+    return {
+      name: "install",
+      passed: res.exitCode === 0,
+      ran: true,
+      output: truncate(`${res.stdout}\n${res.stderr}`),
+    };
+  } catch (err) {
+    return {
+      name: "install",
+      passed: false,
+      ran: true,
+      output: truncate(err instanceof Error ? err.message : String(err)),
+    };
   }
 }
 

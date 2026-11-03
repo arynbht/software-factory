@@ -66,7 +66,14 @@ export interface BuildResult {
 /** Progress emitted as a build runs, streamed to the UI. */
 export interface BuildProgress {
   phase:
-    "plan" | "worktree" | "implement" | "verify" | "iterate" | "pr" | "done";
+    | "plan"
+    | "worktree"
+    | "install"
+    | "implement"
+    | "verify"
+    | "iterate"
+    | "pr"
+    | "done";
   message: string;
   done: number;
   total: number;

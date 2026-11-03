@@ -501,6 +501,7 @@ export const BuildProgress = z.object({
   phase: z.enum([
     "plan",
     "worktree",
+    "install",
     "implement",
     "verify",
     "iterate",

@@ -17,7 +17,7 @@ import type {
   BuildResult,
   VerifyResult,
 } from "./types.js";
-import { verify as defaultVerify } from "./verify.js";
+import { installDeps, verify as defaultVerify } from "./verify.js";
 import {
   commitAll,
   createWorktree,
@@ -60,6 +60,8 @@ export interface BuildOptions {
   writeAgent?: WriteAgentRunner;
   /** Inject the verifier (tests). Default runs repo checks + factory gate. */
   verify?: (dir: string) => Promise<VerifyResult>;
+  /** Inject dependency install (tests). Default installs in the fresh worktree. */
+  install?: (dir: string) => Promise<void>;
   /** Inject git ops (tests). Default uses real worktrees. */
   git?: GitOps;
   /** Inject the PR opener (tests). Default opens/reuses via the GitHub client. */
@@ -182,6 +184,19 @@ export async function runBuild(
   let pr: PrResult | null = null;
 
   try {
+    // Install deps ---------------------------------------------------------
+    // A fresh worktree has no node_modules; install so the verify scripts can run.
+    report({
+      phase: "install",
+      message: "Installing dependencies…",
+      done: 0,
+      total: 1,
+    });
+    const install =
+      options.install ??
+      ((dir: string) => installDeps(dir).then(() => undefined));
+    await install(worktree.path);
+
     // Implement ------------------------------------------------------------
     report({
       phase: "implement",

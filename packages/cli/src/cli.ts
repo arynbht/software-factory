@@ -2,6 +2,7 @@ import { Command, Option } from "commander";
 
 import { type AiFlags, runAi, runAiUsage } from "./commands/ai.js";
 import { type AuditFlags, runAudit } from "./commands/audit.js";
+import { type BuildFlags, runBuildCommand } from "./commands/build.js";
 import { runCi } from "./commands/ci.js";
 import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
 import { type FixFlags, runFix } from "./commands/fix.js";
@@ -135,6 +136,24 @@ export function buildProgram(): Command {
         return;
       }
       process.exitCode = await runAi(task, path, flags, { today: today() });
+    });
+
+  program
+    .command("build")
+    .description(
+      "Plan and build a feature/fix with agents, then open a gated PR",
+    )
+    .argument("<description>", "what to build (quote it)")
+    .argument("[path]", "path to the repo", ".")
+    .option("--yes", "approve the plan and build it (default: plan only)")
+    .option("--no-push", "stop at a local branch; don't push or open a PR")
+    .option("--token <token>", "GitHub token (for opening the PR)")
+    .option("--model <model>", "Claude model override")
+    .option("--no-color", "disable coloured output")
+    .action(async (description: string, path: string, flags: BuildFlags) => {
+      process.exitCode = await runBuildCommand(description, path, flags, {
+        today: today(),
+      });
     });
 
   const profile = program
