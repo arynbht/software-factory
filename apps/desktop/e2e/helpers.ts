@@ -89,6 +89,10 @@ export async function launchApp(
       // Chromium's sandbox needs root privileges it doesn't have under CI; the
       // app's BrowserWindow sandbox (and the packaged fuses) are unaffected.
       "--no-sandbox",
+      // Headless CI (xvfb) has no real GPU and a small /dev/shm; without these the
+      // renderer can hang before the window ever opens. Harmless on a dev machine.
+      "--disable-gpu",
+      "--disable-dev-shm-usage",
       // Use the plaintext credential store so safeStorage works headless (no OS
       // keyring in CI). Test-only — the packaged app uses the real keychain.
       "--password-store=basic",
@@ -98,6 +102,11 @@ export async function launchApp(
       FACTORY_E2E: "1",
       ...opts.env,
     },
+  });
+
+  // Surface main-process output so a launch failure is diagnosable in CI logs.
+  app.process().stderr?.on("data", (d: Buffer) => {
+    process.stderr.write(`[electron] ${d.toString()}`);
   });
 
   const page = await app.firstWindow();
