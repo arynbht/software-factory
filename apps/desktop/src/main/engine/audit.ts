@@ -106,6 +106,9 @@ export async function runAudit(
   };
 
   for (const result of results) {
+    // Count every result in the totals — even one whose lane isn't in the
+    // catalog view — so the totals always sum to `total` (= results.length).
+    bump(totals, result.status);
     const lane = lanes.get(result.lane);
     if (!lane) continue;
     const control = byId.get(result.controlId);
@@ -124,7 +127,6 @@ export async function runAudit(
     };
     lane.controls.push(entry);
     bump(lane.counts, result.status);
-    bump(totals, result.status);
   }
 
   return {

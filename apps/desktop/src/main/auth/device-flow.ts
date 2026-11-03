@@ -99,7 +99,12 @@ export async function pollForToken(
       case "authorization_pending":
         break; // not yet — keep polling at the same interval
       case "slow_down":
-        intervalMs += 5000; // GitHub asks us to back off
+        // GitHub asks us to back off and returns the new minimum interval; honor
+        // it when present, otherwise fall back to the documented +5s bump.
+        intervalMs =
+          typeof data.interval === "number"
+            ? data.interval * 1000
+            : intervalMs + 5000;
         break;
       default:
         throw new DeviceFlowError(

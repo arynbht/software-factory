@@ -81,6 +81,39 @@ describe("pollForToken", () => {
     ).rejects.toBeInstanceOf(DeviceFlowError);
   });
 
+  it("backs off to GitHub's interval on slow_down", async () => {
+    const replies = [
+      jsonResponse({ error: "slow_down", interval: 7 }),
+      jsonResponse({ access_token: "gho_secret" }),
+    ];
+    let call = 0;
+    const fetchMock = vi.fn(() => Promise.resolve(replies[call++]!));
+    const slept: number[] = [];
+    const token = await pollForToken("client", code, {
+      fetch: fetchMock,
+      sleep: (ms) => {
+        slept.push(ms);
+        return Promise.resolve();
+      },
+      now: () => 0,
+    });
+    expect(token).toBe("gho_secret");
+    // first poll uses code.interval (1s); after slow_down it honors 7s.
+    expect(slept).toEqual([1000, 7000]);
+  });
+
+  it("stops polling when the signal is aborted", async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(jsonResponse({ error: "authorization_pending" })),
+    );
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      pollForToken("client", code, deps(fetchMock), controller.signal),
+    ).rejects.toThrow(/cancelled/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("gives up once the code has expired", async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve(jsonResponse({ error: "authorization_pending" })),

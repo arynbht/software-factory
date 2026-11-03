@@ -19,8 +19,23 @@ marked.use({
   },
 });
 
+// Force every surviving link to open safely: real anchors get noopener/noreferrer
+// and (for anything targeting outside) _blank, so a doc link can't reach back into
+// the renderer's window via `opener`. External navigation itself is still gated by
+// the main process's will-navigate + openExternal allow-list.
+DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+  if (node.tagName === "A" && node.hasAttribute("href")) {
+    node.setAttribute("rel", "noopener noreferrer");
+    node.setAttribute("target", "_blank");
+  }
+});
+
 /** Markdown → sanitized HTML (no remote content; CSP-safe). */
 export function renderMarkdown(md: string): string {
   const html = marked.parse(md, { async: false });
-  return DOMPurify.sanitize(html);
+  return DOMPurify.sanitize(html, {
+    // Only http(s), mailto, and in-doc #anchor links survive — no
+    // javascript:/data:/vbscript: URIs (tighter than DOMPurify's default).
+    ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|#)/i,
+  });
 }

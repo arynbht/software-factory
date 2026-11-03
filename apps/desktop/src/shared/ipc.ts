@@ -162,6 +162,15 @@ export const ProfileSaveRequest = z.object({
   profile: z.unknown(),
 });
 
+/**
+ * Loose boundary check for profile:load / profile:save. The engine validates the
+ * full profile schema on load/save; this only confirms the IPC boundary returned
+ * an object (or null, for a repo with no profile) rather than something unexpected.
+ * We can't validate the full schema here — the catalog's ProfileSchema pulls
+ * node:fs, which the sandboxed preload can't import.
+ */
+export const ProfileResponse = z.record(z.string(), z.unknown()).nullable();
+
 // Gates — the phase gates for a repo, the inferred phase, and what blocks each.
 export const GateStatus = z.enum(["green", "amber", "red"]);
 export type GateStatus = z.infer<typeof GateStatus>;

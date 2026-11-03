@@ -30,6 +30,7 @@ import {
   PingResponse,
   ProfileLoadRequest,
   ProfileMeta,
+  ProfileResponse,
   ProfileSaveRequest,
   RepoList,
   RepoRemoveRequest,
@@ -93,7 +94,17 @@ const api = {
     /** Subscribe to the background sign-in outcome; returns an unsubscribe fn. */
     onUpdate(callback: (update: AuthUpdate) => void) {
       const listener = (_event: unknown, payload: unknown): void => {
-        callback(AuthUpdate.parse(payload));
+        // A listener must not throw: an unparseable push becomes a surfaced error
+        // rather than an uncaught exception in the IPC event loop.
+        const parsed = AuthUpdate.safeParse(payload);
+        callback(
+          parsed.success
+            ? parsed.data
+            : {
+                status: "error",
+                message: "received a malformed sign-in update",
+              },
+        );
       };
       ipcRenderer.on(IpcChannel.AuthUpdate, listener);
       return () => {
@@ -115,7 +126,7 @@ const api = {
         IpcChannel.ProfileLoad,
         request,
       );
-      return raw as Profile | null;
+      return ProfileResponse.parse(raw) as Profile | null;
     },
     /** Write the profile with a minimal diff; returns the saved profile. */
     async save(repoPath: string, profile: Profile): Promise<Profile> {
@@ -124,7 +135,7 @@ const api = {
         IpcChannel.ProfileSave,
         request,
       );
-      return raw as Profile;
+      return ProfileResponse.parse(raw) as Profile;
     },
   },
 
