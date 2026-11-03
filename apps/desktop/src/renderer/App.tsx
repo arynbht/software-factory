@@ -1,4 +1,10 @@
-import { FolderPlus, Play, RefreshCw, X } from "lucide-react";
+import {
+  FolderPlus,
+  Play,
+  RefreshCw,
+  Settings as SettingsIcon,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Ai } from "@/components/Ai";
@@ -8,12 +14,19 @@ import { Fix } from "@/components/Fix";
 import { Gates } from "@/components/Gates";
 import { ProfileForm } from "@/components/ProfileForm";
 import { Scorecard } from "@/components/Scorecard";
+import { Settings } from "@/components/Settings";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/errors";
+import { applyTheme } from "@/lib/theme";
 
 type View = "scorecard" | "profile" | "gates" | "fix" | "ai" | "docs";
 
-import type { RepoEntry, Scorecard as ScorecardData } from "../shared/ipc";
+import type {
+  RepoEntry,
+  Scorecard as ScorecardData,
+  Theme,
+  UpdateInfo,
+} from "../shared/ipc";
 
 export function App() {
   // The preload exposes `window.factory`; if it failed to load, surface a clear
@@ -25,6 +38,11 @@ export function App() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("scorecard");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // The applied theme setting; drives the OS-preference listener below.
+  const [theme, setTheme] = useState<Theme>("dark");
+  // Set by the opt-in launch update check when a newer release is available.
+  const [updateBanner, setUpdateBanner] = useState<UpdateInfo | null>(null);
   // Views the user has opened for the current repo. A view stays mounted once
   // opened (just hidden), so switching tabs doesn't reset its state (unsaved
   // profile edits, expanded gates, the scorecard). Reset when the repo changes.
@@ -42,7 +60,36 @@ export function App() {
     window.factory.repos.list().then(setRepos, (err: unknown) => {
       setError(errorMessage(err));
     });
+    // Apply the saved theme as early as possible (index.html defaults to dark).
+    window.factory.settings.load().then(
+      (s) => {
+        setTheme(s.theme);
+        applyTheme(s.theme);
+        // Opt-in launch update check; show a banner only if one is available.
+        if (s.autoCheckUpdates) {
+          window.factory.update.check().then(
+            (info) => info.updateAvailable && setUpdateBanner(info),
+            () => {
+              // A failed launch check is silent; the user can retry in Settings.
+            },
+          );
+        }
+      },
+      () => {
+        // Settings unreadable — keep the default dark theme.
+      },
+    );
   }, [bridgeReady]);
+
+  // Re-apply "system" theme when the OS preference changes while the app is open.
+  useEffect(() => {
+    applyTheme(theme);
+    if (theme !== "system") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (): void => applyTheme("system");
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [theme]);
 
   async function handleAdd(): Promise<void> {
     setError(null);
@@ -67,6 +114,7 @@ export function App() {
   }
 
   function handleSelect(path: string): void {
+    setSettingsOpen(false);
     setSelected(path);
     setScorecard(null);
     setError(null);
@@ -157,11 +205,50 @@ export function App() {
             </ul>
           )}
         </nav>
+        <div className="px-2 pb-2">
+          <Button
+            size="sm"
+            variant={settingsOpen ? "secondary" : "ghost"}
+            className="w-full justify-start"
+            onClick={() => setSettingsOpen(true)}
+            aria-current={settingsOpen ? "page" : undefined}
+          >
+            <SettingsIcon className="h-4 w-4" />
+            Settings
+          </Button>
+        </div>
         <AuthControls />
       </aside>
 
       <main className="flex-1 overflow-y-auto">
-        {selectedRepo ? (
+        {updateBanner && (
+          <div className="flex items-center justify-between gap-3 border-b border-sky-500/30 bg-sky-500/10 px-4 py-2 text-sm text-sky-300">
+            <span>
+              Update available: {updateBanner.latestVersion}.{" "}
+              {updateBanner.url && (
+                <a
+                  href={updateBanner.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  Download
+                </a>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => setUpdateBanner(null)}
+              aria-label="Dismiss update notice"
+              className="shrink-0 rounded p-1 hover:bg-background/40"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+        {settingsOpen ? (
+          <Settings onThemeChange={setTheme} />
+        ) : selectedRepo ? (
           <div className="mx-auto max-w-4xl space-y-5 p-6">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">

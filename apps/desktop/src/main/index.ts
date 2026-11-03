@@ -17,6 +17,7 @@ import {
   AiApplyRequest,
   AiRunRequest,
   AiTasks,
+  AnthropicKeyRequest,
   AuditRunRequest,
   DocList,
   DocsListRequest,
@@ -36,20 +37,37 @@ import {
   RepoList,
   RepoRemoveRequest,
   Scorecard,
+  SettingsSaveRequest,
+  SettingsView,
+  UpdateInfo,
   WaiveRequest,
 } from "../shared/ipc";
+import {
+  clearAnthropicKey,
+  hasAnthropicKey,
+  loadAnthropicKey,
+  saveAnthropicKey,
+} from "./auth/anthropic-key-store";
 import {
   fetchUserLogin,
   pollForToken,
   requestDeviceCode,
 } from "./auth/device-flow";
-import { applyAiDraft, listAiTasks, openAiPr, runAiTask } from "./engine/ai";
+import {
+  type AiOptions,
+  applyAiDraft,
+  listAiTasks,
+  openAiPr,
+  runAiTask,
+} from "./engine/ai";
 import { clearToken, loadToken, saveToken } from "./auth/token-store";
 import { runAudit } from "./engine/audit";
 import { listDocs, readDoc } from "./engine/docs";
 import { applyFix, openFixPrForRepo, planFix } from "./engine/fix";
 import { attachEvidence, computeGates, waiveControl } from "./engine/gates";
 import { addRepo, listRepos, removeRepo } from "./store/repos";
+import { loadSettings, saveSettings } from "./store/settings";
+import { checkForUpdate } from "./update/check";
 
 /** Enum lists that drive the renderer's Profile form (keeps the catalog out of it). */
 function buildProfileMeta(): ProfileMeta {
@@ -60,6 +78,31 @@ function buildProfileMeta(): ProfileMeta {
     lanes: LANES.map((l) => ({ key: l.key, title: l.title })),
     severities: [...SEVERITIES],
   };
+}
+
+/** The owner/repo whose releases the manual update check queries (ADR-0010). */
+const UPDATE_REPO =
+  process.env.FACTORY_UPDATE_REPO ?? "arynbht/software-factory";
+
+/** Resolve the AI transport options from settings + the stored Anthropic key. */
+async function resolveAiOptions(): Promise<AiOptions> {
+  const [settings, apiKey] = await Promise.all([
+    loadSettings(),
+    loadAnthropicKey(),
+  ]);
+  return {
+    ...(apiKey ? { apiKey } : {}),
+    preferApiKey: settings.aiPreferApiKey,
+  };
+}
+
+/** The renderer-facing settings: the stored prefs plus whether a key is set. */
+async function settingsView(): Promise<SettingsView> {
+  const [settings, anthropicKeySet] = await Promise.all([
+    loadSettings(),
+    hasAnthropicKey(),
+  ]);
+  return { ...settings, anthropicKeySet };
 }
 
 // In dev the renderer is served by Vite (HMR needs a looser policy); in prod it
@@ -414,7 +457,12 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(IpcChannel.AiRun, async (_event, raw: unknown) => {
     const { repoPath, task } = AiRunRequest.parse(raw);
-    return runAiTask(repoPath, task, (await loadToken()) ?? undefined);
+    return runAiTask(
+      repoPath,
+      task,
+      (await loadToken()) ?? undefined,
+      await resolveAiOptions(),
+    );
   });
 
   ipcMain.handle(IpcChannel.AiApply, async (_event, raw: unknown) => {
@@ -430,6 +478,7 @@ function registerIpcHandlers(): void {
       outputPath,
       contents,
       (await loadToken()) ?? undefined,
+      await resolveAiOptions(),
     );
   });
 
@@ -441,6 +490,37 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IpcChannel.DocsRead, async (_event, raw: unknown) => {
     const { repoPath, path } = DocsReadRequest.parse(raw);
     return readDoc(repoPath, path);
+  });
+
+  ipcMain.handle(IpcChannel.SettingsLoad, async () =>
+    SettingsView.parse(await settingsView()),
+  );
+
+  ipcMain.handle(IpcChannel.SettingsSave, async (_event, raw: unknown) => {
+    const patch = SettingsSaveRequest.parse(raw);
+    await saveSettings(patch);
+    return SettingsView.parse(await settingsView());
+  });
+
+  ipcMain.handle(
+    IpcChannel.SettingsSetAnthropicKey,
+    async (_event, raw: unknown) => {
+      const { key } = AnthropicKeyRequest.parse(raw);
+      // An empty string clears the stored key; otherwise store it encrypted.
+      if (key.trim() === "") await clearAnthropicKey();
+      else await saveAnthropicKey(key.trim());
+      return SettingsView.parse(await settingsView());
+    },
+  );
+
+  ipcMain.handle(IpcChannel.UpdateCheck, async () => {
+    const info = await checkForUpdate({
+      fetch,
+      currentVersion: app.getVersion(),
+      repo: UPDATE_REPO,
+      token: (await loadToken()) ?? undefined,
+    });
+    return UpdateInfo.parse(info);
   });
 }
 
