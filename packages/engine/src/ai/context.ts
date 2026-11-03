@@ -32,6 +32,13 @@ export interface PackContextOptions {
   control?: Control | null | undefined;
   /** The audit results, used to describe the current gaps. */
   results?: ControlResult[] | undefined;
+  /**
+   * Extra pre-rendered Markdown sections to append before the repository files —
+   * used to supply task-specific input the packer doesn't assemble itself (e.g. the
+   * git history for the `changelog` task). Gathered by the caller and only for the
+   * tasks that need it, so the other tasks' context stays lean.
+   */
+  extraSections?: string[] | undefined;
   /** Hard byte cap across included file contents (default 60 KB ≈ 15k tokens). */
   maxBytes?: number | undefined;
 }
@@ -88,6 +95,11 @@ export async function packContext(
         ].join("\n"),
       );
     }
+  }
+
+  // Task-specific pre-rendered sections (e.g. git history for the changelog task).
+  for (const section of options.extraSections ?? []) {
+    if (section.trim() !== "") sections.push(section);
   }
 
   // Repo files chosen by the task globs, secret-guarded and size-capped.

@@ -13,6 +13,7 @@ import type { AuditContext } from "../context.js";
 import type { ControlResult } from "../evaluate.js";
 import type { Change } from "../generators/types.js";
 import { packContext } from "./context.js";
+import { type GitRunner, gitChangelogSection } from "./git-context.js";
 
 export interface PromptTemplate {
   task: string;
@@ -83,7 +84,16 @@ export interface GenerateOptions {
   maxTokens?: number | undefined;
   /** Override the prompts directory (tests). */
   promptsDir?: string | undefined;
+  /**
+   * Inject the git runner used to gather the `changelog` task's history context
+   * (tests supply a fake; defaults to simple-git over the repo). Ignored by every
+   * other task.
+   */
+  gitRunner?: GitRunner | undefined;
 }
+
+/** Tasks whose input is the git history, assembled on top of the file context. */
+const GIT_CONTEXT_TASKS = new Set(["changelog"]);
 
 export interface GenerateResult {
   change: Change;
@@ -102,11 +112,19 @@ export async function generateArtifact(
 ): Promise<GenerateResult> {
   const prompt = await loadPrompt(task, options.promptsDir);
 
+  // Only the git-history tasks (changelog) gather commit/tag context; every other
+  // task's context stays files + profile + gaps, as before.
+  const extraSections: string[] = [];
+  if (GIT_CONTEXT_TASKS.has(task)) {
+    extraSections.push(await gitChangelogSection(ctx, options.gitRunner));
+  }
+
   const packed = await packContext(ctx, {
     task,
     globs: prompt.globs,
     control: options.control,
     results: options.results,
+    extraSections,
   });
 
   const completion = await options.client.complete({

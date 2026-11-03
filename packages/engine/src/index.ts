@@ -112,6 +112,17 @@ export type {
   PromptTemplate,
 } from "./ai/generate.js";
 export {
+  gatherGitChangelogContext,
+  gitChangelogSection,
+  renderGitChangelogSection,
+  simpleGitRunner,
+} from "./ai/git-context.js";
+export type {
+  GitChangelogContext,
+  GitCommit,
+  GitRunner,
+} from "./ai/git-context.js";
+export {
   appendUsage,
   loadUsage,
   summarizeUsage,

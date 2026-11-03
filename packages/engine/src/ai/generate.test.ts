@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { type AiTransport, createAiClient } from "./client.js";
 import { buildContext } from "../context.js";
 import { generateArtifact, loadPrompt, PromptError } from "./generate.js";
+import type { GitRunner } from "./git-context.js";
 
 const made: string[] = [];
 afterEach(async () => {
@@ -103,5 +104,88 @@ describe("generateArtifact (recorded response)", () => {
     expect(body).toContain("demo output");
     // No checklist in this template → no checklist block.
     expect(body).not.toContain("reviewer-checklist");
+  });
+
+  it("gathers git history for the changelog task and feeds it to the prompt", async () => {
+    const dir = await tmp();
+    const ctx = buildContext(dir);
+
+    // A fake runner — no real repo needed — proving the git context is injected
+    // and task-scoped.
+    const runner: GitRunner = {
+      lastTag: async () => "v1.2.0",
+      tags: async () => ["v1.2.0", "v1.1.0"],
+      log: async (range) => {
+        expect(range).toBe("v1.2.0..HEAD");
+        return [
+          { hash: "abcdef1234", subject: "feat: add export", body: "" },
+          { hash: "0987654321", subject: "fix: crash on open", body: "" },
+        ];
+      },
+    };
+
+    // A client that records the prompt it was handed.
+    let seenPrompt = "";
+    const transport: AiTransport = {
+      create: async (req) => {
+        seenPrompt = req.prompt;
+        return {
+          text: "## [1.3.0]\n### Added\n- Export\n",
+          usage: { inputTokens: 10, outputTokens: 5 },
+          model: "claude-sonnet-4-6",
+        };
+      },
+    };
+
+    const result = await generateArtifact(ctx, "changelog", {
+      client: createAiClient({ transport }),
+      date: "2026-11-03",
+      gitRunner: runner,
+    });
+
+    expect(result.outputPath).toBe("CHANGELOG.md");
+    expect(result.change.controlId).toBe("ai.changelog");
+    // The git context reached the model.
+    expect(seenPrompt).toContain("## Git history");
+    expect(seenPrompt).toContain("v1.2.0");
+    expect(seenPrompt).toContain("feat: add export");
+    expect(seenPrompt).toContain("fix: crash on open");
+    expect(seenPrompt).toContain("### Tags");
+  });
+
+  it("does not gather git history for a non-changelog task", async () => {
+    const dir = await tmp();
+    const ctx = buildContext(dir);
+
+    let logCalled = false;
+    const runner: GitRunner = {
+      lastTag: async () => "v1.0.0",
+      tags: async () => ["v1.0.0"],
+      log: async () => {
+        logCalled = true;
+        return [];
+      },
+    };
+
+    let seenPrompt = "";
+    const transport: AiTransport = {
+      create: async (req) => {
+        seenPrompt = req.prompt;
+        return {
+          text: "ok",
+          usage: { inputTokens: 1, outputTokens: 1 },
+          model: "claude-sonnet-4-6",
+        };
+      },
+    };
+
+    await generateArtifact(ctx, "explain-gaps", {
+      client: createAiClient({ transport }),
+      date: "2026-11-03",
+      gitRunner: runner,
+    });
+
+    expect(logCalled).toBe(false);
+    expect(seenPrompt).not.toContain("## Git history");
   });
 });
