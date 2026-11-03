@@ -96,14 +96,13 @@ export async function launchApp(
       // Use the plaintext credential store so safeStorage works headless (no OS
       // keyring in CI). Test-only — the packaged app uses the real keychain.
       "--password-store=basic",
-      // Surface Chromium's own startup logs to stderr so a pre-`ready` stall under
-      // xvfb (GPU/zygote/display) is diagnosable in CI rather than a silent timeout.
-      "--enable-logging=stderr",
-      "--v=1",
     ],
     env: {
       ...process.env,
       FACTORY_E2E: "1",
+      // The app appends lifecycle markers here (fs is immune to the stdio-pipe quirk
+      // that swallowed its stdout/stderr on headless CI). Dumped below if launch fails.
+      FACTORY_E2E_DIAG: join(userDataDir, "e2e-diag.log"),
       ...opts.env,
     },
   });
@@ -116,7 +115,21 @@ export async function launchApp(
     process.stderr.write(`[electron:out] ${d.toString()}`);
   });
 
-  const page = await app.firstWindow();
+  let page: Page;
+  try {
+    page = await app.firstWindow();
+  } catch (err) {
+    // firstWindow timed out on CI with no window. Dump the file-based lifecycle log
+    // so we can see how far the main process got (module body? ready? window?).
+    let diag = "(no diag file)";
+    try {
+      diag = readFileSync(join(userDataDir, "e2e-diag.log"), "utf8");
+    } catch {
+      /* no file — the module body never ran */
+    }
+    process.stderr.write(`\n[e2e-diag] main-process lifecycle:\n${diag}\n`);
+    throw err;
+  }
   await page.waitForLoadState("domcontentloaded");
   return { app, page, userDataDir };
 }

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -115,29 +115,24 @@ const isDev = Boolean(DEV_RENDERER_URL);
 // Never set in a real session — it gates test-only seams, nothing user-facing.
 const isE2E = process.env.FACTORY_E2E === "1";
 
-// Diagnostic breadcrumbs for the headless CI e2e: prove whether the main event loop
-// is alive (heartbeats) and whether Electron's `ready` ever fires (it doesn't appear
-// to, under xvfb). Removed once the launch is stable. No-op outside E2E.
-const e2eLog = isE2E
-  ? (m: string) => process.stderr.write(`[e2e] ${m}\n`)
-  : () => {};
-// Playwright attaches its own stdio handling on spawn and our forwarder only
-// attaches after launch() resolves, so early writes are missed. Carry the state in
-// a 2s heartbeat (fires after the forwarder is live) so CI reliably shows whether
-// the loop is alive and whether `ready` ever fired.
-let e2eReadyFired = false;
+// Diagnostic breadcrumbs for the headless CI e2e. The app's own stdout/stderr never
+// reached Playwright on Linux CI (no marker survived), so write lifecycle markers to
+// a file the test reads on failure — fs is unbuffered and immune to the stdio-pipe
+// quirk. Reaching this line at all proves the module body ran (imports didn't block).
+const E2E_DIAG = process.env.FACTORY_E2E_DIAG;
+function e2eLog(m: string): void {
+  if (!E2E_DIAG) return;
+  try {
+    appendFileSync(E2E_DIAG, `${m}\n`);
+  } catch {
+    /* diagnostic only — never fail the app over it */
+  }
+}
+e2eLog("module-body-reached");
 if (isE2E) {
-  let beats = 0;
-  const hb = setInterval(() => {
-    const wins = BrowserWindow.getAllWindows().length;
-    e2eLog(`heartbeat ${++beats}: readyFired=${e2eReadyFired} windows=${wins}`);
-  }, 2000);
-  hb.unref();
   app.whenReady().then(
-    () => {
-      e2eReadyFired = true;
-    },
-    (err) => e2eLog(`whenReady rejected: ${String(err)}`),
+    () => e2eLog("whenReady-resolved"),
+    (err) => e2eLog(`whenReady-rejected: ${String(err)}`),
   );
 }
 
@@ -605,7 +600,7 @@ app.whenReady().then(
 
     registerIpcHandlers();
     createWindow();
-    if (isE2E) process.stderr.write("[e2e] window created\n");
+    e2eLog("window-created");
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -613,6 +608,7 @@ app.whenReady().then(
   },
   (err: unknown) => {
     // Make a startup failure loud (it otherwise manifests as "no window" in E2E).
+    e2eLog(`app-failed-to-start: ${String(err)}`);
     process.stderr.write(`[main] app failed to start: ${String(err)}\n`);
     console.error(err);
   },
