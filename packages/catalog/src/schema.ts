@@ -21,6 +21,11 @@ const glob = z.string().min(1);
 const FileExistsSchema = z.object({
   type: z.literal("file-exists"),
   path: glob.describe("Glob; passes if at least one file matches."),
+  exclude: glob
+    .optional()
+    .describe(
+      "Glob (may be `a|b|c`) of paths that do NOT count as a match, e.g. the factory's own workflow. Files matching `exclude` are removed before the pass/fail decision.",
+    ),
 });
 
 const FileMatchesSchema = z.object({

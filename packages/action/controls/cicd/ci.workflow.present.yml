@@ -7,6 +7,10 @@ effort: small
 detect:
   - type: file-exists
     path: ".github/workflows/*.yml|.github/workflows/*.yaml"
+    # The factory's own self-audit workflow (written by `init`) must not satisfy
+    # this control, or the `ci-workflow` fix would never scaffold a real CI
+    # workflow that runs tests/lint/build. See issue #62.
+    exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
 evidence: none
 fix:
   type: template
