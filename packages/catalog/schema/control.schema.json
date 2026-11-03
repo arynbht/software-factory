@@ -79,6 +79,11 @@
                 "type": "string",
                 "minLength": 1,
                 "description": "Glob; passes if at least one file matches."
+              },
+              "exclude": {
+                "description": "Glob (may be `a|b|c`) of paths that do NOT count as a match, e.g. the factory's own workflow. Files matching `exclude` are removed before the pass/fail decision.",
+                "type": "string",
+                "minLength": 1
               }
             },
             "required": [
@@ -132,7 +137,7 @@
                 "description": "If set, the value at `path` must equal this."
               },
               "exists": {
-                "description": "If true, the path need only exist.",
+                "description": "Ignored when `equals` is set. `true` (default): pass if the path exists. `false`: pass only if the path is absent in every matched file.",
                 "type": "boolean"
               }
             },
@@ -161,6 +166,7 @@
               },
               "equals": {},
               "exists": {
+                "description": "Ignored when `equals` is set. `true` (default): pass if the path exists. `false`: pass only if the path is absent in every matched file.",
                 "type": "boolean"
               }
             },
@@ -474,10 +480,35 @@
           "$ref": "#/$defs/__schema0"
         },
         "flag": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "public-facing",
+            "has-users",
+            "handles-pii",
+            "handles-payments",
+            "handles-health-data",
+            "serves-minors",
+            "eu-users",
+            "enterprise-customers",
+            "government-customers",
+            "uses-ai",
+            "open-source",
+            "distributes-binaries",
+            "multi-service"
+          ]
         },
         "type": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "web-app",
+            "api",
+            "cli",
+            "library",
+            "mobile",
+            "desktop",
+            "data-pipeline",
+            "monorepo"
+          ]
         },
         "stack": {
           "type": "string"
