@@ -18,6 +18,26 @@ import {
 
 import type { AiRunResult, AiTaskInfo, FixPrOutcome } from "../../shared/ipc";
 
+/**
+ * AI transport options resolved from the user's settings: the stored Anthropic key
+ * and whether to force the metered API over the Claude CLI. Omitted fields fall
+ * back to the engine defaults (CLI-then-env-API).
+ */
+export interface AiOptions {
+  apiKey?: string | undefined;
+  preferApiKey?: boolean | undefined;
+}
+
+function aiContextOptions(ai?: AiOptions): {
+  apiKey?: string;
+  preferApiKey?: boolean;
+} {
+  return {
+    ...(ai?.apiKey ? { apiKey: ai.apiKey } : {}),
+    ...(ai?.preferApiKey ? { preferApiKey: true } : {}),
+  };
+}
+
 export async function listAiTasks(): Promise<AiTaskInfo[]> {
   const dir = bundledPromptsDir();
   const files = await readdir(dir);
@@ -44,8 +64,12 @@ export async function runAiTask(
   repoPath: string,
   task: string,
   token?: string,
+  ai?: AiOptions,
 ): Promise<AiRunResult> {
-  const ctx = buildContext(repoPath, token ? { token } : {});
+  const ctx = buildContext(repoPath, {
+    ...(token ? { token } : {}),
+    ai: aiContextOptions(ai),
+  });
   const result = await generateArtifact(ctx, task, {
     client: ctx.ai(),
     date: today(),
@@ -100,8 +124,12 @@ export async function openAiPr(
   outputPath: string,
   contents: string,
   token?: string,
+  ai?: AiOptions,
 ): Promise<FixPrOutcome> {
-  const ctx = buildContext(repoPath, token ? { token } : {});
+  const ctx = buildContext(repoPath, {
+    ...(token ? { token } : {}),
+    ai: aiContextOptions(ai),
+  });
   const result = await openFixPr(
     ctx,
     [draftChange(task, outputPath, contents)],

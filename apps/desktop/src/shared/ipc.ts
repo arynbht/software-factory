@@ -20,6 +20,10 @@ export const IpcChannel = {
   ProfileLoad: "profile:load",
   ProfileSave: "profile:save",
   ProfileMeta: "profile:meta",
+  SettingsLoad: "settings:load",
+  SettingsSave: "settings:save",
+  SettingsSetAnthropicKey: "settings:setAnthropicKey",
+  UpdateCheck: "update:check",
   GatesStatus: "gates:status",
   GatesWaive: "gates:waive",
   GatesEvidence: "gates:evidence",
@@ -318,3 +322,49 @@ export const DocContent = z.object({
   markdown: z.string(),
 });
 export type DocContent = z.infer<typeof DocContent>;
+
+// Settings — personal preferences in `userData` (never the repo). The Anthropic
+// API key is NOT in this object: like the GitHub token it lives in safeStorage and
+// never crosses IPC — the renderer only learns whether one is set.
+export const Theme = z.enum(["system", "light", "dark"]);
+export type Theme = z.infer<typeof Theme>;
+
+export const Settings = z.object({
+  /** UI theme; "system" follows the OS preference. */
+  theme: Theme,
+  /** Default GitHub org, prefilled where an owner is needed. */
+  defaultOrg: z.string(),
+  /** Force the metered Anthropic API over the Claude CLI for AI tasks. */
+  aiPreferApiKey: z.boolean(),
+  /** Check for a newer release on launch. */
+  autoCheckUpdates: z.boolean(),
+});
+export type Settings = z.infer<typeof Settings>;
+
+/** What the renderer sees: the settings plus whether an Anthropic key is stored. */
+export const SettingsView = Settings.extend({
+  anthropicKeySet: z.boolean(),
+});
+export type SettingsView = z.infer<typeof SettingsView>;
+
+/** A partial update — only the provided fields change. */
+export const SettingsSaveRequest = Settings.partial();
+export type SettingsSaveRequest = z.infer<typeof SettingsSaveRequest>;
+
+/** Set (non-empty) or clear (empty string) the stored Anthropic key. */
+export const AnthropicKeyRequest = z.object({ key: z.string() });
+export type AnthropicKeyRequest = z.infer<typeof AnthropicKeyRequest>;
+
+// Update check — queries the GitHub Releases API with the user's token (ADR-0010
+// private-repo path), so it works for a private release repo electron-updater can't.
+export const UpdateInfo = z.object({
+  currentVersion: z.string(),
+  /** The latest published release's version, or null if none / unreachable. */
+  latestVersion: z.string().nullable(),
+  updateAvailable: z.boolean(),
+  /** The release (or download) page to open; null when there's no release. */
+  url: z.string().nullable(),
+  /** ISO publish date of the latest release, when known. */
+  publishedAt: z.string().nullable(),
+});
+export type UpdateInfo = z.infer<typeof UpdateInfo>;

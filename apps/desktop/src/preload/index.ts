@@ -11,6 +11,7 @@ import {
   AiRunRequest,
   AiRunResult,
   AiTasks,
+  AnthropicKeyRequest,
   AuditRunRequest,
   AuthStatus,
   AuthUpdate,
@@ -35,6 +36,9 @@ import {
   RepoList,
   RepoRemoveRequest,
   Scorecard,
+  SettingsSaveRequest,
+  SettingsView,
+  UpdateInfo,
   WaiveRequest,
 } from "../shared/ipc";
 
@@ -240,6 +244,38 @@ const api = {
         request,
       );
       return DocContent.parse(raw);
+    },
+  },
+
+  settings: {
+    /** The personal settings plus whether an Anthropic key is stored. */
+    async load() {
+      const raw: unknown = await ipcRenderer.invoke(IpcChannel.SettingsLoad);
+      return SettingsView.parse(raw);
+    },
+    /** Apply a partial update; returns the full, saved settings view. */
+    async save(patch: SettingsSaveRequest) {
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.SettingsSave,
+        SettingsSaveRequest.parse(patch),
+      );
+      return SettingsView.parse(raw);
+    },
+    /** Store (non-empty) or clear (empty) the Anthropic key; returns the view. */
+    async setAnthropicKey(key: string) {
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.SettingsSetAnthropicKey,
+        AnthropicKeyRequest.parse({ key }),
+      );
+      return SettingsView.parse(raw);
+    },
+  },
+
+  update: {
+    /** Query GitHub Releases for a newer version (uses the signed-in token). */
+    async check() {
+      const raw: unknown = await ipcRenderer.invoke(IpcChannel.UpdateCheck);
+      return UpdateInfo.parse(raw);
     },
   },
 };
