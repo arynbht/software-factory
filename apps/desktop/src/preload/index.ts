@@ -20,6 +20,11 @@ import {
   DocList,
   DocsListRequest,
   DocsReadRequest,
+  BuildPlanRequest,
+  BuildPlanView,
+  BuildProgress,
+  BuildResult,
+  BuildRunRequest,
   EvidenceRequest,
   FloorPlanGetRequest,
   FloorPlanProgress,
@@ -280,6 +285,38 @@ const api = {
       ipcRenderer.on(IpcChannel.FloorPlanProgress, listener);
       return () => {
         ipcRenderer.removeListener(IpcChannel.FloorPlanProgress, listener);
+      };
+    },
+  },
+
+  build: {
+    /** Draft a plan for a feature/fix (read-only) for the user to approve. */
+    async plan(repoPath: string, description: string) {
+      const request = BuildPlanRequest.parse({ repoPath, description });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.BuildPlan,
+        request,
+      );
+      return BuildPlanView.parse(raw);
+    },
+    /** Run an approved plan to a gated PR (write-agents in an isolated worktree). */
+    async run(repoPath: string, plan: BuildPlanView["plan"]) {
+      const request = BuildRunRequest.parse({ repoPath, plan });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.BuildRun,
+        request,
+      );
+      return BuildResult.parse(raw);
+    },
+    /** Subscribe to build progress; returns an unsubscribe fn. */
+    onProgress(callback: (progress: BuildProgress) => void) {
+      const listener = (_event: unknown, payload: unknown): void => {
+        const parsed = BuildProgress.safeParse(payload);
+        if (parsed.success) callback(parsed.data);
+      };
+      ipcRenderer.on(IpcChannel.BuildProgress, listener);
+      return () => {
+        ipcRenderer.removeListener(IpcChannel.BuildProgress, listener);
       };
     },
   },

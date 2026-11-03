@@ -40,6 +40,10 @@ export const IpcChannel = {
   FloorPlanRun: "floorplan:run",
   /** Push channel (main → renderer): deep-audit swarm progress. */
   FloorPlanProgress: "floorplan:progress",
+  BuildPlan: "build:plan",
+  BuildRun: "build:run",
+  /** Push channel (main → renderer): build pipeline progress. */
+  BuildProgress: "build:progress",
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
@@ -430,6 +434,84 @@ export const FloorPlanProgress = z.object({
   total: z.number().int(),
 });
 export type FloorPlanProgress = z.infer<typeof FloorPlanProgress>;
+
+// Build — the orchestration layer: a feature/fix request → an approved plan → an
+// agent-built, gate-verified PR. The plan is validated here so the renderer can show
+// it for approval before anything is built.
+export const BuildTask = z.object({
+  title: z.string(),
+  detail: z.string(),
+  paths: z.array(z.string()),
+});
+
+export const BuildPlanObj = z.object({
+  request: z.string(),
+  summary: z.string(),
+  affectedSystems: z.array(z.string()),
+  tasks: z.array(BuildTask),
+  acceptanceCriteria: z.array(z.string()),
+  risks: z.array(z.string()),
+});
+export type BuildPlanObj = z.infer<typeof BuildPlanObj>;
+
+export const VerifyCheck = z.object({
+  name: z.string(),
+  passed: z.boolean(),
+  ran: z.boolean(),
+  output: z.string(),
+});
+export const VerifyResult = z.object({
+  passed: z.boolean(),
+  checks: z.array(VerifyCheck),
+});
+
+export const BuildResult = z.object({
+  branch: z.string(),
+  base: z.string(),
+  worktree: z.string(),
+  plan: BuildPlanObj,
+  verify: VerifyResult,
+  iterations: z.number().int(),
+  pushed: z.boolean(),
+  pr: z
+    .object({ number: z.number(), url: z.string(), reused: z.boolean() })
+    .nullable(),
+  notes: z.string(),
+});
+export type BuildResult = z.infer<typeof BuildResult>;
+
+/** The plan response: the drafted plan + whether a build can actually run. */
+export const BuildPlanView = z.object({
+  plan: BuildPlanObj,
+  buildAvailable: z.boolean(),
+});
+export type BuildPlanView = z.infer<typeof BuildPlanView>;
+
+export const BuildPlanRequest = z.object({
+  repoPath: z.string().min(1),
+  description: z.string().min(1),
+});
+export const BuildRunRequest = z.object({
+  repoPath: z.string().min(1),
+  plan: BuildPlanObj,
+});
+
+/** build:progress push payload — one step of the build pipeline. */
+export const BuildProgress = z.object({
+  phase: z.enum([
+    "plan",
+    "worktree",
+    "implement",
+    "verify",
+    "iterate",
+    "pr",
+    "done",
+  ]),
+  message: z.string(),
+  done: z.number().int(),
+  total: z.number().int(),
+});
+export type BuildProgress = z.infer<typeof BuildProgress>;
 
 // Settings — personal preferences in `userData` (never the repo). The Anthropic
 // API key is NOT in this object: like the GitHub token it lives in safeStorage and

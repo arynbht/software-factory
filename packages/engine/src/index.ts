@@ -136,6 +136,35 @@ export { runAgent, extractJson, READ_ONLY_TOOLS } from "./floorplan/agent.js";
 export type { AgentRunner, AgentSpec } from "./floorplan/agent.js";
 export { loadFloorPlan, saveFloorPlan, isStale } from "./floorplan/store.js";
 export { renderArchitectureDoc, saveArchitectureDoc } from "./floorplan/doc.js";
+// Orchestration layer: feature/fix request → gated PR.
+export { planFeature } from "./orchestrate/plan.js";
+export type { PlanOptions } from "./orchestrate/plan.js";
+export { runBuild, BuildError } from "./orchestrate/build.js";
+export type { BuildOptions, GitOps } from "./orchestrate/build.js";
+export { verify as verifyBuild } from "./orchestrate/verify.js";
+export type { VerifyOptions, CommandRunner } from "./orchestrate/verify.js";
+export {
+  runWriteAgent,
+  BUILD_TOOLS,
+  type WriteAgentRunner,
+  type WriteAgentSpec,
+} from "./orchestrate/write-agent.js";
+export {
+  createWorktree,
+  removeWorktree,
+  commitAll,
+  pushBranch,
+  currentBranch,
+  type Worktree,
+} from "./orchestrate/worktree.js";
+export type {
+  BuildPlan,
+  BuildTask,
+  BuildResult,
+  BuildProgress,
+  VerifyResult,
+  VerifyCheck,
+} from "./orchestrate/types.js";
 export type {
   RepositoryModel,
   FloorPlanNode,

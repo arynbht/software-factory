@@ -25,6 +25,10 @@ import {
   FloorPlanGetRequest,
   FloorPlanRunRequest,
   FloorPlanView,
+  BuildPlanRequest,
+  BuildPlanView,
+  BuildResult,
+  BuildRunRequest,
   AuthStatus,
   type AuthUpdate,
   DeviceCodeInfo,
@@ -66,6 +70,7 @@ import {
 import { clearToken, loadToken, saveToken } from "./auth/token-store";
 import { runAudit } from "./engine/audit";
 import { getFloorPlan, runFloorPlan } from "./engine/floorplan";
+import { planBuild, runBuildTask } from "./engine/build";
 import { listDocs, readDoc } from "./engine/docs";
 import { applyFix, openFixPrForRepo, planFix } from "./engine/fix";
 import { attachEvidence, computeGates, waiveControl } from "./engine/gates";
@@ -184,6 +189,9 @@ let signInAbort: AbortController | null = null;
 
 /** Cancels an in-flight deep-audit swarm when a newer run supersedes it. */
 let floorPlanAbort: AbortController | null = null;
+
+/** Cancels an in-flight build when a newer run supersedes it. */
+let buildAbort: AbortController | null = null;
 
 function sendAuthUpdate(update: AuthUpdate): void {
   mainWindow?.webContents.send(IpcChannel.AuthUpdate, update);
@@ -371,6 +379,33 @@ function registerIpcHandlers(): void {
       return FloorPlanView.parse(view);
     } finally {
       if (floorPlanAbort === controller) floorPlanAbort = null;
+    }
+  });
+
+  ipcMain.handle(IpcChannel.BuildPlan, async (_event, raw: unknown) => {
+    const { repoPath, description } = BuildPlanRequest.parse(raw);
+    const token = (await loadToken()) ?? undefined;
+    return BuildPlanView.parse(await planBuild(repoPath, description, token));
+  });
+
+  ipcMain.handle(IpcChannel.BuildRun, async (_event, raw: unknown) => {
+    const { repoPath, plan } = BuildRunRequest.parse(raw);
+    const token = (await loadToken()) ?? undefined;
+    // A new build supersedes any already running.
+    buildAbort?.abort();
+    const controller = new AbortController();
+    buildAbort = controller;
+    try {
+      const result = await runBuildTask(
+        repoPath,
+        plan,
+        token,
+        (p) => mainWindow?.webContents.send(IpcChannel.BuildProgress, p),
+        controller.signal,
+      );
+      return BuildResult.parse(result);
+    } finally {
+      if (buildAbort === controller) buildAbort = null;
     }
   });
 

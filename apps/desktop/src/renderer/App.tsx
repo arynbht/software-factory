@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Ai } from "@/components/Ai";
 import { AuthControls } from "@/components/AuthControls";
+import { Build } from "@/components/Build";
 import { Docs } from "@/components/Docs";
 import { Fix } from "@/components/Fix";
 import { FloorPlan } from "@/components/FloorPlan";
@@ -21,7 +22,14 @@ import { errorMessage } from "@/lib/errors";
 import { applyTheme } from "@/lib/theme";
 
 type View =
-  "scorecard" | "floorplan" | "profile" | "gates" | "fix" | "ai" | "docs";
+  | "scorecard"
+  | "floorplan"
+  | "profile"
+  | "gates"
+  | "fix"
+  | "ai"
+  | "build"
+  | "docs";
 
 const TABS: { id: View; label: string }[] = [
   { id: "scorecard", label: "Scorecard" },
@@ -30,6 +38,7 @@ const TABS: { id: View; label: string }[] = [
   { id: "gates", label: "Gates" },
   { id: "fix", label: "Fix" },
   { id: "ai", label: "AI" },
+  { id: "build", label: "Build" },
   { id: "docs", label: "Docs" },
 ];
 
@@ -477,6 +486,19 @@ export function App() {
                   repoPath={selectedRepo.path}
                   onChanged={() => triggerFloorPlan(selectedRepo.path)}
                 />
+              </div>
+            )}
+
+            {opened.has("build") && (
+              <div
+                id="panel-build"
+                role="tabpanel"
+                aria-labelledby="tab-build"
+                tabIndex={0}
+                hidden={view !== "build"}
+              >
+                {/* key resets the describe/plan/build state when the repo changes. */}
+                <Build key={selectedRepo.path} repoPath={selectedRepo.path} />
               </div>
             )}
 
