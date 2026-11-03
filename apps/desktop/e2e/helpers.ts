@@ -106,7 +106,10 @@ export async function launchApp(
 
   // Surface main-process output so a launch failure is diagnosable in CI logs.
   app.process().stderr?.on("data", (d: Buffer) => {
-    process.stderr.write(`[electron] ${d.toString()}`);
+    process.stderr.write(`[electron:err] ${d.toString()}`);
+  });
+  app.process().stdout?.on("data", (d: Buffer) => {
+    process.stderr.write(`[electron:out] ${d.toString()}`);
   });
 
   const page = await app.firstWindow();

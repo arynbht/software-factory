@@ -258,16 +258,19 @@ function createWindow(): void {
     if (mainWindow === window) mainWindow = null;
   });
 
-  window.once("ready-to-show", () => window.show());
+  // Show as soon as the first paint is ready; in E2E show immediately so a slow or
+  // non-painting headless renderer can't keep the window (and Playwright) waiting.
+  if (isE2E) window.show();
+  else window.once("ready-to-show", () => window.show());
 
-  if (isDev) {
-    window.webContents.openDevTools({ mode: "detach" });
-    // Forward renderer console + load failures to the main-process stdout so
-    // they're visible when driving the app headlessly in dev.
+  if (isDev || isE2E) {
+    if (isDev) window.webContents.openDevTools({ mode: "detach" });
+    // Forward renderer console + load failures to the main process so they're
+    // visible when driving the app headlessly (dev or E2E on CI).
     window.webContents.on(
       "console-message",
       (_event, level, message, line, sourceId) => {
-        console.log(`[renderer:${level}] ${message} (${sourceId}:${line})`);
+        console.error(`[renderer:${level}] ${message} (${sourceId}:${line})`);
       },
     );
     window.webContents.on("did-fail-load", (_event, code, desc, url) => {
@@ -558,26 +561,34 @@ function registerIpcHandlers(): void {
   });
 }
 
-app.whenReady().then(() => {
-  // Enforce a CSP on every response. Strict in prod; dev loosens only enough for
-  // Vite's inline bootstrap + HMR websocket (see contentSecurityPolicy). The Docs
-  // screen renders arbitrary repo Markdown, so even dev keeps a policy backstop.
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        "Content-Security-Policy": [contentSecurityPolicy()],
-      },
+app.whenReady().then(
+  () => {
+    // Enforce a CSP on every response. Strict in prod; dev loosens only enough for
+    // Vite's inline bootstrap + HMR websocket (see contentSecurityPolicy). The Docs
+    // screen renders arbitrary repo Markdown, so even dev keeps a policy backstop.
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": [contentSecurityPolicy()],
+        },
+      });
     });
-  });
 
-  registerIpcHandlers();
-  createWindow();
+    registerIpcHandlers();
+    createWindow();
+    if (isE2E) process.stderr.write("[e2e] window created\n");
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-}, console.error);
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  },
+  (err: unknown) => {
+    // Make a startup failure loud (it otherwise manifests as "no window" in E2E).
+    process.stderr.write(`[main] app failed to start: ${String(err)}\n`);
+    console.error(err);
+  },
+);
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
