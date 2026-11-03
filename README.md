@@ -20,6 +20,42 @@ pull requests. It works identically on an empty repo and a half-built one.
 > [`software-factory-build-plan.md`](./software-factory-build-plan.md) for the
 > full product definition, milestones, and control catalog.
 
+## Desktop app
+
+The desktop shell wraps the engine in a GUI: sign in, add your repos, run audits,
+browse the lane scorecard and phase gates, apply fixes, and read the docs.
+
+### Install
+
+Download the installer for your OS from the repo's
+[Releases](https://github.com/arynbht/software-factory/releases) page (look for a
+`desktop-v*` release):
+
+- **macOS** — `.dmg` (Apple silicon or Intel). The build is unsigned for now, so on
+  first launch right-click the app → **Open** and confirm, rather than double-clicking.
+- **Windows** — `.exe` installer. SmartScreen may warn on an unsigned build; choose
+  **More info → Run anyway**.
+- **Linux** — `.AppImage` (mark it executable: `chmod +x *.AppImage`) or the `.deb`.
+
+Each release also ships a CycloneDX SBOM and build-provenance attestations for the
+installers.
+
+### First run
+
+1. Click **Sign in with GitHub** and complete the device-flow prompt in your browser
+   (enter the shown code at <https://github.com/login/device>). The token is stored
+   encrypted in your OS keychain via Electron `safeStorage` — it never leaves your
+   machine and never touches the renderer.
+2. **Add a repo** with the folder picker, then open it to run an audit and see the
+   scorecard. Shared state is written to `.factory/` in the target repo; the app
+   keeps only personal preferences (theme, default org, update preference).
+
+### Updates
+
+Because the repo is private, the app does a **manual** update check (ADR-0010):
+**Settings → Check for updates** queries the Releases API with your signed-in token
+and links you to the newer installer to download. There is no silent auto-update.
+
 ## License
 
 [MIT](./LICENSE)

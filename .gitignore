@@ -8,6 +8,9 @@ build/
 out/
 *.tsbuildinfo
 
+# electron-builder packaged installers (apps/desktop/release)
+release/
+
 # The composite action ships a committed, bundled dist (standard for Actions).
 !packages/action/dist/
 !packages/action/dist/**

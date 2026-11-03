@@ -1,0 +1,80 @@
+# electron-builder packaging config (M5.11, ADR-0010).
+#
+# No electron-updater / latest.yml: a private repo can't be read by the
+# auto-updater without a token, so the app does a manual update check against the
+# Releases API instead (ADR-0010). Code signing is intentionally left off here —
+# unsigned installers are acceptable for a trusting team (macOS users right-click
+# "Open" once); add certs/notarization before any wider audience.
+appId: io.github.arynbht.factory
+productName: Software Factory
+
+directories:
+  output: release
+  # buildResources defaults to ./build; icons would live there if/when added.
+  buildResources: build
+
+# What goes into app.asar. The main/preload/renderer bundles live under out/**
+# (emitted by electron-vite). electron.vite.config.ts externalizes the engine and
+# catalog via externalizeDepsPlugin, so they are NOT bundled into out/** — they
+# load from node_modules at runtime and must be packed. electron-builder packs the
+# production dependencies from package.json automatically (the hoisted node_modules
+# from apps/desktop/.npmrc makes that tree resolvable), so we only list the app
+# bundle here and let dependency collection handle node_modules.
+files:
+  - out/**
+  - package.json
+
+# The catalog resolves controls/gates/templates/prompts/skill via
+# fileURLToPath(new URL("../controls", import.meta.url)) and then reads those
+# directories with fs. Those reads fail inside app.asar (it's a virtual archive),
+# so the catalog's data dirs must be unpacked to app.asar.unpacked on disk.
+asarUnpack:
+  - "**/node_modules/@arynbht/factory-catalog/controls/**"
+  - "**/node_modules/@arynbht/factory-catalog/gates/**"
+  - "**/node_modules/@arynbht/factory-catalog/templates/**"
+  - "**/node_modules/@arynbht/factory-catalog/prompts/**"
+  - "**/node_modules/@arynbht/factory-catalog/skill/**"
+
+# Harden the packaged Electron binary via fuses flipped at package time.
+# runAsNode off + onlyLoadAppFromAsar + no NODE_OPTIONS / --inspect close the
+# usual "run arbitrary code through our signed binary" holes; cookie encryption
+# protects the session store (build-plan security baseline + ADR-0010).
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+linux:
+  category: Development
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
