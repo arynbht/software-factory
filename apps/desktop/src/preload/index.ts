@@ -15,6 +15,10 @@ import {
   AuthStatus,
   AuthUpdate,
   DeviceCodeInfo,
+  DocContent,
+  DocList,
+  DocsListRequest,
+  DocsReadRequest,
   EvidenceRequest,
   FixPlan,
   FixPlanRequest,
@@ -206,6 +210,25 @@ const api = {
         AiApplyRequest.parse(request),
       );
       return FixPrOutcome.parse(raw);
+    },
+  },
+
+  docs: {
+    async list(repoPath: string) {
+      const request = DocsListRequest.parse({ repoPath });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.DocsList,
+        request,
+      );
+      return DocList.parse(raw);
+    },
+    async read(repoPath: string, path: string) {
+      const request = DocsReadRequest.parse({ repoPath, path });
+      const raw: unknown = await ipcRenderer.invoke(
+        IpcChannel.DocsRead,
+        request,
+      );
+      return DocContent.parse(raw);
     },
   },
 };

@@ -30,6 +30,8 @@ export const IpcChannel = {
   AiRun: "ai:run",
   AiApply: "ai:apply",
   AiOpenPr: "ai:openPr",
+  DocsList: "docs:list",
+  DocsRead: "docs:read",
 } as const;
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel];
@@ -291,3 +293,19 @@ export const AiApplyResult = z.object({
   action: z.string(),
   path: z.string(),
 });
+
+// Docs — Markdown files under docs/ and .factory/, rendered (with Mermaid).
+export const DocEntry = z.object({ path: z.string(), name: z.string() });
+export type DocEntry = z.infer<typeof DocEntry>;
+export const DocList = z.array(DocEntry);
+
+export const DocsListRequest = z.object({ repoPath: z.string().min(1) });
+export const DocsReadRequest = z.object({
+  repoPath: z.string().min(1),
+  path: z.string().min(1),
+});
+export const DocContent = z.object({
+  path: z.string(),
+  markdown: z.string(),
+});
+export type DocContent = z.infer<typeof DocContent>;

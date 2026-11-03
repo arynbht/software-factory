@@ -33,3 +33,55 @@
     color-scheme: dark;
   }
 }
+
+@layer components {
+  .doc-prose {
+    @apply text-sm leading-relaxed text-foreground/90;
+  }
+  .doc-prose h1 {
+    @apply mb-3 mt-5 text-2xl font-semibold;
+  }
+  .doc-prose h2 {
+    @apply mb-2 mt-5 text-xl font-semibold;
+  }
+  .doc-prose h3 {
+    @apply mb-2 mt-4 text-lg font-semibold;
+  }
+  .doc-prose p {
+    @apply my-3;
+  }
+  .doc-prose ul {
+    @apply my-3 list-disc pl-6;
+  }
+  .doc-prose ol {
+    @apply my-3 list-decimal pl-6;
+  }
+  .doc-prose li {
+    @apply my-1;
+  }
+  .doc-prose a {
+    @apply text-sky-400 underline;
+  }
+  .doc-prose code {
+    @apply rounded bg-muted px-1 py-0.5 text-xs;
+  }
+  .doc-prose pre {
+    @apply my-3 overflow-auto rounded bg-background/70 p-3 text-xs;
+  }
+  .doc-prose pre code {
+    @apply bg-transparent p-0;
+  }
+  .doc-prose pre.mermaid {
+    @apply flex justify-center bg-transparent;
+  }
+  .doc-prose table {
+    @apply my-3 w-full border-collapse text-xs;
+  }
+  .doc-prose th,
+  .doc-prose td {
+    @apply border border-border px-2 py-1 text-left;
+  }
+  .doc-prose blockquote {
+    @apply my-3 border-l-2 border-border pl-3 text-muted-foreground;
+  }
+}
