@@ -79,7 +79,9 @@ export interface AiClientOptions {
   maxRetries?: number | undefined;
   /** Base backoff between retries (ms); grows linearly with the attempt. */
   backoffMs?: number | undefined;
-  /** Inject a transport (tests). Omit to use the real SDK-backed transport. */
+  /** Force the metered API-key transport even when the Claude CLI is available. */
+  preferApiKey?: boolean | undefined;
+  /** Inject a transport (tests). Omit to pick CLI-then-API automatically. */
   transport?: AiTransport | undefined;
 }
 
@@ -92,7 +94,7 @@ export function createAiClient(options: AiClientOptions = {}): AiClient {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
   const backoffMs = options.backoffMs ?? DEFAULT_BACKOFF_MS;
-  const transport = options.transport ?? sdkTransport(options);
+  const transport = options.transport ?? defaultTransport(options);
 
   return {
     async complete(params) {
@@ -144,6 +146,38 @@ async function withTimeout<T>(
     clearTimeout(timer!);
     controller.abort();
   }
+}
+
+/**
+ * The default transport chooses at first use: prefer the Claude Code CLI (the
+ * user's subscription) when it's installed, otherwise fall back to the metered
+ * API key. `preferApiKey` forces the API. Chosen lazily (dynamic import avoids a
+ * module cycle and keeps both backends out of non-AI paths).
+ */
+function defaultTransport(options: AiClientOptions): AiTransport {
+  let chosen: AiTransport | null = null;
+  return {
+    async create(req, signal) {
+      chosen ??= await chooseTransport(options);
+      return chosen.create(req, signal);
+    },
+  };
+}
+
+async function chooseTransport(options: AiClientOptions): Promise<AiTransport> {
+  // Forced to the API: use the SDK (which raises AiKeyError if no key is set).
+  if (options.preferApiKey) return sdkTransport(options);
+
+  const { claudeCliTransport, claudeCliAvailable } =
+    await import("./claude-cli.js");
+  if (await claudeCliAvailable()) {
+    return claudeCliTransport({ model: options.model });
+  }
+  if (resolveAnthropicKey(options.apiKey)) return sdkTransport(options);
+  throw new AiError(
+    "No Claude available: sign in to Claude Code (`claude login`) or set ANTHROPIC_API_KEY.",
+    false,
+  );
 }
 
 /** The real transport: lazy-loads the SDK so it isn't pulled into non-AI paths. */

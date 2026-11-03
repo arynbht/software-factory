@@ -130,11 +130,13 @@ describe("createAiClient", () => {
     expect(seenSignal?.aborted).toBe(true);
   });
 
-  it("throws AiKeyError when no key is available (real transport)", async () => {
+  it("throws AiKeyError on the API path when no key is available", async () => {
     const saved = process.env.ANTHROPIC_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
     try {
-      const client = createAiClient({ apiKey: undefined, maxRetries: 0 });
+      // preferApiKey forces the SDK transport (otherwise the default prefers the
+      // Claude CLI when installed); with no key the SDK raises AiKeyError.
+      const client = createAiClient({ preferApiKey: true, maxRetries: 0 });
       await expect(client.complete({ prompt: "hi" })).rejects.toBeInstanceOf(
         AiKeyError,
       );

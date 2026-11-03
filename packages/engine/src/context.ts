@@ -13,6 +13,7 @@ import {
   type AiClient,
   type AiClientOptions,
   createAiClient,
+  resolveAnthropicKey,
 } from "./ai/client.js";
 import { type EvidenceEntry, loadEvidence } from "./evidence.js";
 import { parseRepoSlug, type RepoSlug } from "./github/slug.js";
@@ -53,6 +54,13 @@ export interface AuditContext {
   waivers(): Promise<Waiver[]>;
   /** The AI client for `claude` generators (built from the run's AI options). */
   ai(): AiClient;
+  /**
+   * True when AI is explicitly configured for unattended use — an injected
+   * transport or an API key. The `claude` fix generator checks this so a plain
+   * `factory fix`/dry-run never spawns the interactive Claude CLI; deliberate AI
+   * (`factory ai`, the desktop AI screen) calls the client directly regardless.
+   */
+  readonly aiEnabled: boolean;
 }
 
 export interface BuildContextOptions {
@@ -79,10 +87,18 @@ export function buildContext(
   let waiverData: Promise<Waiver[]> | undefined;
   let aiClient: AiClient | undefined;
 
+  // AI is "enabled for unattended use" when a transport is injected (tests) or an
+  // API key is resolvable now. The interactive CLI deliberately does NOT count,
+  // so `fix` won't spawn it; `factory ai` uses the client directly either way.
+  const aiEnabled =
+    Boolean(options.ai?.transport) ||
+    resolveAnthropicKey(options.ai?.apiKey) !== undefined;
+
   return {
     repoPath: root,
     token: options.token,
     now: options.now ?? new Date(),
+    aiEnabled,
 
     async glob(pattern) {
       const patterns = Array.isArray(pattern) ? pattern : [pattern];

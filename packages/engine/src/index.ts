@@ -90,6 +90,13 @@ export type {
   CompleteResult,
   TransportRequest,
 } from "./ai/client.js";
+export {
+  claudeCliTransport,
+  claudeCliAvailable,
+  parseClaudeJson,
+  type ClaudeCliOptions,
+  type ClaudeRunner,
+} from "./ai/claude-cli.js";
 export { packContext } from "./ai/context.js";
 export type { PackedContext, PackContextOptions } from "./ai/context.js";
 export { isSensitivePath, looksLikeSecret } from "./ai/redact.js";

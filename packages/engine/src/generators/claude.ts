@@ -18,15 +18,18 @@ import type { Change, Generator } from "./types.js";
  * Instead the draft is produced once: if the task's output file already exists, this
  * generator makes no change. Redraft deliberately with `factory ai <task> --pr`.
  *
- * Without a key it degrades to no change (rather than aborting a mixed `factory fix`
- * run): AI drafts are produced on demand via `factory ai`, which surfaces the missing
- * key explicitly.
+ * When AI isn't explicitly configured for unattended use (`ctx.aiEnabled`) it
+ * degrades to no change rather than aborting a mixed `factory fix` run — and,
+ * crucially, never spawns the interactive Claude CLI during a plain fix/dry-run.
+ * AI drafts are produced on demand via `factory ai`, which uses the subscription
+ * CLI (or surfaces a missing key) explicitly.
  */
 export const claudeGenerator: Generator = async (
   ctx: AuditContext,
   control: Control,
 ): Promise<Change[]> => {
   if (control.fix?.type !== "claude") return [];
+  if (!ctx.aiEnabled) return [];
   try {
     // One-shot: don't regenerate (or re-bill) when the draft already exists.
     const prompt = await loadPrompt(control.fix.task);
