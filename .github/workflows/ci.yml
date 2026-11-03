@@ -107,6 +107,15 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # The desktop main externalizes @arynbht/factory-{engine,catalog} and imports
+      # them from dist at runtime. electron-vite does NOT build those packages, and
+      # dist/ is gitignored — so without a tsc --build the ESM import fails and the
+      # main process never boots (firstWindow then times out with no window). Build
+      # just engine (which project-references catalog); avoids rebuilding the action
+      # bundle the way a full `pnpm build` would.
+      - name: Build engine + catalog dist (desktop loads them at runtime)
+        run: pnpm exec tsc --build packages/engine/tsconfig.json
+
       - name: Install Electron runtime libraries + xvfb
         run: |
           pnpm --filter @arynbht/factory-desktop exec playwright install-deps
