@@ -153,8 +153,11 @@ plumbing.
 
 ### Follow-ups opened during M4
 
-- `changelog` task deferred — it needs git-log (commits since last tag) as context,
-  which the packer doesn't assemble yet. → follow-up.
+- `changelog` task shipped (#82) — the packer gains an `extraSections` hook and a
+  task-scoped git-context gatherer (`ai/git-context.ts`, injectable runner) assembles
+  `git log <lasttag>..HEAD` + the tag list, fed only for the `changelog` task; the
+  `changelog.md` prompt drafts Keep a Changelog notes. Control-wiring to
+  `release.changelog` still waits on M6 catalog breadth.
 - Eight of the nine task→control wirings wait on M6 catalog breadth; only
   `sec.threat-model` is control-wired today (the rest run as standalone
   `factory ai <task>`).
