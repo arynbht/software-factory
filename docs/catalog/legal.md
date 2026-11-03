@@ -6,7 +6,7 @@ Licensing, privacy, data protection, and regulatory obligations.
 
 
 
-6 control(s).
+7 control(s).
 
 
 
@@ -49,6 +49,17 @@ Data subjects have access and erasure rights; a documented DSAR process keeps re
 
 References:
   - [GDPR Ch. 3 — Rights of the data subject](https://gdpr-info.eu/chapter-3/)
+
+### `legal.license-summary` — Third-party license summary
+
+- **phase**: harden · **severity**: medium · **effort**: small
+- **detect**: `file-exists` · **fix**: claude `license-summary`
+
+Shipping software means redistributing its dependencies, each under its own license with its own obligations (attribution, source offer, copyleft reach). A grouped summary of those licenses confirms the project has the right to ship and surfaces any term that needs action before release; a drafted summary still needs a human to verify it against the actual dependency tree.
+
+References:
+  - [SPDX License List](https://spdx.org/licenses/)
+  - [REUSE Specification](https://reuse.software/spec/)
 
 ### `legal.privacy.policy` — Privacy policy published
 
