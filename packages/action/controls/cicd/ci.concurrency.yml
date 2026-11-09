@@ -5,9 +5,16 @@ phase: build
 severity: low
 effort: small
 detect:
-  - type: file-matches
-    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
-    pattern: '(?im)^\s*concurrency:'
+  - type: any-of
+    detect:
+      - type: file-yaml-path
+        file: ".github/workflows/*.yml|.github/workflows/*.yaml"
+        exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
+        path: concurrency
+      - type: file-yaml-path
+        file: ".github/workflows/*.yml|.github/workflows/*.yaml"
+        exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
+        path: "jobs.*.concurrency"
 evidence: none
 fix:
   type: merge-yaml

@@ -3,7 +3,7 @@
 /** Split a `a.b[0].c` path into tokens: ["a", "b", "0", "c"]. */
 export function tokenizePath(path: string): string[] {
   return path
-    .replace(/\[(\w+)\]/g, ".$1")
+    .replace(/\[(\w+|\*)\]/g, ".$1")
     .split(".")
     .map((token) => token.trim())
     .filter(Boolean);
@@ -39,6 +39,31 @@ export function getByPath(root: unknown, path: string): PathLookup {
     current = (current as Record<string, unknown>)[token];
   }
   return { found: true, value: current };
+}
+
+/**
+ * Every value at a path that may contain `*` wildcards (`jobs.*.steps[*].uses`):
+ * `*` fans out over an array's items or an object's own values. Same own-property
+ * rules as `getByPath`; a path without wildcards yields zero or one value.
+ */
+export function collectByPath(root: unknown, path: string): unknown[] {
+  let current: unknown[] = [root];
+  for (const token of tokenizePath(path)) {
+    const next: unknown[] = [];
+    for (const node of current) {
+      if (token === "*") {
+        if (Array.isArray(node)) next.push(...node);
+        else if (node !== null && typeof node === "object") {
+          next.push(...Object.values(node as Record<string, unknown>));
+        }
+        continue;
+      }
+      const { found, value } = getByPath(node, token);
+      if (found) next.push(value);
+    }
+    current = next;
+  }
+  return current;
 }
 
 /** Structural deep equality for plain JSON/YAML data (objects, arrays, scalars). */

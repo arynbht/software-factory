@@ -162,6 +162,7 @@ export async function renderTemplate(
   templateName: string,
   vars: TemplateVars,
   controlId: string,
+  managed?: boolean,
 ): Promise<Change[]> {
   const missing = REQUIRES[templateName]?.(vars);
   if (missing) {
@@ -197,7 +198,14 @@ export async function renderTemplate(
     if (existing && existing.rank <= rank) continue;
     byPath.set(path, {
       rank,
-      change: { type: "file", controlId, path, contents, op: "create" },
+      change: {
+        type: "file",
+        controlId,
+        path,
+        contents,
+        op: "create",
+        ...(managed ? { managed } : {}),
+      },
     });
   }
 
@@ -227,5 +235,6 @@ export const templateGenerator: Generator = async (
     control.fix.template,
     await resolveTemplateVars(ctx),
     control.id,
+    control.managed,
   );
 };

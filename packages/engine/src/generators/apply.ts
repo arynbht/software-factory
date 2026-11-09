@@ -43,7 +43,8 @@ export interface ApplyOptions {
 /**
  * Apply a plan of changes under the merge policy (ADR-0004):
  *  - a `create` file is written only when absent or factory-managed-and-unchanged
- *    (never clobbering a human's file);
+ *    (never clobbering a human's file) — unless the control marks the file
+ *    `managed: true` (factory state the factory owns outright);
  *  - a `merge` file carries its already-merged contents and is written in place —
  *    except when the target is a file the factory previously wrote that a human has
  *    since edited. Re-serializing over those edits is the "ambiguous merge" the
@@ -156,6 +157,7 @@ export async function applyChanges(
       change.op === "create" &&
       before !== undefined &&
       !createdThisRun &&
+      !change.managed &&
       !(await managedFileUnchanged(repoPath, change.path, state))
     ) {
       results.push({

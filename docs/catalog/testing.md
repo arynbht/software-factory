@@ -23,7 +23,7 @@ References:
 ### `test.data.factories` — Test data factories and a seed script exist
 
 - **phase**: build · **severity**: low · **effort**: medium
-- **detect**: `file-exists` · **fix**: claude `test-scaffold`
+- **detect**: `reviewed` · **fix**: claude `test-scaffold`
 
 Reusable data factories and a seed script make tests readable and deterministic and give every environment a known starting state, instead of each test hand-rolling fragile fixtures.
 
@@ -63,7 +63,7 @@ References:
 ### `test.runner.in-ci` — Tests run in CI
 
 - **phase**: build · **severity**: medium · **effort**: small
-- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
+- **detect**: `file-yaml-path` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 Tests that only run locally do not protect the main line; running them in CI is what makes a green suite a precondition for merging.
 

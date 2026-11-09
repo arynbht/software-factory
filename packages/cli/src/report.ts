@@ -122,7 +122,13 @@ export function renderGate(gate: GateResult, color = true): string {
       : gate.status === "amber"
         ? ` — ${pending} outstanding`
         : "";
-  return `${c.bold(label)}: ${tint(gate.status.toUpperCase())}${detail}`;
+  // Name the blockers: a gate is judged on every control, so one may sit below
+  // the severity floor and be missing from the report above.
+  const blockers = gate.controls
+    .filter((x) => x.status === "fail")
+    .map((x) => `\n  ✗ ${x.controlId} (${x.severity})`)
+    .join("");
+  return `${c.bold(label)}: ${tint(gate.status.toUpperCase())}${detail}${c.red(blockers)}`;
 }
 
 /** Markdown gate section, appended to a `--format markdown` report. */

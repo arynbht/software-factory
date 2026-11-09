@@ -165,6 +165,9 @@ importers:
       '@arynbht/factory-engine':
         specifier: workspace:*
         version: link:../engine
+      '@arynbht/factory-runtime':
+        specifier: workspace:*
+        version: link:../runtime
       '@clack/prompts':
         specifier: ^1.8.1
         version: 1.8.1
@@ -207,6 +210,25 @@ importers:
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
+    devDependencies:
+      '@types/picomatch':
+        specifier: ^4.0.3
+        version: 4.0.3
+
+  packages/runtime:
+    dependencies:
+      '@arynbht/factory-catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@arynbht/factory-engine':
+        specifier: workspace:*
+        version: link:../engine
+      picomatch:
+        specifier: ^4.0.7
+        version: 4.0.7
+      simple-git:
+        specifier: ^4.0.2
+        version: 4.0.2
     devDependencies:
       '@types/picomatch':
         specifier: ^4.0.3

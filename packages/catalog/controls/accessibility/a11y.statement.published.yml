@@ -8,7 +8,7 @@ applies:
   all:
     - flag: public-facing
 detect:
-  - type: file-exists
+  - type: reviewed
     path: docs/accessibility.md|public/accessibility*.html|src/**/accessibility*
 evidence: none
 fix:

@@ -74,6 +74,11 @@ export interface AuditContext {
    * (`factory ai`, the desktop AI screen) calls the client directly regardless.
    */
   readonly aiEnabled: boolean;
+  /**
+   * Whether `command` detectors may run tools (lint, typecheck, test suites).
+   * Off for routine audits; the judge and `audit --commands` turn it on.
+   */
+  readonly runCommands: boolean;
 }
 
 export interface BuildContextOptions {
@@ -84,6 +89,8 @@ export interface BuildContextOptions {
   now?: Date | undefined;
   /** Options for the AI client (key, model, or an injected transport for tests). */
   ai?: AiClientOptions | undefined;
+  /** Allow `command` detectors to run tools (default false). */
+  runCommands?: boolean | undefined;
 }
 
 export function buildContext(
@@ -112,6 +119,7 @@ export function buildContext(
     token: options.token,
     now: options.now ?? new Date(),
     aiEnabled,
+    runCommands: options.runCommands ?? false,
 
     async glob(pattern) {
       const patterns = Array.isArray(pattern) ? pattern : [pattern];

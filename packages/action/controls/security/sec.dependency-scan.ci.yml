@@ -5,9 +5,18 @@ phase: harden
 severity: high
 effort: small
 detect:
-  - type: file-matches
-    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
-    pattern: "(?i)(osv-scanner|trivy|snyk|dependency-review|npm audit|pnpm audit|grype)"
+  - type: any-of
+    detect:
+      - type: file-yaml-path
+        file: ".github/workflows/*.yml|.github/workflows/*.yaml"
+        exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
+        path: "jobs.*.steps[*].uses"
+        matches: "(?i)^(google/osv-scanner|aquasecurity/trivy-action|snyk/actions|actions/dependency-review-action|anchore/scan-action)"
+      - type: file-yaml-path
+        file: ".github/workflows/*.yml|.github/workflows/*.yaml"
+        exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
+        path: "jobs.*.steps[*].run"
+        matches: '(?i)\b(osv-scanner|npm audit|pnpm audit|yarn audit|pip-audit|govulncheck|cargo audit|trivy|grype)\b'
 evidence: none
 # dependency-review runs on pull_request; this is a GitHub-native, stack-agnostic
 # scan, so no per-stack variant is needed.

@@ -1,0 +1,28 @@
+{
+  "name": "@arynbht/factory-runtime",
+  "version": "0.0.0",
+  "description": "Task runtime: the judge (and, later, router and sector agents) for factory v2.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {},
+  "dependencies": {
+    "@arynbht/factory-catalog": "workspace:*",
+    "@arynbht/factory-engine": "workspace:*",
+    "picomatch": "^4.0.7",
+    "simple-git": "^4.0.2"
+  },
+  "devDependencies": {
+    "@types/picomatch": "^4.0.3"
+  }
+}

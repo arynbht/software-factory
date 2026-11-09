@@ -1,0 +1,22 @@
+id: quality.coverage.floor
+title: Coverage at or above the floor
+lane: quality
+phase: harden
+severity: medium
+effort: medium
+# Applies once the test run writes a coverage summary (Istanbul's json-summary).
+applies:
+  file: "coverage/coverage-summary.json"
+detect:
+  - type: file-json-path
+    file: "coverage/coverage-summary.json"
+    path: total.lines.pct
+    min: 70
+evidence: none
+references:
+  - name: Google Testing Blog — Code Coverage Best Practices
+    url: https://testing.googleblog.com/2020/08/code-coverage-best-practices.html
+    section: Is a code coverage of X% good enough?
+rationale: >
+  Coverage doesn't prove tests are good, but a falling number shows untested
+  code arriving. A floor keeps new work from lowering it.

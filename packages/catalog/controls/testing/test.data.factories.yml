@@ -5,7 +5,7 @@ phase: build
 severity: low
 effort: medium
 detect:
-  - type: file-exists
+  - type: reviewed
     path: "**/factories/**|**/*factory*.{ts,js,py}|seed.{ts,js,py}|**/seeds/**|prisma/seed.ts"
 evidence: none
 fix:

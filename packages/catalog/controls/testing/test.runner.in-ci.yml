@@ -11,9 +11,12 @@ applies:
     - stack: go
     - stack: rust
 detect:
-  - type: file-matches
-    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
-    pattern: '(?i)(vitest|jest|pytest|go test|cargo test|npm test|pnpm test|yarn test|\brun test\b)'
+  - type: file-yaml-path
+    file: ".github/workflows/*.yml|.github/workflows/*.yaml"
+    exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
+    path: "jobs.*.steps[*].run"
+    # `--if-present` would pass with no test script at all, so it doesn't count.
+    matches: '(?is)^(?!.*--if-present).*\b(vitest|jest|pytest|go test|cargo test|(npm|pnpm|yarn)( run)? test|node --test|tox|nox)\b'
 evidence: none
 fix:
   type: merge-yaml

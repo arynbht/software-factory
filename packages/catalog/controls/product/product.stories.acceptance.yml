@@ -5,7 +5,7 @@ phase: requirements
 severity: medium
 effort: medium
 detect:
-  - type: file-exists
+  - type: reviewed
     path: docs/requirements/stories.md|docs/stories.md
 fix:
   type: claude

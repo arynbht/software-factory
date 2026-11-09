@@ -6,6 +6,7 @@ import { fileJsonPath } from "./file-json-path.js";
 import { fileMatches } from "./file-matches.js";
 import { fileYamlPath } from "./file-yaml-path.js";
 import { githubApi } from "./github-api.js";
+import { reviewed } from "./reviewed.js";
 import { scorecard } from "./scorecard.js";
 import type { DetectorFn } from "./types.js";
 
@@ -23,4 +24,5 @@ export const registry: Partial<Record<DetectorType, DetectorFn>> = {
   "github-api": githubApi as DetectorFn,
   command: command as DetectorFn,
   scorecard: scorecard as DetectorFn,
+  reviewed: reviewed as DetectorFn,
 };

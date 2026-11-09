@@ -25,6 +25,8 @@ export type Change =
       op: "create" | "merge" | "suggest";
       /** Why a `suggest` was written instead of the change itself. */
       reason?: string | undefined;
+      /** The control marks this file factory-owned (`managed: true`): rewrite it even after edits. */
+      managed?: boolean | undefined;
     }
   | {
       type: "effect";

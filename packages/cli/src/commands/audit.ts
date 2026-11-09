@@ -38,6 +38,8 @@ export interface AuditFlags {
   token?: string;
   color?: boolean;
   gate?: string;
+  /** Run `command` detectors (lint, typecheck, tests) instead of skipping them. */
+  commands?: boolean;
 }
 
 export interface RunAuditOptions {
@@ -85,7 +87,7 @@ export async function runAudit(
     options.token === null
       ? undefined
       : (options.token ?? resolveToken(flags.token));
-  const ctx = buildContext(root, { token });
+  const ctx = buildContext(root, { token, runCommands: flags.commands });
 
   let profile;
   let waivers;

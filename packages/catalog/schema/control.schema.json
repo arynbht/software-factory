@@ -26,7 +26,8 @@
         "performance",
         "ux",
         "documentation",
-        "product"
+        "product",
+        "quality"
       ]
     },
     "phase": {
@@ -138,6 +139,24 @@
                 "minLength": 1,
                 "description": "Dot/bracket path, e.g. compilerOptions.strict."
               },
+              "min": {
+                "description": "If set, the value at `path` must be a number at least this large (e.g. a coverage percentage).",
+                "type": "number"
+              },
+              "matches": {
+                "description": "Regex the value(s) at `path` must match (as strings).",
+                "type": "string",
+                "minLength": 1
+              },
+              "all": {
+                "description": "With `matches`/`min`: every value at `path` must satisfy it (default: any one). `path` may use `*` wildcards, e.g. jobs.*.steps[*].uses.",
+                "type": "boolean"
+              },
+              "exclude": {
+                "description": "Glob (may be `a|b|c`) of files that never count, e.g. the factory's own workflow.",
+                "type": "string",
+                "minLength": 1
+              },
               "equals": {
                 "description": "If set, the value at `path` must equal this."
               },
@@ -168,6 +187,24 @@
                 "type": "string",
                 "minLength": 1,
                 "description": "Dot/bracket path into the YAML document."
+              },
+              "min": {
+                "description": "Minimum for a numeric value.",
+                "type": "number"
+              },
+              "matches": {
+                "description": "Regex the value(s) at `path` must match (as strings).",
+                "type": "string",
+                "minLength": 1
+              },
+              "all": {
+                "description": "With `matches`/`min`: every value at `path` must satisfy it (default: any one). `path` may use `*` wildcards, e.g. jobs.*.steps[*].uses.",
+                "type": "boolean"
+              },
+              "exclude": {
+                "description": "Glob (may be `a|b|c`) of files that never count, e.g. the factory's own workflow.",
+                "type": "string",
+                "minLength": 1
               },
               "equals": {},
               "exists": {
@@ -221,9 +258,38 @@
                 "const": "command"
               },
               "run": {
+                "description": "Command line to execute in the repo root.",
                 "type": "string",
-                "minLength": 1,
-                "description": "Command line to execute in the repo root."
+                "minLength": 1
+              },
+              "byStack": {
+                "type": "object",
+                "properties": {
+                  "node": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "python": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "go": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "rust": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Per-stack command lines. Each detected stack with an entry runs, and all must pass."
+              },
+              "timeout": {
+                "description": "Seconds before the command is killed and reported as skip (default 60).",
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
               },
               "expectExitCode": {
                 "description": "Pass only on this exit code (default 0).",
@@ -238,8 +304,7 @@
               "equals": {}
             },
             "required": [
-              "type",
-              "run"
+              "type"
             ],
             "additionalProperties": false
           },
@@ -265,6 +330,25 @@
             "required": [
               "type",
               "check"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "reviewed"
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Glob (may be `a|b|c`). Passes when a matching file either was written by a human (no `factory:generated` header) or carries a filled `reviewed-by:` line."
+              }
+            },
+            "required": [
+              "type",
+              "path"
             ],
             "additionalProperties": false
           },
@@ -363,6 +447,24 @@
                           "minLength": 1,
                           "description": "Dot/bracket path, e.g. compilerOptions.strict."
                         },
+                        "min": {
+                          "description": "If set, the value at `path` must be a number at least this large (e.g. a coverage percentage).",
+                          "type": "number"
+                        },
+                        "matches": {
+                          "description": "Regex the value(s) at `path` must match (as strings).",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "all": {
+                          "description": "With `matches`/`min`: every value at `path` must satisfy it (default: any one). `path` may use `*` wildcards, e.g. jobs.*.steps[*].uses.",
+                          "type": "boolean"
+                        },
+                        "exclude": {
+                          "description": "Glob (may be `a|b|c`) of files that never count, e.g. the factory's own workflow.",
+                          "type": "string",
+                          "minLength": 1
+                        },
                         "equals": {
                           "description": "If set, the value at `path` must equal this."
                         },
@@ -393,6 +495,24 @@
                           "type": "string",
                           "minLength": 1,
                           "description": "Dot/bracket path into the YAML document."
+                        },
+                        "min": {
+                          "description": "Minimum for a numeric value.",
+                          "type": "number"
+                        },
+                        "matches": {
+                          "description": "Regex the value(s) at `path` must match (as strings).",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "all": {
+                          "description": "With `matches`/`min`: every value at `path` must satisfy it (default: any one). `path` may use `*` wildcards, e.g. jobs.*.steps[*].uses.",
+                          "type": "boolean"
+                        },
+                        "exclude": {
+                          "description": "Glob (may be `a|b|c`) of files that never count, e.g. the factory's own workflow.",
+                          "type": "string",
+                          "minLength": 1
                         },
                         "equals": {},
                         "exists": {
@@ -446,9 +566,38 @@
                           "const": "command"
                         },
                         "run": {
+                          "description": "Command line to execute in the repo root.",
                           "type": "string",
-                          "minLength": 1,
-                          "description": "Command line to execute in the repo root."
+                          "minLength": 1
+                        },
+                        "byStack": {
+                          "type": "object",
+                          "properties": {
+                            "node": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "python": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "go": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "rust": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false,
+                          "description": "Per-stack command lines. Each detected stack with an entry runs, and all must pass."
+                        },
+                        "timeout": {
+                          "description": "Seconds before the command is killed and reported as skip (default 60).",
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
                         },
                         "expectExitCode": {
                           "description": "Pass only on this exit code (default 0).",
@@ -463,8 +612,7 @@
                         "equals": {}
                       },
                       "required": [
-                        "type",
-                        "run"
+                        "type"
                       ],
                       "additionalProperties": false
                     },
@@ -490,6 +638,25 @@
                       "required": [
                         "type",
                         "check"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "reviewed"
+                        },
+                        "path": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Glob (may be `a|b|c`). Passes when a matching file either was written by a human (no `factory:generated` header) or carries a filled `reviewed-by:` line."
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "path"
                       ],
                       "additionalProperties": false
                     }
@@ -724,6 +891,15 @@
     },
     "replaced-by": {
       "type": "string"
+    },
+    "valid-for": {
+      "description": "How long evidence for this control stays valid when the entry doesn't say (e.g. 365d for a threat model).",
+      "type": "string",
+      "pattern": "^\\d+\\s*[dwy]?$"
+    },
+    "managed": {
+      "description": "The factory owns the files this control's fix writes and may rewrite them even after a human edit (only for factory state, never project files).",
+      "type": "boolean"
     }
   },
   "required": [

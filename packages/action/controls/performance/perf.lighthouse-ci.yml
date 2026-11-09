@@ -4,6 +4,9 @@ lane: performance
 phase: harden
 severity: low
 effort: medium
+# Web front ends only: a CLI, library or API has no page weight to budget.
+applies:
+  type: web-app
 detect:
   - type: file-matches
     path: ".github/workflows/*.y*ml|.lighthouserc*|lighthouserc*"

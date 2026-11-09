@@ -5,7 +5,7 @@ phase: design
 severity: low
 effort: small
 detect:
-  - type: file-exists
+  - type: reviewed
     path: "docs/**/content*.md|docs/**/copy*.md|docs/**/voice*.md|docs/**/tone*.md"
 fix:
   type: claude

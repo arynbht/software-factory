@@ -82,7 +82,12 @@ export async function evaluateControl(
     // evidence (needs-evidence) rather than letting the rejection escape.
     let entry = null;
     try {
-      entry = findValidEvidence(await ctx.evidence(), control.id, now);
+      entry = findValidEvidence(
+        await ctx.evidence(),
+        control.id,
+        now,
+        control["valid-for"],
+      );
     } catch {
       entry = null;
     }

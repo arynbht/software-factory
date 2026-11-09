@@ -5,7 +5,7 @@ phase: discovery
 severity: medium
 effort: medium
 detect:
-  - type: file-exists
+  - type: reviewed
     path: docs/brief.md|docs/discovery/*.md
 fix:
   type: claude

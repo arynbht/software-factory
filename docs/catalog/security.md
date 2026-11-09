@@ -23,7 +23,7 @@ References:
 ### `sec.dependency-scan.ci` — Dependency vulnerability scan in CI
 
 - **phase**: harden · **severity**: high · **effort**: small
-- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
+- **detect**: `any-of` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 Scanning dependencies for known vulnerabilities on every build surfaces exploitable CVEs in third-party code while they are cheap to fix.
 
@@ -44,7 +44,7 @@ References:
 ### `sec.sast.ci` — SAST runs in CI
 
 - **phase**: harden · **severity**: high · **effort**: medium
-- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
+- **detect**: `any-of` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 Static analysis in CI finds injection, unsafe-API, and other vulnerability patterns automatically on every change, before they ship.
 
@@ -55,7 +55,7 @@ References:
 ### `sec.sbom.ci` — SBOM generated in CI
 
 - **phase**: harden · **severity**: low · **effort**: medium
-- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
+- **detect**: `any-of` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 A per-build software bill of materials lets you answer "are we affected?" for a new CVE in seconds instead of auditing the dependency tree by hand.
 
@@ -76,7 +76,7 @@ References:
 ### `sec.secret-scanning.ci` — Secret scanning runs in CI
 
 - **phase**: harden · **severity**: medium · **effort**: small
-- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
+- **detect**: `any-of` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 A CI secret scan is a backstop for anything that slips past local hooks and catches secrets introduced by contributors without the hooks installed.
 

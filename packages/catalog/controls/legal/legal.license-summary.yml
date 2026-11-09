@@ -8,7 +8,7 @@ applies:
   all:
     - flag: distributes-binaries
 detect:
-  - type: file-exists
+  - type: reviewed
     path: "docs/legal/license-summary.md|docs/**/licenses*.md|THIRD_PARTY_NOTICES*|NOTICE"
 evidence: optional
 fix:

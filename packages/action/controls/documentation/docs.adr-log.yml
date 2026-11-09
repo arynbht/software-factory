@@ -5,7 +5,7 @@ phase: architecture
 severity: medium
 effort: medium
 detect:
-  - type: file-exists
+  - type: reviewed
     path: "docs/adr/**|docs/decisions/**|doc/adr/**"
 evidence: none
 fix:

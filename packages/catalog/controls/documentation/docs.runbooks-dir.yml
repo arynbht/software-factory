@@ -5,7 +5,7 @@ phase: harden
 severity: medium
 effort: medium
 detect:
-  - type: file-exists
+  - type: reviewed
     path: "docs/runbooks/**|runbooks/**|docs/ops/**"
 evidence: none
 fix:

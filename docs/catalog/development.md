@@ -64,7 +64,7 @@ References:
 ### `dev.linter.in-ci` — Linter runs in CI
 
 - **phase**: build · **severity**: medium · **effort**: small
-- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
+- **detect**: `any-of` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 Running the linter in CI, not just locally, makes the standard enforceable on every pull request regardless of each contributor's local setup.
 

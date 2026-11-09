@@ -53,7 +53,7 @@ References:
 ### `legal.license-summary` — Third-party license summary
 
 - **phase**: harden · **severity**: medium · **effort**: small
-- **detect**: `file-exists` · **fix**: claude `license-summary`
+- **detect**: `reviewed` · **fix**: claude `license-summary`
 
 Shipping software means redistributing its dependencies, each under its own license with its own obligations (attribution, source offer, copyleft reach). A grouped summary of those licenses confirms the project has the right to ship and surfaces any term that needs action before release; a drafted summary still needs a human to verify it against the actual dependency tree.
 
@@ -64,7 +64,7 @@ References:
 ### `legal.privacy.policy` — Privacy policy published
 
 - **phase**: launch · **severity**: high · **effort**: small
-- **detect**: `file-matches` · **fix**: claude `privacy-policy`
+- **detect**: `file-matches`, `reviewed` · **fix**: claude `privacy-policy`
 
 Users must be told what data is collected and why; a published privacy policy satisfies that duty, and a draft still needs legal review before it goes live.
 

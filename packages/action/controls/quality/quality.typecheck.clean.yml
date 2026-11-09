@@ -1,0 +1,28 @@
+id: quality.typecheck.clean
+title: Typecheck passes
+lane: quality
+phase: build
+severity: high
+effort: small
+applies:
+  any:
+    - stack: typescript
+    - stack: go
+    - stack: rust
+detect:
+  # TypeScript repos run their `typecheck` script (e.g. `tsc --noEmit`); a
+  # missing script fails, since the build alone may not type-check.
+  - type: command
+    byStack:
+      node: npm run typecheck
+      go: go build ./...
+      rust: cargo check --all-targets
+    timeout: 600
+evidence: none
+references:
+  - name: TypeScript Handbook — tsc CLI options
+    url: https://www.typescriptlang.org/docs/handbook/compiler-options.html
+    section: noEmit
+rationale: >
+  Strict mode is only a promise until the compiler runs. A typecheck that passes
+  on every change is what makes the type system a safety net.

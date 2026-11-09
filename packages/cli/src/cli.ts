@@ -6,6 +6,7 @@ import { runCi } from "./commands/ci.js";
 import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
 import { type FixFlags, runFix } from "./commands/fix.js";
 import { type InitFlags, runInit } from "./commands/init.js";
+import { type JudgeFlags, runJudge } from "./commands/judge.js";
 import { type MetricsFlags, runMetrics } from "./commands/metrics.js";
 import { type MultiFlags, runAuditAll } from "./commands/multi.js";
 import { runProfileSet, runProfileShow } from "./commands/profile.js";
@@ -52,6 +53,29 @@ export function buildProgram(): Command {
     });
 
   program
+    .command("judge")
+    .description(
+      "Judge a change: lint/typecheck/tests on a clean clone of base + the change, with protected paths from base",
+    )
+    .argument("[path]", "path to the repo", ".")
+    .option("--base <ref>", "the base the change targets", "origin/main")
+    .option("--head <ref>", "the change to judge (default HEAD)")
+    .option(
+      "--check <id>",
+      "a control to run (repeatable; default: the quality lane)",
+      collect,
+      [],
+    )
+    .option("--json", "output JSON")
+    .option("--keep", "keep the clean clone for inspection")
+    .option("--work-dir <dir>", "clone here instead of a temp dir")
+    .option("--no-install", "don't install dependencies in the clone")
+    .option("--no-color", "disable coloured output")
+    .action(async (path: string, flags: JudgeFlags) => {
+      process.exitCode = await runJudge(path, flags);
+    });
+
+  program
     .command("audit")
     .description("Audit a repo against the control catalog")
     .argument("[path]", "path to the repo to audit", ".")
@@ -70,6 +94,10 @@ export function buildProgram(): Command {
       "evaluate a phase gate (or 'all') and fail if red",
     )
     .option("--token <token>", "GitHub token (else GITHUB_TOKEN or gh auth)")
+    .option(
+      "--commands",
+      "run command checks (lint, typecheck, tests) instead of skipping them",
+    )
     .option("--no-color", "disable coloured output")
     .option("--all", "audit every repo in the repo list (combined table)")
     .option(

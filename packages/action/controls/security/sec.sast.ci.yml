@@ -5,9 +5,18 @@ phase: harden
 severity: high
 effort: medium
 detect:
-  - type: file-matches
-    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
-    pattern: "(?i)(codeql|semgrep|sonarqube|sonarcloud)"
+  - type: any-of
+    detect:
+      - type: file-yaml-path
+        file: ".github/workflows/*.yml|.github/workflows/*.yaml"
+        exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
+        path: "jobs.*.steps[*].uses"
+        matches: "(?i)^(github/codeql-action/analyze|returntocorp/semgrep-action|semgrep/semgrep|SonarSource/)"
+      - type: file-yaml-path
+        file: ".github/workflows/*.yml|.github/workflows/*.yaml"
+        exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
+        path: "jobs.*.steps[*].run"
+        matches: '(?i)\bsemgrep (ci|scan)\b'
 evidence: none
 # CodeQL needs an init step and an analyze step; append both as a list (only the
 # missing ones are added, matched by name).

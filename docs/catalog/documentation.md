@@ -13,7 +13,7 @@ Diátaxis docs, ADRs, architecture diagrams, runbooks, and changelogs.
 ### `docs.adr-log` — ADR log started and current
 
 - **phase**: architecture · **severity**: medium · **effort**: medium
-- **detect**: `file-exists` · **fix**: claude `adr`
+- **detect**: `reviewed` · **fix**: claude `adr`
 
 Architecture Decision Records capture why a choice was made and what was traded off, so future contributors change the system with context rather than re-litigating settled decisions.
 
@@ -24,7 +24,7 @@ References:
 ### `docs.c4-diagrams` — C4 context and container diagrams present
 
 - **phase**: architecture · **severity**: low · **effort**: medium
-- **detect**: `file-matches` · **fix**: claude `c4`
+- **detect**: `file-matches`, `reviewed` · **fix**: claude `c4`
 
 A system-context and container view gives a new engineer the shape of the system in minutes; without it, architecture lives only in people's heads.
 
@@ -64,7 +64,7 @@ References:
 ### `docs.runbooks-dir` — Runbooks directory exists
 
 - **phase**: harden · **severity**: medium · **effort**: medium
-- **detect**: `file-exists` · **fix**: claude `runbook`
+- **detect**: `reviewed` · **fix**: claude `runbook`
 
 Runbooks turn 3am incidents from improvisation into a checklist; a dedicated directory makes them discoverable when they are needed most.
 
