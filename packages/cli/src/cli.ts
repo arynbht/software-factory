@@ -151,6 +151,12 @@ export function buildProgram(): Command {
     .option("--keep", "keep the clean clone for inspection")
     .option("--work-dir <dir>", "clone here instead of a temp dir")
     .option("--no-install", "don't install dependencies in the clone")
+    .option(
+      "--env <name>",
+      "pass this environment variable to installs and checks (repeatable; default: none beyond system paths)",
+      collect,
+      [],
+    )
     .option("--no-color", "disable coloured output")
     .action(async (path: string, flags: JudgeFlags) => {
       process.exitCode = await runJudge(path, flags);

@@ -79,6 +79,8 @@ export interface AuditContext {
    * Off for routine audits; the judge and `audit --commands` turn it on.
    */
   readonly runCommands: boolean;
+  /** The environment command detectors run with (default: inherited). */
+  readonly commandEnv: NodeJS.ProcessEnv | undefined;
 }
 
 export interface BuildContextOptions {
@@ -91,6 +93,8 @@ export interface BuildContextOptions {
   ai?: AiClientOptions | undefined;
   /** Allow `command` detectors to run tools (default false). */
   runCommands?: boolean | undefined;
+  /** Environment for command detectors, e.g. `allowlistedEnv()` in the judge. */
+  commandEnv?: NodeJS.ProcessEnv | undefined;
 }
 
 export function buildContext(
@@ -120,6 +124,7 @@ export function buildContext(
     now: options.now ?? new Date(),
     aiEnabled,
     runCommands: options.runCommands ?? false,
+    commandEnv: options.commandEnv,
 
     async glob(pattern) {
       const patterns = Array.isArray(pattern) ? pattern : [pattern];

@@ -76,6 +76,7 @@ async function runOne(
   try {
     result = await runTool(binary, args, ctx.repoPath, {
       timeoutMs: (config.timeout ?? DEFAULT_TIMEOUT_S) * 1000,
+      env: ctx.commandEnv,
     });
   } catch (err) {
     if (err instanceof ToolNotFoundError) {

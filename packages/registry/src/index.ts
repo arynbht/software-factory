@@ -20,8 +20,19 @@ export {
   STATE_FILE,
   VENDOR_DIR,
 } from "./repo.js";
-export { INJECTION_RULES, type ScanFinding, scanSkill } from "./scan.js";
 export {
+  gitleaksScanner,
+  INJECTION_RULES,
+  lineSha256,
+  type ScanAllow,
+  type ScanFinding,
+  scanSkill,
+  type SecretScanner,
+} from "./scan.js";
+export {
+  activeAllows,
+  licenseProblem,
+  OSI_ALLOWED,
   type Lock,
   type LockEntry,
   type Manifest,

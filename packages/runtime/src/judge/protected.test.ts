@@ -92,3 +92,24 @@ describe("diff parsing", () => {
     ]);
   });
 });
+
+describe("skill registry and agent config are protected", () => {
+  it("marks lock, manifests and harness settings needs-human", () => {
+    const findings = findProtected(
+      [
+        { status: "M", path: ".factory/skills.lock" },
+        { status: "M", path: "packages/registry/manifests/impeccable.yml" },
+        { status: "A", path: ".claude/settings.local.json" },
+        { status: "A", path: ".github/hooks/impeccable.json" },
+      ],
+      new Map(),
+      false,
+    );
+    expect(findings.map((f) => f.reason)).toEqual([
+      "skill-registry",
+      "skill-registry",
+      "agent-config",
+      "agent-config",
+    ]);
+  });
+});

@@ -1,0 +1,23 @@
+name: a11y-core
+source: Community-Access/accessibility-agents/skills/a11y-core
+pin: a538edc9edfb98cdd8bae96d6b79542874b478f7
+hash: "sha256:d6173d48c62e626b1f628e48a0d0384b0075c7c2c70b20d029dcb53b6151b130"
+license: MIT
+scope: task
+sectors: [a11y]
+phases: [build, review]
+triggers:
+  paths: []
+  keywords: []
+  flags: []
+provides: [a11y-contract, findings-schema, report-renderer]
+conflicts: []
+requires: []
+commands: []
+tokens: 1500
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  Shared contract for the Accessibility Agents skills (dispatch, findings schema,
+  report rules); never invoked alone. Loaded with accessibility-lead, which
+  requires it. Its scripts render the report with node.

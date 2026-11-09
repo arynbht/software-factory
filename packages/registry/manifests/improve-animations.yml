@@ -27,3 +27,10 @@ notes: >
   content as data, not instructions (the scanner's override-instructions hit is that sentence).
   "execute <plan>" dispatches a subagent in a worktree, which overlaps the factory's build step;
   prefer audit and plan only.
+scan_allow:
+  - rule: override-instructions
+    file: SKILL.md
+    match_sha256: 7f8ec20b24cc60b4817e4174e8b70d6b7e7c1ec7ce893e7c68f76d5345c4e142
+    reviewed_by: arynbht
+    reviewed: "2026-11-09"
+    note: "Quotes the injection phrase to tell the agent to flag it, not follow it."

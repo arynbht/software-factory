@@ -13,6 +13,7 @@ import { join } from "node:path";
 
 import { type Control, loadBundledCatalog } from "@arynbht/factory-catalog";
 import {
+  allowlistedEnv,
   buildContext,
   type ControlResult,
   deepEqual,
@@ -74,6 +75,12 @@ export interface Tier1Options {
   /** Where to clone (default: a fresh temp dir, removed unless `keep`). */
   workDir?: string | undefined;
   keep?: boolean | undefined;
+  /**
+   * Variables passed to installs and checks on top of the allowlist (system
+   * paths, home/temp dirs, toolchain homes). Nothing else from the caller's
+   * shell reaches the repo's scripts: no tokens, no API keys.
+   */
+  env?: readonly string[] | undefined;
   /** Install dependencies in the clone before checking (default true). */
   install?: boolean | undefined;
   now?: Date | undefined;
@@ -175,7 +182,9 @@ export async function runTier1(options: Tier1Options): Promise<Tier1Result> {
     // Baseline.
     await clone.raw(["checkout", "--quiet", "--detach", mergeBase]);
     const install = options.install ?? true;
-    const baseInstall = install ? await installDeps(workDir, log) : null;
+    const baseInstall = install
+      ? await installDeps(workDir, log, options.env)
+      : null;
     log("running checks at base");
     const baseResults = await runChecks(workDir, options);
 
@@ -187,7 +196,9 @@ export async function runTier1(options: Tier1Options): Promise<Tier1Result> {
       (e) => e.path === "package.json" || LOCKFILES.includes(e.path),
     );
     const headInstall =
-      install && depsChanged ? await installDeps(workDir, log) : baseInstall;
+      install && depsChanged
+        ? await installDeps(workDir, log, options.env)
+        : baseInstall;
     log("running checks on the change");
     const headResults = await runChecks(workDir, options);
 
@@ -263,7 +274,11 @@ async function runChecks(
     (a, b) => Number(!runsTests(a)) - Number(!runsTests(b)),
   );
   await rm(join(dir, "coverage"), { recursive: true, force: true });
-  const ctx = buildContext(dir, { runCommands: true, now: options.now });
+  const ctx = buildContext(dir, {
+    runCommands: true,
+    commandEnv: allowlistedEnv(options.env),
+    now: options.now,
+  });
   const profile = await ctx.profile().catch(() => null);
   // Waivers are posture decisions; the judge holds every check to its result.
   return evaluateControls(ordered, ctx, {
@@ -381,6 +396,7 @@ async function exists(path: string): Promise<boolean> {
 async function installDeps(
   dir: string,
   log: (line: string) => void,
+  env: readonly string[] | undefined,
 ): Promise<{ ok: boolean; message: string } | null> {
   const pkgPath = join(dir, "package.json");
   if (!(await exists(pkgPath))) return null;
@@ -407,6 +423,7 @@ async function installDeps(
   try {
     const result = await runTool(cmd[0], cmd[1], dir, {
       timeoutMs: INSTALL_TIMEOUT_MS,
+      env: allowlistedEnv(env),
     });
     return result.exitCode === 0
       ? { ok: true, message: "installed" }

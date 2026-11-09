@@ -71,6 +71,64 @@ export function splitArgs(line: string): string[] {
   return line.trim().split(/\s+/).filter(Boolean);
 }
 
+/**
+ * What a tool needs to run, and nothing else: system paths, the user's home and
+ * temp dirs, toolchain homes. Tokens, API keys and every other secret in the
+ * caller's shell stay out — a test script or a skill can't read what it never
+ * receives. `extra` names any further variables to pass through on purpose.
+ */
+export const ENV_ALLOWLIST = [
+  "PATH",
+  "Path",
+  "PATHEXT",
+  "SystemRoot",
+  "SYSTEMROOT",
+  "SystemDrive",
+  "ComSpec",
+  "COMSPEC",
+  "WINDIR",
+  "OS",
+  "PROCESSOR_ARCHITECTURE",
+  "NUMBER_OF_PROCESSORS",
+  "ProgramFiles",
+  "ProgramFiles(x86)",
+  "ProgramData",
+  "TEMP",
+  "TMP",
+  "TMPDIR",
+  "HOME",
+  "USERPROFILE",
+  "HOMEDRIVE",
+  "HOMEPATH",
+  "APPDATA",
+  "LOCALAPPDATA",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "LANG",
+  "LC_ALL",
+  "TERM",
+  "SHELL",
+  "PNPM_HOME",
+  "COREPACK_HOME",
+  "GOPATH",
+  "GOCACHE",
+  "GOMODCACHE",
+  "CARGO_HOME",
+  "RUSTUP_HOME",
+] as const;
+
+export function allowlistedEnv(
+  extra: readonly string[] = [],
+  source: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { CI: "1" };
+  for (const name of [...ENV_ALLOWLIST, ...extra]) {
+    const value = source[name];
+    if (value !== undefined) env[name] = value;
+  }
+  return env;
+}
+
 /** A tool that did not finish within its timeout (and was killed). */
 export class ToolTimeoutError extends Error {
   constructor(binary: string, timeoutMs: number) {
@@ -95,7 +153,11 @@ export async function runTool(
   binary: string,
   args: string[],
   cwd: string,
-  options: { timeoutMs?: number | undefined } = {},
+  options: {
+    timeoutMs?: number | undefined;
+    /** The child's whole environment (default: inherit this process's). */
+    env?: NodeJS.ProcessEnv | undefined;
+  } = {},
 ): Promise<ToolResult> {
   let file = binary;
   let argv = args;
@@ -117,6 +179,7 @@ export async function runTool(
       maxBuffer: 16 * 1024 * 1024,
       windowsHide: true,
       timeout: options.timeoutMs ?? 0,
+      ...(options.env ? { env: options.env } : {}),
     });
     return { exitCode: 0, stdout: String(stdout), stderr: String(stderr) };
   } catch (err) {

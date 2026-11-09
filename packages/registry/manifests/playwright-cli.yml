@@ -45,3 +45,10 @@ notes: >
   scoped to playwright-cli and npx playwright. Caveats: it suggests "npm install -g
   @playwright/cli@latest" when the CLI is missing (preinstall a pinned version instead); state-save
   and cookie commands can capture session tokens into files that must stay out of evidence and commits.
+scan_allow:
+  - rule: disable-checks
+    file: references/test-generation.md
+    match_sha256: b1067b668d4072578c79f1d7561ed60c23ce87ed785635436c76a72eb4af4599
+    reviewed_by: arynbht
+    reviewed: "2026-11-09"
+    note: '"Never skip hooks or add sleeps as a fix": advice against skipping.'

@@ -27,6 +27,8 @@ import {
 import { type ScanFinding, scanSkill, type SecretScanner } from "./scan.js";
 import {
   type LockEntry,
+  activeAllows,
+  licenseProblem,
   type Manifest,
   ManifestSchema,
   parseSource,
@@ -119,6 +121,11 @@ export async function syncSkills(
         `${entry.name}: the manifest describes ${manifest.pin.slice(0, 12)}; the lock pins ${entry.pin.slice(0, 12)} (lock wins)`,
       );
     }
+    const license = licenseProblem(manifest);
+    if (license) {
+      result.blocked.push({ name: entry.name, reason: license });
+      continue;
+    }
     let loaded;
     try {
       loaded = await load(repoPath, entry, options);
@@ -128,7 +135,7 @@ export async function syncSkills(
     }
     const findings = await scanSkill(
       loaded.dir,
-      manifest.scan_allow,
+      activeAllows(manifest, entry.pin),
       options.secretScanner,
     );
     if (findings.length > 0) {
@@ -280,7 +287,7 @@ export async function addSkill(
   );
   const findings = await scanSkill(
     dir,
-    known?.scan_allow ?? [],
+    known ? activeAllows(known, pin) : [],
     options.secretScanner,
   );
   if (findings.length > 0) {
@@ -377,7 +384,8 @@ export async function updateSkills(
     const manifest = manifests.get(entry.name);
     const findings = await scanSkill(
       fresh.dir,
-      manifest?.scan_allow ?? [],
+      // A new pin is a changed prompt: no earlier review applies to it.
+      manifest ? activeAllows(manifest, head) : [],
       options.secretScanner,
     );
     const plan: UpdatePlan = {

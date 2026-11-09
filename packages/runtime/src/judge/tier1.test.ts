@@ -185,6 +185,49 @@ describe("judge tier 1", () => {
     );
   }, 60_000);
 
+  it("runs the repo's scripts without the caller's secrets", async () => {
+    const r = await repo();
+    // A test script that fails if it can see a token from the caller's shell.
+    await r.write(
+      "package.json",
+      JSON.stringify(
+        {
+          name: "demo",
+          private: true,
+          scripts: {
+            lint: "node lint.cjs",
+            test: 'node -e "process.exit(process.env.FACTORY_TEST_SECRET ? 1 : 0)"',
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    await r.commit("leak probe");
+    await simpleGit(r.dir).raw(["branch", "-f", "base"]);
+    await r.write("src/feature.js", "module.exports = 2;\n");
+    await r.commit("feature");
+    process.env.FACTORY_TEST_SECRET = "ghp_should_not_leak";
+    try {
+      const result = await judge(r.dir);
+      expect(
+        result.checks.find((c) => c.id === "quality.tests.pass")?.head,
+      ).toBe("green");
+      // Passing it on purpose is allowed, and then the probe sees it.
+      const opted = await runTier1({
+        repoPath: r.dir,
+        base: "base",
+        install: false,
+        env: ["FACTORY_TEST_SECRET"],
+      });
+      expect(
+        opted.checks.find((c) => c.id === "quality.tests.pass")?.head,
+      ).toBe("red");
+    } finally {
+      delete process.env.FACTORY_TEST_SECRET;
+    }
+  }, 60_000);
+
   it("fails closed when a check can't run", async () => {
     const r = await repo();
     await r.write("src/feature.js", "module.exports = 2;\n");

@@ -11,6 +11,8 @@ export interface DiffEntry {
 
 export type ProtectedReason =
   | "factory-state"
+  | "skill-registry"
+  | "agent-config"
   | "lint-config"
   | "ci-config"
   | "scripts"
@@ -26,6 +28,23 @@ export interface ProtectedFinding {
 /** The judge's own record of what counts as a protected path. */
 export const PROTECTED = {
   factoryState: [".factory/**"],
+  // Which skills an agent loads, at which pins, with which reviewed scan
+  // exceptions: a human's call, never the agent's.
+  skillRegistry: [
+    ".factory/skills.lock",
+    ".factory/skills/**",
+    "packages/registry/manifests/**",
+  ],
+  // Agent harness settings: hooks configured here run code on their own.
+  agentConfig: [
+    ".claude/settings.json",
+    ".claude/settings.local.json",
+    ".codex/**",
+    ".cursor/hooks.json",
+    ".cursor/rules/**",
+    ".gemini/settings.json",
+    ".github/hooks/**",
+  ],
   lintConfig: [
     "**/eslint.config.*",
     "**/.eslintrc*",
@@ -79,6 +98,8 @@ const matcher = (globs: readonly string[]): ((path: string) => boolean) => {
   return (path) => isMatch(path);
 };
 const isFactoryState = matcher(PROTECTED.factoryState);
+const isSkillRegistry = matcher(PROTECTED.skillRegistry);
+const isAgentConfig = matcher(PROTECTED.agentConfig);
 const isLintConfig = matcher(PROTECTED.lintConfig);
 const isCiConfig = matcher(PROTECTED.ciConfig);
 export const isTestFile = matcher(PROTECTED.tests);
@@ -101,7 +122,21 @@ export function findProtected(
     const paths = [entry.path, entry.oldPath].filter(
       (p): p is string => p !== undefined,
     );
-    if (paths.some(isFactoryState)) {
+    if (paths.some(isSkillRegistry)) {
+      findings.push({
+        reason: "skill-registry",
+        path: entry.path,
+        detail:
+          "changes the skill registry (lock, manifests, scan allows): which prompts agents load is a human decision",
+      });
+    } else if (paths.some(isAgentConfig)) {
+      findings.push({
+        reason: "agent-config",
+        path: entry.path,
+        detail:
+          "changes agent harness settings, where hooks run code automatically",
+      });
+    } else if (paths.some(isFactoryState)) {
       findings.push({
         reason: "factory-state",
         path: entry.path,
@@ -155,5 +190,11 @@ export function findProtected(
 
 /** `.factory/**`, lint or CI config: always judged as it was at base. */
 export function isProtectedConfig(path: string): boolean {
-  return isFactoryState(path) || isLintConfig(path) || isCiConfig(path);
+  return (
+    isFactoryState(path) ||
+    isSkillRegistry(path) ||
+    isAgentConfig(path) ||
+    isLintConfig(path) ||
+    isCiConfig(path)
+  );
 }

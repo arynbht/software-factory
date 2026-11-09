@@ -1,0 +1,23 @@
+name: insecure-defaults
+source: trailofbits/skills/plugins/insecure-defaults/skills/insecure-defaults
+pin: 9ea55c598763f7cb87ab56933d773d7dc34344a0
+hash: "sha256:192d0f1c555bd9b8ade7812f52eb392f8d91f29f85b2f972c0f2b21ea77d46ae"
+license: CC-BY-SA-4.0
+scope: task
+sectors: [security]
+phases: [review]
+triggers:
+  paths: []
+  keywords: [security audit, insecure defaults, hardcoded secret, fail-open]
+  flags: []
+provides: [insecure-defaults-audit]
+conflicts: []
+requires: []
+commands: []
+tokens: 1500
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  Whole-repo audit for fail-open defaults, for security-sector audit tasks, not
+  the judge. Pinned to the last commit where it was still a skill (upstream
+  turned it into a plugin command in 82e8e0a); plugins are a later registry type.

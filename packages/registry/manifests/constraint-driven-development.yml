@@ -33,3 +33,10 @@ notes: >
   can adopt. Its "--no-verify" mention is a red flag to detect, not an instruction. The interview
   step must not run in autonomous mode (the skill says so); it also wants to add a line to
   AGENTS.md/CLAUDE.md, which the factory generates itself.
+scan_allow:
+  - rule: disable-checks
+    file: SKILL.md
+    match_sha256: 7e1b6142e38870d256d60f6b5ee5a9e7e68019793f7e5c929f9030cb5fe8d546
+    reviewed_by: arynbht
+    reviewed: "2026-11-09"
+    note: "In the skill's list of red flags to watch for; names --no-verify as a problem, not an instruction."

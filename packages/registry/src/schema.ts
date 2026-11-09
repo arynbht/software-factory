@@ -36,6 +36,31 @@ const NAME = /^[a-z0-9][a-z0-9-]*$/;
 const SOURCE = /^[\w.-]+\/[\w.-]+(\/[\w.@-]+)*$/;
 const PIN = /^[0-9a-f]{40}$/;
 export const HASH = /^sha256:[0-9a-f]{64}$/;
+const CONTROL_ID = /^[a-z0-9]+(\.[a-z0-9-]+)+$/;
+
+/** Licenses a skill may carry without a human's license review. */
+export const OSI_ALLOWED = [
+  "MIT",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "0BSD",
+] as const;
+
+const ReviewSchema = z.strictObject({
+  reviewed_by: z.string().min(1),
+  reviewed: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "reviewed is YYYY-MM-DD"),
+});
+
+const ScanAllowSchema = ReviewSchema.extend({
+  rule: z.string().min(1),
+  file: z.string().min(1),
+  match_sha256: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/, "sha256 of the matched line"),
+  note: z.string().optional(),
+});
 
 export const ManifestSchema = z.strictObject({
   name: z.string().regex(NAME, "name is a kebab-case directory name"),
@@ -64,10 +89,19 @@ export const ManifestSchema = z.strictObject({
   tested_on: z.string().optional(),
   notes: z.string().optional(),
   /**
-   * Scan rules a human has reviewed and accepted for this skill (e.g. a security
-   * skill that quotes `curl | sh` as an example). Never set by tooling.
+   * Scan findings a human reviewed and accepted (e.g. a security skill quoting
+   * `curl | sh` as an example). Each binds to one exact line, and all of them
+   * are ignored once the lock pins a different commit than `pin`: a changed
+   * prompt gets re-reviewed. Never set by tooling.
    */
-  scan_allow: z.array(z.string()).default([]),
+  scan_allow: z.array(ScanAllowSchema).default([]),
+  /**
+   * Required when `license` isn't on the OSI allow-list: a human's signed
+   * review of the terms. Without it, sync refuses the skill.
+   */
+  license_review: ReviewSchema.extend({ note: z.string().min(1) }).optional(),
+  /** Catalog controls this skill helps satisfy. Legal-sector skills need one. */
+  controls: z.array(z.string().regex(CONTROL_ID)).default([]),
 });
 
 export type Manifest = z.infer<typeof ManifestSchema>;
@@ -111,6 +145,13 @@ export function validateManifestSet(
     byName.set(m.name, m);
   }
   for (const m of manifests) {
+    if (m.sectors.includes("legal") && m.controls.length === 0) {
+      issues.push({
+        name: m.name,
+        message:
+          "a legal-sector skill must name the controls it helps satisfy (`controls:`)",
+      });
+    }
     for (const other of m.conflicts) {
       const target = byName.get(other);
       if (!target) {
@@ -140,6 +181,28 @@ export function validateManifestSet(
     }
   }
   return issues;
+}
+
+/**
+ * Why sync must refuse this skill's license, or null. OSI licenses pass;
+ * anything else (source-available, royalties, unknown) needs a human's
+ * `license_review`.
+ */
+export function licenseProblem(m: Manifest): string | null {
+  if ((OSI_ALLOWED as readonly string[]).includes(m.license)) return null;
+  if (m.license_review) return null;
+  return `license ${m.license} isn't on the OSI allow-list and has no license_review`;
+}
+
+/**
+ * The reviewed scan exceptions that still apply: none once the lock pins a
+ * different commit than the one the review was done against.
+ */
+export function activeAllows(
+  m: Manifest,
+  lockedPin: string,
+): Manifest["scan_allow"] {
+  return m.pin === lockedPin ? m.scan_allow : [];
 }
 
 /** Split `owner/repo/path/to/skill` into the repo and the path inside it. */

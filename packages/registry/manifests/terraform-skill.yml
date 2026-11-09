@@ -38,3 +38,16 @@ notes: >
   references/security-compliance.md shows a Trivy install via curl ... | sh from the unpinned main
   branch and trivy-action@master; treat both as examples, never run them. GitHub reports
   NOASSERTION only because LICENSE has a copyright header; the text is Apache-2.0.
+scan_allow:
+  - rule: remote-exec
+    file: references/security-compliance.md
+    match_sha256: 963bb7734b9cc55bc4662c6869ed128669d84f54c5bd23d7e086135f6e9977cd
+    reviewed_by: arynbht
+    reviewed: "2026-11-09"
+    note: "Trivy install line in a docs code block; installing a tool is a stop-and-ask and the agent allow-list blocks curl | sh."
+  - rule: auto-hooks
+    file: references/testing-frameworks.md
+    match_sha256: 735a02f9c2de917c52e7f8852605789d446e73a50bd6a5050a479f2635b0686a
+    reviewed_by: arynbht
+    reviewed: "2026-11-09"
+    note: "The hooks: key of an example .pre-commit-config.yaml (pre-commit-terraform), not an agent hook."

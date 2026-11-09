@@ -2,6 +2,7 @@
 //   pnpm registry:pin       fetch each `hash: "sha256:pending"` manifest at its
 //                           pin and record the real content hash
 //   pnpm registry:validate  schema + cross-manifest checks (CI)
+//   pnpm registry:scan      open scan findings and unreviewed licenses
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -10,6 +11,7 @@ import { parse } from "yaml";
 import { ensureCached } from "./cache.js";
 import { bundledManifestsDir, loadManifests } from "./repo.js";
 import { scanSkill } from "./scan.js";
+import { activeAllows, licenseProblem } from "./schema.js";
 
 const PENDING = "sha256:pending";
 
@@ -26,7 +28,7 @@ async function pin(dir: string): Promise<number> {
       pin: string;
       mirror?: string;
       hash: string;
-      scan_allow?: string[];
+      scan_allow?: { rule: string; file: string; match_sha256: string }[];
     };
     if (raw.hash !== PENDING) continue;
     try {
@@ -58,6 +60,33 @@ async function validate(dir: string): Promise<number> {
   return errors.length;
 }
 
+/**
+ * Print every open scan finding for every bundled manifest at its pin, with
+ * the line hash a reviewer copies into `scan_allow`, plus unreviewed licenses.
+ */
+async function scan(dir: string): Promise<number> {
+  const { manifests, errors } = await loadManifests(join(dir, "__none__"), dir);
+  for (const e of errors) console.error(`${e.name}: ${e.message}`);
+  let open = 0;
+  for (const m of manifests.values()) {
+    const { dir: skillDir } = await ensureCached(m, m.hash);
+    const findings = await scanSkill(skillDir, activeAllows(m, m.pin));
+    const license = licenseProblem(m);
+    if (findings.length === 0 && !license) continue;
+    console.log(`\n${m.name} (${m.scope})`);
+    if (license) console.log(`  license: ${license}`);
+    for (const f of findings) {
+      console.log(
+        `  ${f.rule} ${f.file}:${f.line}  sha256=${f.match_sha256 ?? "-"}`,
+      );
+      console.log(`      ${f.text}`);
+    }
+    open += findings.length + (license ? 1 : 0);
+  }
+  console.log(`\n${open} open finding(s)`);
+  return open;
+}
+
 const mode = process.argv[2];
 const dir = bundledManifestsDir();
 const failures =
@@ -65,6 +94,8 @@ const failures =
     ? await pin(dir)
     : mode === "validate"
       ? await validate(dir)
-      : -1;
-if (failures === -1) console.error("usage: manifests.cli.ts pin|validate");
+      : mode === "scan"
+        ? await scan(dir)
+        : -1;
+if (failures === -1) console.error("usage: manifests.cli.ts pin|validate|scan");
 process.exitCode = failures === 0 ? 0 : 1;

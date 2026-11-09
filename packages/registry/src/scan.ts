@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
@@ -12,7 +13,19 @@ export interface ScanFinding {
   file: string;
   line: number;
   text: string;
+  /** sha256 of the full matched line (no line terminator); what an allow binds to. */
+  match_sha256?: string | undefined;
 }
+
+/** A human's reviewed exception: one rule, one file, one exact line. */
+export interface ScanAllow {
+  rule: string;
+  file: string;
+  match_sha256: string;
+}
+
+export const lineSha256 = (line: string): string =>
+  createHash("sha256").update(line, "utf8").digest("hex");
 
 /**
  * Instructions a skill has no business giving an agent, beyond its stated
@@ -29,7 +42,10 @@ export const INJECTION_RULES: { id: string; pattern: RegExp; why: string }[] = [
   },
   {
     id: "factory-state",
-    pattern: /\.factory\/|\bwaivers\.ya?ml\b|\bevidence\.ya?ml\b/i,
+    // Repo-relative only: `~/.factory/…` or `$HOME/.factory` is some other
+    // tool's home directory, not this repo's state.
+    pattern:
+      /(^|[\s`'"(=])(\.\/)?\.factory\/|\bwaivers\.ya?ml\b|\bevidence\.ya?ml\b/i,
     why: "points the agent at the factory's own state",
   },
   {
@@ -128,12 +144,12 @@ export const gitleaksScanner: SecretScanner = async (dir) => {
 
 /**
  * Scan a skill directory before it's installed: secrets (gitleaks), sensitive
- * files, and the injection rules above. Rules listed in the manifest's
- * `scan_allow` (a human's reviewed exception) are dropped.
+ * files, and the injection rules above. Findings a human reviewed and allowed
+ * (the manifest's `scan_allow`: rule + file + exact line) are dropped.
  */
 export async function scanSkill(
   dir: string,
-  allow: readonly string[] = [],
+  allow: readonly ScanAllow[] = [],
   secrets: SecretScanner = gitleaksScanner,
 ): Promise<ScanFinding[]> {
   const findings: ScanFinding[] = [...(await secrets(dir))];
@@ -154,16 +170,22 @@ export async function scanSkill(
             file: rel,
             line: i + 1,
             text: text.trim().slice(0, 160),
+            match_sha256: lineSha256(text),
           });
         }
       }
     });
   }
-  // An allow entry is a rule (`remote-exec`) or one file's finding for a rule
-  // (`remote-exec:references/install.md`), so a reviewer can accept a single
-  // example without blinding the scan to the rest of the skill.
+  // An allow covers one rule on one exact line of one file. A new bad line in
+  // the same file — or an edit to the allowed one — is a new finding.
   return findings.filter(
-    (f) => !allow.includes(f.rule) && !allow.includes(`${f.rule}:${f.file}`),
+    (f) =>
+      !allow.some(
+        (a) =>
+          a.rule === f.rule &&
+          a.file === f.file &&
+          a.match_sha256 === f.match_sha256,
+      ),
   );
 }
 

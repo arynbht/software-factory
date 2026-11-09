@@ -11,6 +11,7 @@ export interface JudgeFlags {
   json?: boolean;
   keep?: boolean;
   install?: boolean;
+  env?: string[];
   workDir?: string;
   color?: boolean;
 }
@@ -47,6 +48,7 @@ export async function runJudge(
       checks: flags.check && flags.check.length > 0 ? flags.check : undefined,
       keep: flags.keep,
       install: flags.install,
+      env: flags.env,
       workDir: flags.workDir,
       log: flags.json
         ? undefined

@@ -14,7 +14,7 @@ triggers:
   flags: [public-facing]
 provides: [wcag-2.2-aa-review, specialist-dispatch, findings-json, ship-verdict]
 conflicts: []
-requires: []
+requires: [a11y-core]
 commands:
   - "node <skills-root>/a11y-core/scripts/render-report.mjs"
 tokens: 5500
