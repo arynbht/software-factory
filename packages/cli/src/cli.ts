@@ -8,6 +8,13 @@ import { type FixFlags, runFix } from "./commands/fix.js";
 import { type InitFlags, runInit } from "./commands/init.js";
 import { type JudgeFlags, runJudge } from "./commands/judge.js";
 import {
+  runTaskConfirm,
+  runTaskNew,
+  runTaskResume,
+  runTaskStatus,
+  type TaskNewFlags,
+} from "./commands/task.js";
+import {
   runSkillsAdd,
   runSkillsInit,
   runSkillsStatus,
@@ -59,6 +66,71 @@ export function buildProgram(): Command {
     .option("--force", "overwrite existing .factory config")
     .action(async (path: string, flags: InitFlags) => {
       process.exitCode = await runInit(path, flags);
+    });
+
+  const task = program
+    .command("task")
+    .description("Task cards and their ledgers: intake before anything runs");
+  task
+    .command("new")
+    .description("Draft a task card (acceptance items need a verify kind)")
+    .argument("[title]", "what the task is")
+    .option("--type <type>", "feature | fix | chore | refactor | spike")
+    .option("--description <text>", "what and why")
+    .option(
+      "--accept <text::verify>",
+      'an acceptance criterion and how it\'s verified, e.g. "Settings render::e2e" (repeatable)',
+      collect,
+      [],
+    )
+    .option(
+      "--out-of-scope <text>",
+      "explicitly not part of it (repeatable)",
+      collect,
+      [],
+    )
+    .option(
+      "--touches <glob>",
+      "paths it should touch (repeatable)",
+      collect,
+      [],
+    )
+    .option(
+      "--constraint <text>",
+      "e.g. no new dependencies (repeatable)",
+      collect,
+      [],
+    )
+    .option("--risk <risk>", "low | medium | high")
+    .option("--source <source>", "issue#88, or prompt")
+    .option("--from <file>", "start from a card YAML file")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (title: string | undefined, flags: TaskNewFlags) => {
+      process.exitCode = await runTaskNew(title, flags);
+    });
+  task
+    .command("confirm")
+    .description("Agree the card; nothing runs on an unconfirmed card")
+    .argument("<id>", "task id, e.g. T-0001")
+    .option("--yes", "confirm without the prompt (recorded as --yes)")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { yes?: boolean; path?: string }) => {
+      process.exitCode = await runTaskConfirm(id, flags);
+    });
+  task
+    .command("status")
+    .description("List tasks, their beat, and whether their records are intact")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (flags: { path?: string }) => {
+      process.exitCode = await runTaskStatus(flags);
+    });
+  task
+    .command("resume")
+    .description("Verify a task's ledger and show where it left off")
+    .argument("<id>", "task id")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { path?: string }) => {
+      process.exitCode = await runTaskResume(id, flags);
     });
 
   const skills = program

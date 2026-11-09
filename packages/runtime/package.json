@@ -20,7 +20,9 @@
     "@arynbht/factory-catalog": "workspace:*",
     "@arynbht/factory-engine": "workspace:*",
     "picomatch": "^4.0.7",
-    "simple-git": "^4.0.2"
+    "simple-git": "^4.0.2",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/picomatch": "^4.0.3"
