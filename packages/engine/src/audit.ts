@@ -2,6 +2,7 @@ import type { Control, Profile, Waiver } from "@arynbht/factory-catalog";
 
 import type { AuditContext } from "./context.js";
 import { type ControlResult, evaluateControl } from "./evaluate.js";
+import { gatherRepoFacts, type RepoFacts } from "./applicability.js";
 
 export interface AuditOptions {
   /** Max controls evaluated concurrently (detectors within a control are serial). */
@@ -12,6 +13,8 @@ export interface AuditOptions {
   profile?: Profile | null | undefined;
   /** Active waivers; if omitted, loaded from the context. */
   waivers?: Waiver[] | undefined;
+  /** Repo facts for applicability (stacks, `{ file }` globs); detected if omitted. */
+  facts?: RepoFacts | undefined;
 }
 
 /**
@@ -26,6 +29,7 @@ export async function evaluateControls(
   const concurrency = Math.max(1, options.concurrency ?? 8);
   const profile = options.profile ?? (await ctx.profile());
   const waivers = options.waivers ?? (await ctx.waivers());
+  const facts = options.facts ?? (await gatherRepoFacts(ctx, controls));
   const results: ControlResult[] = new Array<ControlResult>(controls.length);
   let next = 0;
 
@@ -38,6 +42,7 @@ export async function evaluateControls(
         now: options.now,
         profile,
         waivers,
+        facts,
       });
     }
   }

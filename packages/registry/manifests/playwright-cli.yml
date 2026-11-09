@@ -1,0 +1,55 @@
+name: playwright-cli
+source: microsoft/playwright-cli/skills/playwright-cli
+mirror: arynbht/playwright-cli/skills/playwright-cli
+pin: ce9b41b619c588c7dc0e89217d3469a70374acdd
+hash: "sha256:f4be5508fdcec8f3a4cf6698c861088e2bb2af57a8c8a6d3ee0f2604e9105110"
+license: Apache-2.0
+scope: always
+sectors: [testing, ui]
+phases: [prove]
+triggers:
+  paths: ["**/*.spec.ts", "**/*.e2e.*", "playwright.config.*", "e2e/**"]
+  keywords:
+    [browser, screenshot, e2e, playwright, ui proof, snapshot, form, click]
+  flags: []
+provides:
+  [
+    browser-automation,
+    snapshots,
+    screenshots,
+    tracing,
+    video,
+    test-generation,
+    pr-attachments,
+  ]
+conflicts: []
+requires: []
+commands:
+  - "playwright-cli open [url]"
+  - "playwright-cli goto <url>"
+  - "playwright-cli snapshot"
+  - "playwright-cli click <ref>"
+  - "playwright-cli fill <ref> <text>"
+  - "playwright-cli screenshot [--filename=<file>]"
+  - "playwright-cli console"
+  - "playwright-cli requests"
+  - "playwright-cli tracing-start"
+  - "playwright-cli tracing-stop"
+  - "playwright-cli video-start <file>"
+  - "playwright-cli video-stop"
+  - "playwright-cli close"
+tokens: 17500
+tools: [shell, browser]
+tested_on: "2026-11-09"
+notes: >
+  The UI proof beat: CLI over MCP for token cost, screenshots and video as evidence. allowed-tools is
+  scoped to playwright-cli and npx playwright. Caveats: it suggests "npm install -g
+  @playwright/cli@latest" when the CLI is missing (preinstall a pinned version instead); state-save
+  and cookie commands can capture session tokens into files that must stay out of evidence and commits.
+scan_allow:
+  - rule: disable-checks
+    file: references/test-generation.md
+    match_sha256: b1067b668d4072578c79f1d7561ed60c23ce87ed785635436c76a72eb4af4599
+    reviewed_by: arynbht
+    reviewed: "2026-11-09"
+    note: '"Never skip hooks or add sleeps as a fix": advice against skipping.'

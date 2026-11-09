@@ -10,6 +10,9 @@ applies:
 detect:
   - type: file-exists
     path: docs/accessibility.md|public/accessibility*.html|src/**/accessibility*
+  # Claude drafts, humans sign: a factory draft counts once it is reviewed.
+  - type: reviewed
+    task: accessibility-statement
 evidence: none
 fix:
   type: claude

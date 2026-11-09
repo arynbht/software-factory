@@ -21,6 +21,8 @@ concurrency:
 jobs:
   # PR runs post a sticky review comment — they need pull-requests:write only.
   audit-pr:
+    # Stable check name so the main ruleset can require it ("factory").
+    name: factory
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:

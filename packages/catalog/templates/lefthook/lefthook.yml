@@ -7,4 +7,6 @@ pre-commit:
 commit-msg:
   commands:
     commitlint:
-      run: npx --no -- commitlint --edit {1}
+      # Enforced once commitlint is installed (a Node dev dependency); a no-op
+      # until then, so repos without Node aren't blocked from committing.
+      run: "[ -x node_modules/.bin/commitlint ] || exit 0; node_modules/.bin/commitlint --edit {1}"

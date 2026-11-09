@@ -8,6 +8,7 @@ detect:
   - type: file-matches
     path: "SECURITY.md|.github/SECURITY.md|docs/SECURITY.md"
     pattern: "(?i)(report|disclos|vulnerabilit|security@|advisor|contact)"
+    absent: '(?i)(security@example\.com|replace with a real contact)'
 evidence: none
 fix:
   type: template

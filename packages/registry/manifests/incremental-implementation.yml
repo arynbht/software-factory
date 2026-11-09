@@ -1,0 +1,25 @@
+name: incremental-implementation
+source: addyosmani/agent-skills/skills/incremental-implementation
+mirror: arynbht/agent-skills/skills/incremental-implementation
+pin: 301b02b12bff98e4688e6984af6556802322bbde
+hash: "sha256:b6a791172452145768a86a16b78253153a1b47e04687e2a16eb9260f874e73ab"
+license: MIT
+scope: always
+sectors: [workflow]
+phases: [build]
+triggers:
+  paths: []
+  keywords: [implement, build, feature, refactor, feature flag]
+  flags: []
+provides:
+  [thin-slices, scope-discipline, safe-defaults, rollback-friendly-changes]
+conflicts: []
+requires: []
+commands: []
+tokens: 2500
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  Spine "build" step: implement-test-verify-commit per slice, touch only what the task needs.
+  It tells the agent to commit after every slice; reconcile with the runtime's own commit/PR
+  policy in the worktree. Body is clean.

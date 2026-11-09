@@ -3,7 +3,7 @@
 // generators, GitHub client, AI, inference, and metrics land here from M1 on.
 export const PACKAGE = "@arynbht/factory-engine" as const;
 
-export { buildContext } from "./context.js";
+export { buildContext, QUIET_LOG, resolveRepoSlug } from "./context.js";
 export type {
   AuditContext,
   BuildContextOptions,
@@ -60,7 +60,21 @@ export {
   updateProfile,
   ProfileError,
 } from "./profile.js";
-export { appliesTo, evaluatePredicate } from "./applicability.js";
+export {
+  appliesTo,
+  evaluatePredicate,
+  gatherRepoFacts,
+  NO_FACTS,
+  type RepoFacts,
+} from "./applicability.js";
+export {
+  declaredStacks,
+  detectStacks,
+  type Stack,
+  TEMPLATE_STACKS,
+  type TemplateStack,
+  templateStacks,
+} from "./stack.js";
 export {
   loadWaivers,
   addWaiver,
@@ -175,3 +189,12 @@ export type {
   SliceReport,
   SwarmProgress,
 } from "./floorplan/types.js";
+export {
+  DEFAULT_SUMMARY,
+  loadQualityBaseline,
+  QUALITY_FILE,
+  type QualityBaseline,
+  ratchetCoverageBaseline,
+  readLineCoverage,
+  readQualityFile,
+} from "./quality.js";

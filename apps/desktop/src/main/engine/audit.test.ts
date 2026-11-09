@@ -22,13 +22,13 @@ describe("runAudit (desktop adapter)", () => {
     // Every lane returned has at least one control, in catalog order.
     expect(card.lanes.every((lane) => lane.controls.length > 0)).toBe(true);
 
-    // The adapter reads the repo's real .factory/waivers.yml: the factory waives
-    // data.migrations-versioned (no database), so it must come back `waived`.
+    // The adapter evaluates applicability against the real repo: the factory has
+    // no datastore and doesn't handle PII, so data.migrations-versioned is n/a.
     const controls = card.lanes.flatMap((lane) => lane.controls);
     const migration = controls.find(
       (c) => c.controlId === "data.migrations-versioned",
     );
-    expect(migration?.status).toBe("waived");
+    expect(migration?.status).toBe("n/a");
 
     // Joined control metadata is populated (rationale/references for the expand).
     const security = card.lanes.find((lane) => lane.key === "security");

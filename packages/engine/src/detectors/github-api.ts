@@ -57,7 +57,12 @@ interface ProtectionState {
   classic: Record<string, unknown> | null;
   /** Active repository-ruleset rules applying to the branch (needs only read). */
   rules: BranchRule[];
+  /** True when classic protection could not be read (403: the token isn't admin). */
+  classicUnreadable: boolean;
 }
+
+const ADMIN_NEEDED =
+  "classic branch protection is unreadable with this token — needs an admin token (or protect the branch with a ruleset)";
 
 /**
  * Resolve how the default branch is protected, covering both classic branch
@@ -69,6 +74,7 @@ function getProtectionState(gh: GitHubClient): Promise<ProtectionState> {
     const branch = (await getRepo(gh)).default_branch;
 
     let classic: Record<string, unknown> | null = null;
+    let classicUnreadable = false;
     try {
       const { data } = await gh.octokit.rest.repos.getBranchProtection({
         owner: gh.owner,
@@ -81,6 +87,7 @@ function getProtectionState(gh: GitHubClient): Promise<ProtectionState> {
       // rulesets. Any other error bubbles up to the skip translation.
       const status = statusOf(err);
       if (status !== 404 && status !== 403) throw err;
+      classicUnreadable = status === 403;
     }
 
     // The rules endpoint needs only read access; let its errors bubble so a
@@ -92,7 +99,7 @@ function getProtectionState(gh: GitHubClient): Promise<ProtectionState> {
     });
     const rules = (data as BranchRule[] | undefined) ?? [];
 
-    return { branch, classic, rules };
+    return { branch, classic, rules, classicUnreadable };
   });
 }
 
@@ -118,12 +125,16 @@ const checks: Partial<Record<GithubApiCheck, CheckFn>> = {
   },
 
   "branch-protection": async (gh) => {
-    const { branch, classic, rules } = await getProtectionState(gh);
+    const { branch, classic, rules, classicUnreadable } =
+      await getProtectionState(gh);
     // A ruleset only counts as "protected" if it gates merges; a lone
     // non_fast_forward / deletion / creation rule is not meaningful protection.
     const meaningfulRule = rules.some(
       (r) => r.type === "pull_request" || r.type === "required_status_checks",
     );
+    if (!classic && !meaningfulRule && classicUnreadable) {
+      return skip(ADMIN_NEEDED);
+    }
     return classic || meaningfulRule
       ? pass(`"${branch}" is protected${classic ? "" : " (ruleset)"}`)
       : fail(
@@ -133,18 +144,22 @@ const checks: Partial<Record<GithubApiCheck, CheckFn>> = {
   },
 
   "required-pull-request": async (gh) => {
-    const { branch, classic, rules } = await getProtectionState(gh);
+    const { branch, classic, rules, classicUnreadable } =
+      await getProtectionState(gh);
     const hasClassic = Boolean(classic?.["required_pull_request_reviews"]);
     const hasRule = rules.some((r) => r.type === "pull_request");
+    if (!hasClassic && !hasRule && classicUnreadable) return skip(ADMIN_NEEDED);
     return hasClassic || hasRule
       ? pass(`pull request reviews required on "${branch}"`)
       : fail(`pull request reviews not required on "${branch}"`);
   },
 
   "required-status-checks": async (gh) => {
-    const { branch, classic, rules } = await getProtectionState(gh);
+    const { branch, classic, rules, classicUnreadable } =
+      await getProtectionState(gh);
     const hasClassic = Boolean(classic?.["required_status_checks"]);
     const hasRule = rules.some((r) => r.type === "required_status_checks");
+    if (!hasClassic && !hasRule && classicUnreadable) return skip(ADMIN_NEEDED);
     return hasClassic || hasRule
       ? pass(`status checks required on "${branch}"`)
       : fail(`status checks not required on "${branch}"`);

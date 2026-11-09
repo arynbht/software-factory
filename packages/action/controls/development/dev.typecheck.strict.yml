@@ -18,6 +18,7 @@ fix:
   file: tsconfig.json
   path: compilerOptions.strict
   value: true
+  createIfMissing: true
 references:
   - name: TypeScript Handbook — Strictness
     url: https://www.typescriptlang.org/tsconfig/#strict

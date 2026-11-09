@@ -4,3 +4,10 @@
   owner: aryan.bhatia@pilotship.io
   created: 2026-11-02
   expires: 2027-11-02
+- control: test.data.factories
+  reason: >
+    Test data is fixture repos under packages/engine/test/fixtures/; the detector
+    doesn't recognize fixture directories. Detector fix tracked in a separate PR.
+  owner: arynbht
+  created: 2026-11-09
+  expires: 2026-12-09

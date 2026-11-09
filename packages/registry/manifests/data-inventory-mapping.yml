@@ -1,0 +1,24 @@
+name: data-inventory-mapping
+source: mukul975/Privacy-Data-Protection-Skills/skills/privacy/data-inventory-mapping
+pin: 9b2ef9eae161c00a17241d42a388571321b33e9f
+hash: "sha256:818e94a309070ea4dc328d4992ac4ee65ad564044b50115b3a74c689dd756473"
+license: Apache-2.0
+scope: task
+sectors: [legal]
+phases: [brief]
+triggers:
+  paths: []
+  keywords: [data inventory, data map, ropa, records of processing]
+  flags: [handles-pii]
+provides: [data-inventory]
+conflicts: []
+requires: []
+commands: []
+tokens: 3000
+tools: [none]
+tested_on: "2026-11-09"
+controls: [legal.data.inventory]
+notes: >
+  GDPR-first draft for legal.data.inventory (Claude drafts, a lawyer signs). One of the three
+  privacy-pack skills mapped to a legal-lane control; the rest of the pack is
+  not installed.

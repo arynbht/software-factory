@@ -1,6 +1,12 @@
 export type { DetectorFn, DetectorResult, DetectorStatus } from "./types.js";
 export { command } from "./command.js";
-export { runTool, splitArgs, ToolNotFoundError } from "./exec.js";
+export {
+  allowlistedEnv,
+  ENV_ALLOWLIST,
+  runTool,
+  splitArgs,
+  ToolNotFoundError,
+} from "./exec.js";
 export { extractCheckScore, scorecard } from "./scorecard.js";
 export { fileExists } from "./file-exists.js";
 export { fileJsonPath } from "./file-json-path.js";

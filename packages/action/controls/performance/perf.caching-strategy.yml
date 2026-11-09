@@ -4,6 +4,14 @@ lane: performance
 phase: harden
 severity: low
 effort: small
+# Only for software that runs as a deployed service, not a library or CLI.
+applies:
+  any:
+    - type: web-app
+    - type: api
+    - type: data-pipeline
+    - flag: multi-service
+    - file: "Dockerfile|**/Dockerfile|docker-compose*.y*ml|**/*.tf|fly.toml|render.yaml|railway.json|vercel.json|app.yaml|cloudbuild*.y*ml|k8s/**|helm/**"
 detect:
   - type: file-matches
     path: "docs/**/*.md|README*|ARCHITECTURE*"

@@ -1,0 +1,43 @@
+name: constraint-driven-development
+source: addyosmani/agent-skills/skills/constraint-driven-development
+mirror: arynbht/agent-skills/skills/constraint-driven-development
+pin: 301b02b12bff98e4688e6984af6556802322bbde
+hash: "sha256:5c2dcebe5a2359afc54d3efbdb481c7afd7521c6cb20e4af596cbd6da5d94227"
+license: MIT
+scope: always
+sectors: [workflow, testing, security, perf]
+phases: [brief, build, review]
+triggers:
+  paths: ["CONSTRAINTS.md"]
+  keywords:
+    [
+      constraints,
+      quality bar,
+      quality gate,
+      coverage,
+      threshold,
+      eslint-disable,
+      ts-ignore,
+      skipped test,
+    ]
+  flags: []
+provides: [CONSTRAINTS.md, floor-guard, ratchets, weakened-bar-detection]
+conflicts: []
+requires: []
+commands: []
+tokens: 8500
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  Spine: the guard against agents silencing checks (new suppressions, skipped/deleted tests,
+  thresholds edited down); references/floor-guard.md is a diff-scoped reference checker the judge
+  can adopt. Its "--no-verify" mention is a red flag to detect, not an instruction. The interview
+  step must not run in autonomous mode (the skill says so); it also wants to add a line to
+  AGENTS.md/CLAUDE.md, which the factory generates itself.
+scan_allow:
+  - rule: disable-checks
+    file: SKILL.md
+    match_sha256: 7e1b6142e38870d256d60f6b5ee5a9e7e68019793f7e5c929f9030cb5fe8d546
+    reviewed_by: arynbht
+    reviewed: "2026-11-09"
+    note: "In the skill's list of red flags to watch for; names --no-verify as a problem, not an instruction."

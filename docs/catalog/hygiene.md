@@ -24,7 +24,7 @@ References:
 ### `repo.codeowners.present` — CODEOWNERS present
 
 - **phase**: scaffold · **severity**: low · **effort**: small
-- **detect**: `file-exists` · **fix**: template `codeowners`
+- **detect**: `file-matches` · **fix**: template `codeowners`
 
 A CODEOWNERS file routes review requests to the people responsible for each path, so changes are not merged without an accountable reviewer.
 
@@ -64,7 +64,7 @@ References:
 ### `repo.license.present` — LICENSE present
 
 - **phase**: scaffold · **severity**: high · **effort**: small
-- **detect**: `file-exists` · **fix**: template `license`
+- **detect**: `file-matches` · **fix**: template `license`
 
 Without an explicit license, default copyright law leaves others with no right to use, copy, or contribute to the code, blocking adoption and collaboration.
 
@@ -75,7 +75,7 @@ References:
 ### `repo.lockfile.present` — Dependency lockfile committed
 
 - **phase**: scaffold · **severity**: medium · **effort**: small
-- **detect**: `file-exists` · **fix**: —
+- **detect**: `any-of` · **fix**: command `undefined`
 
 A committed lockfile pins the exact dependency tree so every install and CI run is reproducible and resistant to surprise upstream changes.
 
@@ -105,7 +105,7 @@ References:
 ### `repo.toolchain-pinned` — Toolchain version pinned
 
 - **phase**: scaffold · **severity**: low · **effort**: small
-- **detect**: `file-exists` · **fix**: template `toolchain`
+- **detect**: `any-of` · **fix**: template `toolchain`
 
 Pinning the language/runtime version keeps local, CI, and teammate environments identical and avoids "works on my machine" drift.
 

@@ -12,8 +12,10 @@ export async function fileMatches(
   config: FileMatchesConfig,
 ): Promise<DetectorResult> {
   let regex: RegExp;
+  let absent: RegExp | undefined;
   try {
     regex = compileRegex(config.pattern);
+    absent = config.absent ? compileRegex(config.absent) : undefined;
   } catch {
     return {
       status: "skip",
@@ -30,11 +32,23 @@ export async function fileMatches(
     };
   }
 
+  let placeholder: string | undefined;
   for (const rel of matches) {
     const content = await ctx.readFile(rel);
-    if (content !== null && regex.test(content)) {
-      return { status: "pass", message: `${rel} matches /${config.pattern}/` };
+    if (content === null || !regex.test(content)) continue;
+    if (absent?.test(content)) {
+      placeholder ??= rel;
+      continue;
     }
+    return { status: "pass", message: `${rel} matches /${config.pattern}/` };
+  }
+
+  if (placeholder) {
+    return {
+      status: "fail",
+      message: `${placeholder} still contains placeholder text /${config.absent}/`,
+      remediation: `replace the placeholder in ${placeholder}`,
+    };
   }
 
   return {

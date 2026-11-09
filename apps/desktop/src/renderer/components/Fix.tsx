@@ -14,6 +14,7 @@ const ACTION: Record<FixChange["action"], string> = {
   skip: "text-slate-400",
   unchanged: "text-slate-400",
   effect: "text-violet-400",
+  note: "text-slate-400",
 };
 
 const preClass =

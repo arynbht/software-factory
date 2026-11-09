@@ -1,0 +1,24 @@
+name: dsar-processing
+source: mukul975/Privacy-Data-Protection-Skills/skills/privacy/dsar-processing
+pin: 9b2ef9eae161c00a17241d42a388571321b33e9f
+hash: "sha256:7795c07d0c5740a7a67114f1431e13543b513e2a62d50146e4e22d1ef1bed34e"
+license: Apache-2.0
+scope: task
+sectors: [legal]
+phases: [brief]
+triggers:
+  paths: []
+  keywords: [dsar, subject access, data subject request, right of access]
+  flags: [handles-pii]
+provides: [dsar-process]
+conflicts: []
+requires: []
+commands: []
+tokens: 2500
+tools: [none]
+tested_on: "2026-11-09"
+controls: [legal.dsar.process]
+notes: >
+  GDPR-first draft for legal.dsar.process (Claude drafts, a lawyer signs). One of the three
+  privacy-pack skills mapped to a legal-lane control; the rest of the pack is
+  not installed.

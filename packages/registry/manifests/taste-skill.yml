@@ -1,0 +1,50 @@
+name: taste-skill
+source: Leonxlnx/taste-skill/skills/taste-skill
+pin: f6b76575f949707b4e3c37cd86cb44b0b98643e8
+hash: "sha256:222fdbdc3fbc45defd9d9014efcdc31ec2381400523c844b7dafddd133337e59"
+license: MIT
+scope: task
+sectors: [ui]
+phases: [polish, review]
+triggers:
+  paths:
+    [
+      "src/components/**",
+      "src/styles/**",
+      "app/**/page.*",
+      "**/*.css",
+      "index.html",
+    ]
+  keywords:
+    [
+      taste-skill,
+      tasteskill,
+      landing page,
+      marketing site,
+      ai-made,
+      generic,
+      templated,
+      restyle,
+    ]
+  flags: [public-facing]
+provides: [anti-slop-build, copy-lint, layout-check, finish-gate, waivers]
+conflicts: [impeccable, hallmark]
+requires: []
+commands:
+  - 'node <skill>/scripts/gate.mjs --start index.html --kind <kind> --category "<what is sold>" --primary "<main action>"'
+  - "node <skill>/scripts/copy-lint.mjs index.html --kind <kind>"
+  - 'node <skill>/scripts/consistency.mjs index.html --widths 1440,1024,820,768,390 --rhythm-widths 1440,820,768,390 --profile <dir> --page <kind> --category "<what is sold>" --primary "<main action>"'
+  - "node <skill>/assets/layout/check.mjs --url index.html --profile <dir> --sizes 1440x900,1024x768,820x1180,768x1024,390x844 --shots shots/layout"
+  - "node <skill>/scripts/shoot.mjs --url index.html --w 1440 --out shots/1440.png --profile <dir>"
+  - "node <skill>/scripts/perf.mjs index.html --profile <dir>"
+  - "node <skill>/scripts/gate.mjs index.html"
+  - 'node <skill>/scripts/gate.mjs --done "<what they said>"'
+tokens: 7500
+tools: [shell, browser, network]
+tested_on: "2026-11-09"
+notes: >
+  Alternate critique voice; impeccable wins unless the card names taste-skill. Caveats: it is really
+  a full marketing-site builder (Node 22+, headless Chrome, live photo and icon fetches), not a pure
+  critique; its frontmatter registers a Stop hook that execs node gate.mjs, and its SKILL.md name is
+  design-taste-frontend, so the hook's path probes expect that directory name. ~36 MB including
+  ~29 MB of images; tokens is bytes/4 over all text files, SKILL.md alone is ~8k tokens.

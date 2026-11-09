@@ -4,6 +4,14 @@ lane: cloud
 phase: architecture
 severity: medium
 effort: large
+# Only for software that runs as a deployed service, not a library or CLI.
+applies:
+  any:
+    - type: web-app
+    - type: api
+    - type: data-pipeline
+    - flag: multi-service
+    - file: "Dockerfile|**/Dockerfile|docker-compose*.y*ml|**/*.tf|fly.toml|render.yaml|railway.json|vercel.json|app.yaml|cloudbuild*.y*ml|k8s/**|helm/**"
 detect:
   - type: file-exists
     path: "**/*.tf|**/*.bicep|**/cloudformation*.y*ml|**/Pulumi.y*ml|**/serverless.y*ml|**/cdk.json"

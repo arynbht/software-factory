@@ -1,0 +1,24 @@
+name: retention-schedule
+source: mukul975/Privacy-Data-Protection-Skills/skills/privacy/retention-schedule
+pin: 9b2ef9eae161c00a17241d42a388571321b33e9f
+hash: "sha256:19e4a88a5b5026051e5f9f197f1d17528ef3c516ea899710f204e43e03311e89"
+license: Apache-2.0
+scope: task
+sectors: [legal]
+phases: [brief]
+triggers:
+  paths: []
+  keywords: [retention, retention schedule, storage limitation, deletion]
+  flags: [handles-pii]
+provides: [retention-schedule]
+conflicts: []
+requires: []
+commands: []
+tokens: 3500
+tools: [none]
+tested_on: "2026-11-09"
+controls: [legal.data.retention]
+notes: >
+  GDPR-first draft for legal.data.retention (Claude drafts, a lawyer signs). One of the three
+  privacy-pack skills mapped to a legal-lane control; the rest of the pack is
+  not installed.

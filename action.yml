@@ -1,0 +1,30 @@
+# Root entrypoint so consumers can write `uses: arynbht/software-factory@<ref>`.
+# It forwards to the bundled action in packages/action (same inputs, same
+# behaviour); keep the two in sync.
+name: Factory audit
+description: Audit a repository against the factory control catalog and gate PRs.
+author: Aryan Bhatia
+
+inputs:
+  gate:
+    description: Phase gate to evaluate (e.g. scaffold, build, harden).
+    required: false
+    default: build
+  token:
+    description: GitHub token used for API checks, PR comments, and status issues.
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version: "22"
+    - name: Factory audit
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        FACTORY_GATE: ${{ inputs.gate }}
+      run: node "${{ github.action_path }}/packages/action/dist/index.js" ci

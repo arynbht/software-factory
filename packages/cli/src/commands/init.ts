@@ -8,7 +8,11 @@ import {
   PROJECT_TYPES,
   SEVERITIES,
 } from "@arynbht/factory-catalog";
-import { ProfileError, saveProfile } from "@arynbht/factory-engine";
+import {
+  ProfileError,
+  resolveRepoSlug,
+  saveProfile,
+} from "@arynbht/factory-engine";
 import {
   cancel,
   intro,
@@ -28,6 +32,9 @@ export interface InitFlags {
   stack?: string;
   flag?: string[];
   severityFloor?: string;
+  license?: string;
+  owner?: string;
+  securityContact?: string;
   yes?: boolean;
   force?: boolean;
 }
@@ -109,9 +116,46 @@ interface ProfileDraft {
   phase?: string;
   flags: Record<string, boolean>;
   "severity-floor": string;
+  project?: ProjectDraft;
 }
 
-function draftFromFlags(flags: InitFlags, root: string): ProfileDraft {
+interface ProjectDraft {
+  license?: string | undefined;
+  owner?: string | undefined;
+  "security-contact"?: string | undefined;
+}
+
+/**
+ * Defaults for the `project:` block from the repo's GitHub remote: the owner
+ * handle, and GitHub's private vulnerability reporting as the security contact.
+ * No remote means no default — templates then say what to set rather than
+ * shipping a placeholder.
+ */
+async function projectDefaults(root: string): Promise<ProjectDraft> {
+  const slug = await resolveRepoSlug(root);
+  return {
+    license: "MIT",
+    ...(slug
+      ? {
+          owner: `@${slug.owner}`,
+          "security-contact": `https://github.com/${slug.owner}/${slug.repo}/security/advisories/new`,
+        }
+      : {}),
+  };
+}
+
+function withoutEmpty(project: ProjectDraft): ProjectDraft | undefined {
+  const entries = Object.entries(project).filter(([, v]) => Boolean(v));
+  return entries.length > 0
+    ? (Object.fromEntries(entries) as ProjectDraft)
+    : undefined;
+}
+
+async function draftFromFlags(
+  flags: InitFlags,
+  root: string,
+): Promise<ProfileDraft> {
+  const defaults = await projectDefaults(root);
   const draft: ProfileDraft = {
     version: 1,
     name: flags.name ?? basename(root),
@@ -124,8 +168,14 @@ function draftFromFlags(flags: InitFlags, root: string): ProfileDraft {
       : [],
     flags: Object.fromEntries((flags.flag ?? []).map((f) => [f, true])),
     "severity-floor": flags.severityFloor ?? "low",
+    phase: flags.phase ?? "scaffold",
   };
-  if (flags.phase) draft.phase = flags.phase;
+  const project = withoutEmpty({
+    license: flags.license ?? defaults.license,
+    owner: flags.owner ?? defaults.owner,
+    "security-contact": flags.securityContact ?? defaults["security-contact"],
+  });
+  if (project) draft.project = project;
   return draft;
 }
 
@@ -172,6 +222,26 @@ async function draftInteractive(root: string): Promise<ProfileDraft | null> {
   });
   if (isCancel(floor)) return null;
 
+  const defaults = await projectDefaults(root);
+  const license = await text({
+    message: "License (SPDX id)",
+    initialValue: defaults.license ?? "",
+  });
+  if (isCancel(license)) return null;
+
+  const owner = await text({
+    message: "Code owner (GitHub @handle or @org/team)",
+    initialValue: defaults.owner ?? "",
+    placeholder: "@your-handle",
+  });
+  if (isCancel(owner)) return null;
+
+  const contact = await text({
+    message: "Where to report vulnerabilities (email or URL)",
+    initialValue: defaults["security-contact"] ?? "",
+  });
+  if (isCancel(contact)) return null;
+
   const draft: ProfileDraft = {
     version: 1,
     name: String(name),
@@ -184,6 +254,12 @@ async function draftInteractive(root: string): Promise<ProfileDraft | null> {
     flags: Object.fromEntries((chosen as string[]).map((f) => [f, true])),
     "severity-floor": String(floor),
   };
+  const project = withoutEmpty({
+    license: String(license).trim(),
+    owner: String(owner).trim(),
+    "security-contact": String(contact).trim(),
+  });
+  if (project) draft.project = project;
   return draft;
 }
 
@@ -216,7 +292,7 @@ export async function runInit(
       return 1;
     }
   } else {
-    draft = draftFromFlags(flags, root);
+    draft = await draftFromFlags(flags, root);
     if (!draft.type) {
       console.error(
         `factory init: --type is required in non-interactive mode (one of: ${PROJECT_TYPES.join(", ")}).`,

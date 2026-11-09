@@ -236,7 +236,7 @@ export type EvidenceRequest = z.infer<typeof EvidenceRequest>;
 // Fix — proposed generator changes (dry-run or applied) and the PR outcome.
 export const FixChange = z.object({
   controlId: z.string(),
-  type: z.enum(["file", "effect"]),
+  type: z.enum(["file", "effect", "note"]),
   action: z.enum([
     "create",
     "update",
@@ -244,6 +244,7 @@ export const FixChange = z.object({
     "unchanged",
     "suggest",
     "effect",
+    "note",
   ]),
   path: z.string().optional(),
   before: z.string().optional(),

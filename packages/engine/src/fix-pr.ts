@@ -51,10 +51,14 @@ const STATE_FILE = ".factory/state.json";
  * can only carry file changes, not repo-setting mutations. Requires a clean
  * working tree so the PR contains only factory changes. If nothing changed, no
  * branch is left behind and no PR is opened.
+ *
+ * `changes` may be a planner instead of a list: it is called after the branch is
+ * checked out, so a reused branch is planned against its own tip (with the
+ * factory's earlier commits) rather than against the base it was cut from.
  */
 export async function openFixPr(
   ctx: AuditContext,
-  changes: Change[],
+  changes: Change[] | (() => Promise<Change[]>),
   options: FixPrOptions,
 ): Promise<FixPrResult> {
   const git = simpleGit(ctx.repoPath);
@@ -80,9 +84,6 @@ export async function openFixPr(
   }
   const branch = `factory/${options.date}-${options.gate}`;
 
-  const fileChanges = changes.filter((c) => c.type === "file");
-  const skippedEffects = changes.length - fileChanges.length;
-
   const local = await git.branchLocal();
   const reusingBranch = local.all.includes(branch);
   if (reusingBranch) {
@@ -91,33 +92,51 @@ export async function openFixPr(
     await git.checkoutLocalBranch(branch);
   }
 
-  let changeResults: ChangeResult[] = [];
+  const changeResults: ChangeResult[] = [];
+  let skippedEffects = 0;
   const commits: FixPrResult["commits"] = [];
   try {
-    changeResults = await applyChanges(ctx.repoPath, fileChanges, {
-      mode: "write",
-    });
+    const planned = typeof changes === "function" ? await changes() : changes;
+    const fileChanges = planned.filter((c) => c.type === "file");
+    skippedEffects = planned.filter((c) => c.type === "effect").length;
 
-    // Group written files by control so each becomes its own commit.
-    const byControl = new Map<string, string[]>();
-    for (const r of changeResults) {
-      if (
-        r.type === "file" &&
-        (r.action === "create" || r.action === "update") &&
-        r.path
-      ) {
-        const paths = byControl.get(r.controlId) ?? [];
-        paths.push(r.path);
-        byControl.set(r.controlId, paths);
-      }
+    // Apply and commit control by control. Changes to a shared file (ci.yml) are
+    // cumulative, so each commit holds exactly that control's edit.
+    const order: string[] = [];
+    const byControl = new Map<string, Change[]>();
+    for (const change of fileChanges) {
+      if (!byControl.has(change.controlId)) order.push(change.controlId);
+      byControl.set(change.controlId, [
+        ...(byControl.get(change.controlId) ?? []),
+        change,
+      ]);
     }
 
-    for (const [controlId, paths] of byControl) {
+    for (const controlId of order) {
+      const results = await applyChanges(
+        ctx.repoPath,
+        byControl.get(controlId) ?? [],
+        { mode: "write" },
+      );
+      changeResults.push(...results);
+      // Suggestions are committed too, so the tree is clean afterwards and the
+      // reviewer sees them in the PR.
+      const paths = results
+        .filter(
+          (r) =>
+            r.type === "file" &&
+            (r.action === "create" ||
+              r.action === "update" ||
+              r.action === "suggest") &&
+            r.path,
+        )
+        .map((r) => r.path as string);
+      if (paths.length === 0) continue;
       await git.add(paths);
       const title = options.titles?.[controlId];
       const message = title
-        ? `factory: ${controlId} — ${title}`
-        : `factory: fix ${controlId}`;
+        ? `chore(factory): ${controlId} — ${title}`
+        : `chore(factory): fix ${controlId}`;
       await git.commit(message);
       commits.push({ controlId, message, paths });
     }
@@ -126,7 +145,7 @@ export async function openFixPr(
     const after = await git.status();
     if (after.files.some((f) => f.path === STATE_FILE)) {
       await git.add([STATE_FILE]);
-      await git.commit("factory: update managed-file registry");
+      await git.commit("chore(factory): update managed-file registry");
     }
   } catch (err) {
     // Leave the tree on the base branch if we failed partway through.
@@ -197,7 +216,7 @@ async function defaultOpenPr(
 }
 
 function prTitle(count: number, gate: string): string {
-  return `factory: ${count} fix${count === 1 ? "" : "es"} for ${gate}`;
+  return `chore(factory): ${count} fix${count === 1 ? "" : "es"} for ${gate}`;
 }
 
 function prBody(

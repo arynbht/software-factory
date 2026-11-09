@@ -4,6 +4,8 @@ lane: data
 phase: build
 severity: low
 effort: small
+applies:
+  flag: has-users
 detect:
   - type: file-exists
     path: "docs/analytics*|docs/events*|**/events.*|**/tracking-plan*"

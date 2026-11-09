@@ -4,6 +4,11 @@ lane: cloud
 phase: harden
 severity: high
 effort: large
+# Only when the project stores data: it handles PII, or the repo shows a datastore.
+applies:
+  any:
+    - flag: handles-pii
+    - file: "**/migrations/**|prisma/schema.prisma|**/alembic.ini|**/alembic/**|knexfile.*|drizzle.config.*|ormconfig.*|**/schema.sql|**/db/schema.rb"
 detect:
   - type: manual
 evidence: required

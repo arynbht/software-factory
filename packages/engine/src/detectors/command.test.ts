@@ -14,7 +14,7 @@ const repo = resolve(
   "fixtures",
   "empty",
 );
-const ctx = () => buildContext(repo);
+const ctx = () => buildContext(repo, { runCommands: true });
 
 describe("command", () => {
   it("passes when the command exits 0", async () => {
