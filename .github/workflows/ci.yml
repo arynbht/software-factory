@@ -126,14 +126,28 @@ jobs:
         # default, which otherwise leaves the window (and firstWindow) hanging.
         run: xvfb-run -a --server-args="-screen 0 1280x1024x24" pnpm --filter @arynbht/factory-desktop e2e
 
-  # Single required status check ("ci") that gates on every matrix leg, so branch
+  # Single required status check ("ci") that gates on every upstream job, so branch
   # protection needs just one context regardless of how many OSes the matrix runs.
+  # `if: always()` plus the explicit result check matters: without it a failed
+  # dependency makes this job *skipped*, and GitHub treats a skipped required
+  # check as passing.
   ci:
     name: ci
-    needs: [build-test, desktop-e2e]
+    if: always()
+    needs: [build-test, desktop-e2e, secret-scan]
     runs-on: ubuntu-latest
     steps:
-      - run: echo "all build-test legs passed"
+      - name: Require every upstream job to succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "upstream results: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "::error::a required job finished with '$r'"
+              exit 1
+            fi
+          done
 
   # Secret-scanning backstop: the pre-commit hook (lefthook + gitleaks) can be
   # bypassed with --no-verify, so CI scans the full history as well.
