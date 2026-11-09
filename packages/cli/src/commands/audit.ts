@@ -15,6 +15,7 @@ import {
   evidenceExpiringWithin,
   loadState,
   ProfileError,
+  ratchetCoverageBaseline,
   resolveToken,
   saveState,
   WaiverError,
@@ -192,6 +193,15 @@ export async function runAudit(
   }
 
   await writeState(ctx.repoPath, all);
+  // Record the coverage baseline at the first measured run, and raise it when
+  // coverage improves (it never moves down). Best-effort.
+  const raised = await ratchetCoverageBaseline(
+    ctx,
+    (options.now ?? new Date()).toISOString().slice(0, 10),
+  ).catch(() => null);
+  if (raised !== null) {
+    warn(`\nCoverage baseline set to ${raised}% (.factory/quality.json)\n`);
+  }
 
   if (gateResults) {
     return gateResults.some((g) => g.status === "red") ? 1 : 0;

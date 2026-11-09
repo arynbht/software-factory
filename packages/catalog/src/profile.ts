@@ -57,6 +57,15 @@ export const ProfileSchema = z.strictObject({
   lanes: LanesSchema,
   "severity-floor": z.enum(SEVERITIES).default("low"),
   project: ProjectSchema,
+  quality: z
+    .strictObject({
+      /**
+       * Minimum line coverage (%). Unset: the baseline the factory recorded at
+       * the first measured run (`.factory/quality.json`), which only ratchets up.
+       */
+      coverage: z.number().min(0).max(100).optional(),
+    })
+    .optional(),
 });
 
 export type Profile = z.infer<typeof ProfileSchema>;

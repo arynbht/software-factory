@@ -54,7 +54,7 @@ References:
 ### `a11y.statement.published` — Accessibility statement page published
 
 - **phase**: launch · **severity**: low · **effort**: small
-- **detect**: `reviewed` · **fix**: claude `accessibility-statement`
+- **detect**: `file-exists`, `reviewed` · **fix**: claude `accessibility-statement`
 
 A public accessibility statement is expected by the EAA and ADA and tells users how to report barriers, giving them a clear channel to raise access problems.
 

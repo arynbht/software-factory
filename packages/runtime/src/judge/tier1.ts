@@ -1,4 +1,13 @@
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -7,8 +16,10 @@ import {
   buildContext,
   type ControlResult,
   deepEqual,
+  detectStacks,
   evaluateControls,
   runTool,
+  templateStacks,
   ToolNotFoundError,
 } from "@arynbht/factory-engine";
 import { type SimpleGit, simpleGit } from "simple-git";
@@ -77,6 +88,32 @@ const LOCKFILES = [
   "npm-shrinkwrap.json",
 ];
 const INSTALL_TIMEOUT_MS = 15 * 60_000;
+const CLONE_PREFIX = "factory-judge-";
+const STALE_MS = 24 * 60 * 60_000;
+
+/** Remove judge clones a crashed run left behind (older than 24 hours). */
+export async function sweepStaleClones(
+  root: string = tmpdir(),
+  now: number = Date.now(),
+): Promise<void> {
+  let entries: string[];
+  try {
+    entries = await readdir(root);
+  } catch {
+    return;
+  }
+  for (const name of entries) {
+    if (!name.startsWith(CLONE_PREFIX)) continue;
+    const path = join(root, name);
+    try {
+      if (now - (await stat(path)).mtimeMs > STALE_MS) {
+        await rm(path, { recursive: true, force: true });
+      }
+    } catch {
+      // Another run may be removing it; not our problem.
+    }
+  }
+}
 
 /**
  * Judge tier 1: deterministic checks on a clean clone, never the agent's
@@ -112,8 +149,11 @@ export async function runTier1(options: Tier1Options): Promise<Tier1Result> {
   const scriptsChanged = !deepEqual(baseScripts, headScripts);
   const protectedFindings = findProtected(diff, added, scriptsChanged);
 
+  // A unique directory per run (two judges on one task never collide), outside
+  // the repo so it never shows up in `git status` or the repo's own audits.
+  await sweepStaleClones();
   const workDir =
-    options.workDir ?? (await mkdtemp(join(tmpdir(), "factory-judge-")));
+    options.workDir ?? (await mkdtemp(join(tmpdir(), CLONE_PREFIX)));
   const notes: string[] = [];
   try {
     log(`cloning into ${workDir}`);
@@ -122,7 +162,15 @@ export async function runTier1(options: Tier1Options): Promise<Tier1Result> {
       "--shared",
       "--no-checkout",
     ]);
-    const clone = simpleGit(workDir);
+    // simple-git guards core.hooksPath against hook injection; here it points
+    // at an empty directory we just made, which is the opposite of injection.
+    const clone = simpleGit(workDir, {
+      unsafe: { allowUnsafeHooksPath: true },
+    });
+    // The target repo's hooks never run inside the judge.
+    const noHooks = join(workDir, ".git", "factory-no-hooks");
+    await mkdir(noHooks, { recursive: true });
+    await clone.addConfig("core.hooksPath", noHooks);
 
     // Baseline.
     await clone.raw(["checkout", "--quiet", "--detach", mergeBase]);
@@ -155,8 +203,22 @@ export async function runTier1(options: Tier1Options): Promise<Tier1Result> {
       );
     }
 
+    // The judge installs only Node dependencies so far. For other stacks, a
+    // check that's red on both sides may just be a dependency the clone lacks,
+    // so "pre-existing" can't be trusted there: fail and say why, never pass.
+    const unverifiable = templateStacks(
+      await detectStacks(buildContext(workDir)),
+    ).filter((s) => s !== "node");
+    const preExisting = checks.some((c) => c.outcome === "pre-existing");
+    if (unverifiable.length > 0 && preExisting) {
+      notes.push(
+        `${unverifiable.join("/")} dependencies aren't installed by the judge yet; a check that's red at base may be a missing dependency, so the judge can't verify this change`,
+      );
+    }
+
     const failed =
       ran.length === 0 ||
+      (unverifiable.length > 0 && preExisting) ||
       checks.some((c) => c.outcome === "fail") ||
       (headInstall !== null && !headInstall.ok && !(baseInstall?.ok === false));
 
@@ -195,14 +257,25 @@ async function runChecks(
           c.lane === "quality" &&
           !c.detect.some((d) => d.type === "github-api"),
       );
+  // One at a time, test runs first: coverage is read from what *this* side's
+  // test run wrote, so the previous side's report is removed before it starts.
+  const ordered = [...selected].sort(
+    (a, b) => Number(!runsTests(a)) - Number(!runsTests(b)),
+  );
+  await rm(join(dir, "coverage"), { recursive: true, force: true });
   const ctx = buildContext(dir, { runCommands: true, now: options.now });
   const profile = await ctx.profile().catch(() => null);
   // Waivers are posture decisions; the judge holds every check to its result.
-  return evaluateControls(selected, ctx, {
+  return evaluateControls(ordered, ctx, {
     profile,
     waivers: [],
     now: options.now,
+    concurrency: 1,
   });
+}
+
+function runsTests(control: Control): boolean {
+  return control.id === "quality.tests.pass";
 }
 
 function side(result: ControlResult | undefined): Side {

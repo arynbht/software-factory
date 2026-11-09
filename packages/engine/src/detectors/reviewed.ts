@@ -2,45 +2,50 @@ import type { DetectorConfig } from "@arynbht/factory-catalog";
 
 import type { AuditContext } from "../context.js";
 import type { DetectorResult } from "./types.js";
-import { splitGlobs } from "./util.js";
 
 type ReviewedConfig = Extract<DetectorConfig, { type: "reviewed" }>;
 
 /** The provenance header `factory ai` writes (see ai/generate.ts). */
 const GENERATED = /<!--\s*factory:generated[\s\S]*?-->/;
 const REVIEWED = /^reviewed-by:[ \t]*\S/m;
+const TASK = /^task:[ \t]*(\S+)/m;
+
+/** Where drafts land: `factory ai` writes Markdown. */
+const DRAFTS = ["**/*.md", "**/*.mdx", "**/*.markdown"];
 
 /**
- * Claude drafts, humans sign. Passes when some matching file is either written
- * by a human (no `factory:generated` header) or a factory draft whose header has
- * a filled `reviewed-by:` line. An unreviewed draft alone does not pass.
+ * Claude drafts, humans sign. Finds drafts by their `factory:generated` header —
+ * not by a path glob — and requires every one (for `task`, when given) to carry
+ * a filled `reviewed-by:` line. Human-written files have no header and don't
+ * count either way; whether the artifact exists at all is the control's other
+ * detector's job.
  */
 export async function reviewed(
   ctx: AuditContext,
   config: ReviewedConfig,
 ): Promise<DetectorResult> {
-  const matches = await ctx.glob(splitGlobs(config.path));
-  if (matches.length === 0) {
+  const unreviewed: string[] = [];
+  let drafts = 0;
+  for (const rel of await ctx.glob(DRAFTS)) {
+    const header = GENERATED.exec((await ctx.readFile(rel)) ?? "")?.[0];
+    if (!header) continue;
+    if (config.task && TASK.exec(header)?.[1] !== config.task) continue;
+    drafts++;
+    if (!REVIEWED.test(header)) unreviewed.push(rel);
+  }
+  const scope = config.task ? `\`${config.task}\` ` : "";
+  if (unreviewed.length > 0) {
     return {
       status: "fail",
-      message: `no file matching "${config.path}"`,
-      remediation: `create ${config.path}`,
+      message: `unreviewed Claude ${scope}draft: ${unreviewed.join(", ")}`,
+      remediation: "review each draft and fill in its `reviewed-by:` line",
     };
   }
-
-  const drafts: string[] = [];
-  for (const rel of matches) {
-    const content = (await ctx.readFile(rel)) ?? "";
-    const header = GENERATED.exec(content)?.[0];
-    if (!header) return { status: "pass", message: `${rel} (human-written)` };
-    if (REVIEWED.test(header)) {
-      return { status: "pass", message: `${rel} (draft, reviewed)` };
-    }
-    drafts.push(rel);
-  }
   return {
-    status: "fail",
-    message: `unreviewed Claude draft: ${drafts.join(", ")}`,
-    remediation: "review the draft and fill in its `reviewed-by:` line",
+    status: "pass",
+    message:
+      drafts === 0
+        ? `no Claude ${scope}drafts`
+        : `${drafts} Claude ${scope}draft(s), all reviewed`,
   };
 }

@@ -13,7 +13,7 @@ Outcomes, not configuration: lint, typecheck, and tests actually pass; coverage 
 ### `quality.coverage.floor` — Coverage at or above the floor
 
 - **phase**: harden · **severity**: medium · **effort**: medium
-- **detect**: `file-json-path` · **fix**: —
+- **detect**: `coverage` · **fix**: —
 
 Coverage doesn't prove tests are good, but a falling number shows untested code arriving. A floor keeps new work from lowering it.
 

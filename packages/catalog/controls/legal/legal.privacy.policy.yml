@@ -13,7 +13,7 @@ detect:
     pattern: (?i)privacy
   # Claude drafts, humans sign: a factory draft counts once it is reviewed.
   - type: reviewed
-    path: docs/**/*.md|public/**/privacy*|src/**/privacy*
+    task: privacy-policy
 evidence: optional
 fix:
   type: claude

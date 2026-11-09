@@ -13,7 +13,7 @@ Diátaxis docs, ADRs, architecture diagrams, runbooks, and changelogs.
 ### `docs.adr-log` — ADR log started and current
 
 - **phase**: architecture · **severity**: medium · **effort**: medium
-- **detect**: `reviewed` · **fix**: claude `adr`
+- **detect**: `file-exists`, `reviewed` · **fix**: claude `adr`
 
 Architecture Decision Records capture why a choice was made and what was traded off, so future contributors change the system with context rather than re-litigating settled decisions.
 
@@ -64,7 +64,7 @@ References:
 ### `docs.runbooks-dir` — Runbooks directory exists
 
 - **phase**: harden · **severity**: medium · **effort**: medium
-- **detect**: `reviewed` · **fix**: claude `runbook`
+- **detect**: `file-exists`, `reviewed` · **fix**: claude `runbook`
 
 Runbooks turn 3am incidents from improvisation into a checklist; a dedicated directory makes them discoverable when they are needed most.
 

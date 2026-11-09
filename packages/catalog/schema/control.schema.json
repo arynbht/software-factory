@@ -340,15 +340,32 @@
                 "type": "string",
                 "const": "reviewed"
               },
-              "path": {
+              "task": {
+                "description": "Only drafts from this `factory ai` task (the header's `task:`); default every draft. Passes when every such draft carries a filled `reviewed-by:` line.",
                 "type": "string",
-                "minLength": 1,
-                "description": "Glob (may be `a|b|c`). Passes when a matching file either was written by a human (no `factory:generated` header) or carries a filled `reviewed-by:` line."
+                "minLength": 1
               }
             },
             "required": [
-              "type",
-              "path"
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "coverage"
+              },
+              "summary": {
+                "description": "Istanbul json-summary written by the test run (default coverage/coverage-summary.json).",
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "type"
             ],
             "additionalProperties": false
           },
@@ -648,15 +665,32 @@
                           "type": "string",
                           "const": "reviewed"
                         },
-                        "path": {
+                        "task": {
+                          "description": "Only drafts from this `factory ai` task (the header's `task:`); default every draft. Passes when every such draft carries a filled `reviewed-by:` line.",
                           "type": "string",
-                          "minLength": 1,
-                          "description": "Glob (may be `a|b|c`). Passes when a matching file either was written by a human (no `factory:generated` header) or carries a filled `reviewed-by:` line."
+                          "minLength": 1
                         }
                       },
                       "required": [
-                        "type",
-                        "path"
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "coverage"
+                        },
+                        "summary": {
+                          "description": "Istanbul json-summary written by the test run (default coverage/coverage-summary.json).",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "type"
                       ],
                       "additionalProperties": false
                     }

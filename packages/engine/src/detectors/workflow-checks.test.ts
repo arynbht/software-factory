@@ -130,20 +130,39 @@ jobs:
 });
 
 describe("reviewed detector", () => {
-  const draft = (reviewer: string) =>
-    `<!-- factory:generated\ntask: brief\nreviewed-by:${reviewer}\n-->\n\n# Brief\n`;
+  const draft = (task: string, reviewer: string) =>
+    `<!-- factory:generated\ntask: ${task}\nreviewed-by:${reviewer}\n-->\n\n# Doc\n`;
+  const check = async (files: Record<string, string>, task?: string) =>
+    runDetector(
+      buildContext(await repoWith(files)),
+      task ? { type: "reviewed", task } : { type: "reviewed" },
+    );
 
-  it("passes a human-written file and a reviewed draft, fails an unreviewed draft", async () => {
-    const check = async (contents: string) =>
-      (
-        await runDetector(
-          buildContext(await repoWith({ "docs/brief.md": contents })),
-          { type: "reviewed", path: "docs/brief.md" },
-        )
-      ).status;
-    expect(await check("# Brief, written by hand\n")).toBe("pass");
-    expect(await check(draft(" @arynbht"))).toBe("pass");
-    expect(await check(draft(""))).toBe("fail");
+  it("passes human-written files and reviewed drafts", async () => {
+    const result = await check({
+      "docs/brief.md": draft("brief", " @arynbht"),
+      "docs/notes.md": "# Written by hand\n",
+    });
+    expect(result.status).toBe("pass");
+  });
+
+  it("fails on any unreviewed draft, even beside reviewed and human files", async () => {
+    const result = await check({
+      "docs/adr/0001-a.md": draft("adr", " @arynbht"),
+      "docs/adr/0002-b.md": draft("adr", ""),
+      "docs/adr/README.md": "# ADRs\n",
+    });
+    expect(result.status).toBe("fail");
+    expect(result.message).toContain("docs/adr/0002-b.md");
+  });
+
+  it("finds drafts by header, wherever they live, scoped to the task", async () => {
+    const files = {
+      "anywhere/odd-name.md": draft("brief", ""),
+      "docs/adr/0001-a.md": draft("adr", " @arynbht"),
+    };
+    expect((await check(files, "brief")).status).toBe("fail");
+    expect((await check(files, "adr")).status).toBe("pass");
   });
 });
 

@@ -5,8 +5,11 @@ phase: architecture
 severity: medium
 effort: medium
 detect:
-  - type: reviewed
+  - type: file-exists
     path: "docs/adr/**|docs/decisions/**|doc/adr/**"
+  # Claude drafts, humans sign: a factory draft counts once it is reviewed.
+  - type: reviewed
+    task: adr
 evidence: none
 fix:
   type: claude

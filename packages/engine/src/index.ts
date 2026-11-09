@@ -143,3 +143,12 @@ export {
   estimateCost,
 } from "./ai/usage.js";
 export type { UsageEntry, UsageSummary } from "./ai/usage.js";
+export {
+  DEFAULT_SUMMARY,
+  loadQualityBaseline,
+  QUALITY_FILE,
+  type QualityBaseline,
+  ratchetCoverageBaseline,
+  readLineCoverage,
+  readQualityFile,
+} from "./quality.js";

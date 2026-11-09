@@ -190,11 +190,24 @@ const ManualSchema = z.strictObject({
   type: z.literal("manual"),
 });
 
+const CoverageSchema = z.strictObject({
+  type: z.literal("coverage"),
+  summary: glob
+    .optional()
+    .describe(
+      "Istanbul json-summary written by the test run (default coverage/coverage-summary.json).",
+    ),
+});
+
 const ReviewedSchema = z.strictObject({
   type: z.literal("reviewed"),
-  path: glob.describe(
-    "Glob (may be `a|b|c`). Passes when a matching file either was written by a human (no `factory:generated` header) or carries a filled `reviewed-by:` line.",
-  ),
+  task: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Only drafts from this `factory ai` task (the header's `task:`); default every draft. Passes when every such draft carries a filled `reviewed-by:` line.",
+    ),
 });
 
 /** The automated detectors — everything but `manual` and the `any-of` combinator. */
@@ -207,6 +220,7 @@ const LeafDetectorSchema = z.discriminatedUnion("type", [
   CommandSchema,
   ScorecardSchema,
   ReviewedSchema,
+  CoverageSchema,
 ]);
 
 const AnyOfSchema = z.strictObject({
@@ -228,6 +242,7 @@ export const DetectorConfigSchema = z.discriminatedUnion("type", [
   CommandSchema,
   ScorecardSchema,
   ReviewedSchema,
+  CoverageSchema,
   ManualSchema,
   AnyOfSchema,
 ]);

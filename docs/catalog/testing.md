@@ -23,7 +23,7 @@ References:
 ### `test.data.factories` — Test data factories and a seed script exist
 
 - **phase**: build · **severity**: low · **effort**: medium
-- **detect**: `reviewed` · **fix**: claude `test-scaffold`
+- **detect**: `file-exists`, `reviewed` · **fix**: claude `test-scaffold`
 
 Reusable data factories and a seed script make tests readable and deterministic and give every environment a known starting state, instead of each test hand-rolling fragile fixtures.
 

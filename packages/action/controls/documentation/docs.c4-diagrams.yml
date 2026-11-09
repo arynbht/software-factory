@@ -10,7 +10,7 @@ detect:
     pattern: "(?i)(c4|flowchart|graph (TD|LR)|C4Context|C4Container)"
   # Claude drafts, humans sign: a factory draft counts once it is reviewed.
   - type: reviewed
-    path: "docs/**/*.md|docs/architecture/**"
+    task: c4
 evidence: none
 fix:
   type: claude

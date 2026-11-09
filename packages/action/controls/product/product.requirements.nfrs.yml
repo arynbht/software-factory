@@ -10,7 +10,7 @@ detect:
     pattern: (?i)(latency|throughput|uptime|availability|p9[05]|SLO|RPO|RTO)
   # Claude drafts, humans sign: a factory draft counts once it is reviewed.
   - type: reviewed
-    path: docs/**/*.md
+    task: nfrs
 fix:
   type: claude
   task: nfrs

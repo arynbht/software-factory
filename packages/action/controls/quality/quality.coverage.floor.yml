@@ -4,14 +4,17 @@ lane: quality
 phase: harden
 severity: medium
 effort: medium
-# Applies once the test run writes a coverage summary (Istanbul's json-summary).
 applies:
-  file: "coverage/coverage-summary.json"
+  any:
+    - stack: node
+    - stack: python
+    - stack: go
+    - stack: rust
 detect:
-  - type: file-json-path
-    file: "coverage/coverage-summary.json"
-    path: total.lines.pct
-    min: 70
+  # Floor: profile `quality.coverage`, else the baseline `factory audit` records
+  # in .factory/quality.json at the first measured run (it only moves up). In the
+  # judge, a configured-but-missing summary after the test run fails.
+  - type: coverage
 evidence: none
 references:
   - name: Google Testing Blog — Code Coverage Best Practices

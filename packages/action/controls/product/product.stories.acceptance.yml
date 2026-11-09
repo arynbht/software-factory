@@ -5,8 +5,11 @@ phase: requirements
 severity: medium
 effort: medium
 detect:
-  - type: reviewed
+  - type: file-exists
     path: docs/requirements/stories.md|docs/stories.md
+  # Claude drafts, humans sign: a factory draft counts once it is reviewed.
+  - type: reviewed
+    task: stories
 fix:
   type: claude
   task: stories

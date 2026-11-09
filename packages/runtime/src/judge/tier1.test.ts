@@ -1,13 +1,20 @@
 // Tier 1 end to end on a real git repo: no mocks for git, the clone, or the
 // checks. The repo's "lint" fails when any source file contains `BAD`.
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  rm,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { simpleGit } from "simple-git";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { runTier1 } from "./tier1.js";
+import { runTier1, sweepStaleClones } from "./tier1.js";
 
 const LINT = `const fs = require("fs");
 const bad = fs.readdirSync("src").filter((f) => fs.readFileSync("src/" + f, "utf8").includes("BAD"));
@@ -141,6 +148,43 @@ describe("judge tier 1", () => {
     ).toBe("pre-existing");
   }, 60_000);
 
+  it("disables the target repo's hooks inside the clone", async () => {
+    const r = await repo();
+    await r.write("src/feature.js", "module.exports = 2;\n");
+    await r.commit("feature");
+    const result = await runTier1({
+      repoPath: r.dir,
+      base: "base",
+      install: false,
+      keep: true,
+    });
+    made.push(result.workDir);
+    const hooksPath = await simpleGit(result.workDir).getConfig(
+      "core.hooksPath",
+    );
+    expect(hooksPath.value).toContain("factory-no-hooks");
+  }, 60_000);
+
+  it("won't pass a non-Node repo on checks that are red at base too", async () => {
+    const r = await repo();
+    await r.write("pyproject.toml", "[project]\nname = 'demo'\n");
+    await r.write("app.py", "import os\n");
+    await r.commit("python");
+    await simpleGit(r.dir).raw(["branch", "-f", "base"]);
+    await r.write("other.py", "x = 1\n");
+    await r.commit("feature");
+    const result = await runTier1({
+      repoPath: r.dir,
+      base: "base",
+      install: false,
+      checks: ["quality.tests.pass"],
+    });
+    expect(result.verdict).toBe("fail");
+    expect(result.notes.join(" ")).toContain(
+      "python dependencies aren't installed by the judge yet",
+    );
+  }, 60_000);
+
   it("fails closed when a check can't run", async () => {
     const r = await repo();
     await r.write("src/feature.js", "module.exports = 2;\n");
@@ -154,4 +198,23 @@ describe("judge tier 1", () => {
     expect(result.verdict).toBe("fail");
     expect(result.notes.join(" ")).toContain("nothing was verified");
   }, 60_000);
+});
+
+describe("sweepStaleClones", () => {
+  it("removes judge clones older than a day and keeps fresh ones", async () => {
+    const root = await mkdtemp(join(tmpdir(), "factory-sweep-"));
+    made.push(root);
+    await mkdir(join(root, "factory-judge-old"));
+    await mkdir(join(root, "factory-judge-new"));
+    await mkdir(join(root, "something-else"));
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60_000);
+    await utimes(join(root, "factory-judge-old"), twoDaysAgo, twoDaysAgo);
+    await utimes(join(root, "something-else"), twoDaysAgo, twoDaysAgo);
+
+    await sweepStaleClones(root);
+    expect((await readdir(root)).sort()).toEqual([
+      "factory-judge-new",
+      "something-else",
+    ]);
+  });
 });

@@ -53,7 +53,7 @@ References:
 ### `legal.license-summary` — Third-party license summary
 
 - **phase**: harden · **severity**: medium · **effort**: small
-- **detect**: `reviewed` · **fix**: claude `license-summary`
+- **detect**: `file-exists`, `reviewed` · **fix**: claude `license-summary`
 
 Shipping software means redistributing its dependencies, each under its own license with its own obligations (attribution, source offer, copyleft reach). A grouped summary of those licenses confirms the project has the right to ship and surfaces any term that needs action before release; a drafted summary still needs a human to verify it against the actual dependency tree.
 

@@ -5,8 +5,11 @@ phase: harden
 severity: medium
 effort: medium
 detect:
-  - type: reviewed
+  - type: file-exists
     path: "docs/runbooks/**|runbooks/**|docs/ops/**"
+  # Claude drafts, humans sign: a factory draft counts once it is reviewed.
+  - type: reviewed
+    task: runbook
 evidence: none
 fix:
   type: claude

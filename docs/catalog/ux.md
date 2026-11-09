@@ -13,7 +13,7 @@ Design systems, key-flow states, responsiveness, and user feedback.
 ### `ux.copy.guidelines` — Copy and tone guidelines recorded
 
 - **phase**: design · **severity**: low · **effort**: small
-- **detect**: `reviewed` · **fix**: claude `copy-guidelines`
+- **detect**: `file-exists`, `reviewed` · **fix**: claude `copy-guidelines`
 
 A short voice and tone guide keeps product copy consistent and on-brand across contributors, so the product speaks with one voice as more people write it.
 

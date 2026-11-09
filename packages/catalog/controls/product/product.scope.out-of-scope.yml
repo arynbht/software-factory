@@ -10,7 +10,7 @@ detect:
     pattern: (?i)(out[ -]of[ -]scope|non[ -]goals?)
   # Claude drafts, humans sign: a factory draft counts once it is reviewed.
   - type: reviewed
-    path: docs/**/*.md
+    task: out-of-scope
 fix:
   type: claude
   task: out-of-scope

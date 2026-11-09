@@ -43,7 +43,7 @@ References:
 ### `ops.runbook-per-alert` — Runbook per alert
 
 - **phase**: operate · **severity**: medium · **effort**: medium
-- **detect**: `reviewed` · **fix**: claude `runbook`
+- **detect**: `file-exists`, `reviewed` · **fix**: claude `runbook`
 
 An alert without a runbook just wakes someone up; a linked runbook turns a page into a procedure.
 

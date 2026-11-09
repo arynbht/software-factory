@@ -13,7 +13,7 @@ Discovery briefs, requirements, risk registers, and launch readiness.
 ### `product.discovery.brief` — Discovery brief with success metrics and kill criteria
 
 - **phase**: discovery · **severity**: medium · **effort**: medium
-- **detect**: `reviewed` · **fix**: claude `brief`
+- **detect**: `file-exists`, `reviewed` · **fix**: claude `brief`
 
 Capturing the problem, target users, success metrics, and kill criteria before building forces a clear hypothesis and a pre-agreed way to tell whether the work is succeeding or should be stopped.
 
@@ -63,7 +63,7 @@ References:
 ### `product.stories.acceptance` — User stories with acceptance criteria
 
 - **phase**: requirements · **severity**: medium · **effort**: medium
-- **detect**: `reviewed` · **fix**: claude `stories`
+- **detect**: `file-exists`, `reviewed` · **fix**: claude `stories`
 
 Testable acceptance criteria turn user intent into verifiable scope, giving a shared, unambiguous definition of done that both builders and reviewers can check against.
 
