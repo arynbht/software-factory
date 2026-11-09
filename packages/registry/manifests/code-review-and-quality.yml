@@ -1,0 +1,24 @@
+name: code-review-and-quality
+source: addyosmani/agent-skills/skills/code-review-and-quality
+pin: 301b02b12bff98e4688e6984af6556802322bbde
+hash: "sha256:99c1241d837e786f5fd10230e73a21911bb6abd2671914a38b98f948fa2c04f0"
+license: MIT
+scope: always
+sectors: [workflow, security, perf, api]
+phases: [review]
+triggers:
+  paths: []
+  keywords: [review, pull request, pr, diff, merge, quality]
+  flags: []
+provides: [five-axis-review, severity-ladder, change-sizing, dependency-review]
+conflicts: []
+requires: []
+commands: []
+tokens: 5500
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  Spine "review" step; source of the judge's severity ladder (no prefix = required, Critical,
+  Nit, Optional/Consider, FYI). Step 2 asks the reviewer to mutate one condition and re-run the
+  suite, then restore the file; in the judge that must run in a throwaway clone. Links to
+  ../../references/*-checklist.md, which are outside this directory.

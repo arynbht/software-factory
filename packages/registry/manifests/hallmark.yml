@@ -1,0 +1,32 @@
+name: hallmark
+source: Nutlope/hallmark/skills/hallmark
+pin: 407fa689f4a276f2fd389208d271d0fef08f5058
+hash: "sha256:5317541f292aaade9909d24c8d89246ae21486e1d6257440d9d1014445d84605"
+license: MIT
+scope: task
+sectors: [ui]
+phases: [brief, build]
+triggers:
+  paths: ["app/**/page.*", "src/pages/**", "index.html"]
+  keywords: [new page, landing page, website, hallmark, from scratch, homepage]
+  flags: [public-facing]
+provides:
+  [new-page-build, theme-deal, sloplint, floor-reflex-finish-gates, DESIGN.md]
+conflicts: [impeccable, taste-skill]
+requires: []
+commands:
+  - "/hallmark <prompt>"
+  - "/hallmark redesign <path>"
+  - "/hallmark audit <path>"
+  - "node <skill-dir>/scripts/sloplint.mjs <output> --render"
+  - 'node <skill-dir>/scripts/theme.mjs deal --genre <genre> --prompt "<the prompt>" [--log .hallmark/log.json]'
+  - "node <skill-dir>/scripts/theme.mjs scaffold <slug>"
+tokens: 4500
+tools: [shell, browser, network]
+tested_on: "2026-11-09"
+notes: >
+  New pages from nothing with Floor/Reflex/Finish gate tiers. The spec says it conflicts with the
+  critique skills only when DESIGN.md exists; the manifest lists the conflict unconditionally.
+  Caveats: with TOGETHER_API_KEY set it sends comps and prompts to api.together.xyz;
+  scripts/install-hook.mjs can wire a PostToolUse hook; it must not touch an existing design unless
+  Hallmark is named. tokens is bytes/4 over all text (references/ is ~6 MB); SKILL.md alone is ~4.5k.

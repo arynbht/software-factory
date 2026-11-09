@@ -9,6 +9,7 @@
   "references": [
     { "path": "../catalog" },
     { "path": "../engine" },
-    { "path": "../runtime" }
+    { "path": "../runtime" },
+    { "path": "../registry" }
   ]
 }

@@ -1,0 +1,34 @@
+name: native-writing
+source: kane50613/native-writing
+pin: 02e75d018764e45e30ccba942d6a35f924aeb487
+hash: "sha256:fb29b809871ecf822b9b1b4201fc0020ad4c3b608889f082c445af6e1666b23f"
+license: MIT
+scope: task
+sectors: [docs]
+phases: [build]
+triggers:
+  paths: ["**/*.md", "docs/**", ".changeset/**", "CHANGELOG.md"]
+  keywords:
+    [
+      copy,
+      docs,
+      documentation,
+      readme,
+      pr description,
+      changelog,
+      release notes,
+      wording,
+    ]
+  flags: []
+provides:
+  [prose-editing, product-copy, docs-pages, change-notes, pr-descriptions]
+conflicts: []
+requires: []
+commands: []
+tokens: 36000
+tools: [none]
+tested_on: "2026-11-09"
+notes: >
+  Copy, docs and PR descriptions for the PR writer (replaces unslop). The skill is the repo root, so
+  the install also carries .github/, evals/, CONTRIBUTING.md and README (counted in tokens); SKILL.md
+  itself is ~2k tokens. Body is clean; only 9 stars, so pin updates deserve a read.

@@ -1,0 +1,31 @@
+name: fp-check
+source: trailofbits/skills/plugins/fp-check/skills/fp-check
+pin: e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff
+hash: "sha256:7200d10aa80a3c3fc859720eaddc22d72e35f6378a01eb5625ce9ea8450fd661"
+license: CC-BY-SA-4.0
+scope: always
+sectors: [security]
+phases: [review]
+triggers:
+  paths: []
+  keywords:
+    [
+      false positive,
+      true positive,
+      verify finding,
+      exploitable,
+      validate vulnerability,
+    ]
+  flags: []
+provides: [false-positive-gate, verdict-with-evidence, gate-reviews]
+conflicts: []
+requires: []
+commands: []
+tokens: 11000
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  False-positive gate run on each security finding before the judge reports it (TRUE or FALSE
+  POSITIVE with evidence). Caveats: deep verification uses the plugin's data-flow-analyzer,
+  exploitability-verifier and poc-builder agents and a Stop/SubagentStop completeness hook, all
+  outside this directory; poc-builder may write and run executable PoCs, so run it in the sandbox only.

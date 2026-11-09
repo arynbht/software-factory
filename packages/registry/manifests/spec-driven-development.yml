@@ -1,0 +1,25 @@
+name: spec-driven-development
+source: addyosmani/agent-skills/skills/spec-driven-development
+pin: 301b02b12bff98e4688e6984af6556802322bbde
+hash: "sha256:962752b58f16f8fe1fcc7d638385b8cd7261595113a903e0233544807301a42f"
+license: MIT
+scope: always
+sectors: [workflow, product, docs]
+phases: [intake, brief]
+triggers:
+  paths: ["SPEC*.md", "tasks/plan.md"]
+  keywords:
+    [spec, requirements, prd, feature, new project, scope, acceptance criteria]
+  flags: []
+provides: [spec, capability-map, success-criteria, boundaries]
+conflicts: []
+requires: []
+commands: []
+tokens: 3500
+tools: [none]
+tested_on: "2026-11-09"
+notes: >
+  Spine: turns the card into a gated spec (objective, commands, structure, style, testing,
+  boundaries, success criteria). Caveat: it tells the agent to STOP its turn after writing the
+  spec and wait for human approval, which the runtime must map onto the card approval step;
+  it links to sibling skills and ../../references/ files that are not inside this directory.

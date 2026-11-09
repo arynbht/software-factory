@@ -22,6 +22,8 @@
     "test:watch": "vitest",
     "catalog:validate": "tsx packages/catalog/src/validate.cli.ts",
     "catalog:site": "tsx packages/catalog/src/site.cli.ts",
+    "registry:pin": "tsx packages/registry/src/manifests.cli.ts pin",
+    "registry:validate": "tsx packages/registry/src/manifests.cli.ts validate",
     "schema:json": "tsx packages/catalog/src/schema.gen.ts",
     "action:build": "pnpm build && node scripts/build-action.mjs",
     "prepare": "lefthook install"

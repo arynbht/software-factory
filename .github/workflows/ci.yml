@@ -58,6 +58,9 @@ jobs:
       - name: Validate catalog
         run: pnpm catalog:validate
 
+      - name: Validate skill manifests
+        run: pnpm registry:validate
+
       - name: Check catalog site is current
         run: |
           pnpm catalog:site

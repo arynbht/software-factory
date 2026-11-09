@@ -1,0 +1,26 @@
+name: webapp-testing
+source: anthropics/skills/skills/webapp-testing
+pin: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
+hash: "sha256:564acfdb5fc84463905a3c4e2562cb325ae6ffaf2a4bac92d93777373363501f"
+license: Apache-2.0
+scope: always
+sectors: [testing, ui]
+phases: [prove]
+triggers:
+  paths: ["**/*.html", "**/*.tsx", "**/*.jsx", "**/*.vue", "**/*.svelte"]
+  keywords: [e2e, browser test, screenshot, playwright, frontend test, ui test]
+  flags: []
+provides:
+  [python-playwright-scripts, server-lifecycle, screenshots, console-logs]
+conflicts: []
+requires: []
+commands:
+  - "python scripts/with_server.py --help"
+  - 'python scripts/with_server.py --server "npm run dev" --port 5173 -- python your_automation.py'
+tokens: 5500
+tools: [shell, browser]
+tested_on: "2026-11-09"
+notes: >
+  Python Playwright scripting with a server-lifecycle helper. Overlaps playwright-cli, the factory's
+  preferred UI proof tool; use this when a scripted, repeatable Python check is wanted. It tells the
+  agent to wait for "networkidle", which playwright-cli's own guidance says never to use.

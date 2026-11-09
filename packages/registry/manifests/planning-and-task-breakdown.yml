@@ -1,0 +1,23 @@
+name: planning-and-task-breakdown
+source: addyosmani/agent-skills/skills/planning-and-task-breakdown
+pin: 301b02b12bff98e4688e6984af6556802322bbde
+hash: "sha256:3db676a1bf0dfe4233768f541c8364022e88fb62e70ad4aab3aba8fac7de1dfc"
+license: MIT
+scope: always
+sectors: [workflow]
+phases: [brief, build]
+triggers:
+  paths: ["tasks/plan.md", "tasks/todo.md"]
+  keywords: [plan, breakdown, tasks, estimate, dependencies, vertical slice]
+  flags: []
+provides: [plan, task-breakdown, checkpoints, dependency-graph]
+conflicts: []
+requires: []
+commands: []
+tokens: 2500
+tools: [none]
+tested_on: "2026-11-09"
+notes: >
+  Spine: read-only planning into vertically sliced tasks with acceptance criteria and checkpoints.
+  It writes tasks/plan.md and tasks/todo.md by default; the runtime should point it at the task
+  card/ledger instead so plans do not land in the target repo. References ../../references/definition-of-done.md (outside the dir).

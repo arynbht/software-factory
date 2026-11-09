@@ -1,0 +1,40 @@
+name: terraform-skill
+source: antonbabenko/terraform-skill/skills/terraform-skill
+pin: 9c1e92d962a5407c227e5566416e962a2f057240
+hash: "sha256:1085d9a05948f61c94ab3987fc10c90ecc6f92ab26f48f9ddc60b02e4e98b4cb"
+license: Apache-2.0
+scope: task
+sectors: [infra]
+phases: [build, review]
+triggers:
+  paths:
+    [
+      "**/*.tf",
+      "**/*.tfvars",
+      "**/*.tftest.hcl",
+      "**/*.tofu",
+      "**/.terraform.lock.hcl",
+    ]
+  keywords: [terraform, opentofu, tofu, iac, module, state, backend, terratest]
+  flags: []
+provides:
+  [
+    terraform-diagnosis,
+    module-patterns,
+    terraform-tests,
+    iac-ci,
+    state-safety,
+    response-contract,
+  ]
+conflicts: []
+requires: []
+commands: []
+tokens: 49000
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  Terraform/OpenTofu modules, tests, CI and state ops across AWS/Azure/GCP; never applies without a
+  reviewed plan and never destroys without plan -destroy and confirmation. Caveat:
+  references/security-compliance.md shows a Trivy install via curl ... | sh from the unpinned main
+  branch and trivy-action@master; treat both as examples, never run them. GitHub reports
+  NOASSERTION only because LICENSE has a copyright header; the text is Apache-2.0.

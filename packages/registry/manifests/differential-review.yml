@@ -1,0 +1,32 @@
+name: differential-review
+source: trailofbits/skills/plugins/differential-review/skills/differential-review
+pin: e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff
+hash: "sha256:9c15c845af144f21626c3c3cd94a886ec0b033a5df42300e20a1eae4673ddaa0"
+license: CC-BY-SA-4.0
+scope: always
+sectors: [security]
+phases: [review]
+triggers:
+  paths: ["**/auth/**", "**/crypto/**", "**/billing/**", "**/payments/**"]
+  keywords:
+    [security review, diff, pr, vulnerability, regression, blast radius, auth]
+  flags: []
+provides:
+  [
+    security-diff-review,
+    git-history-context,
+    blast-radius,
+    coverage-gaps,
+    report,
+  ]
+conflicts: []
+requires: []
+commands: []
+tokens: 9000
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  Security review of a diff with git history, blast radius and test-coverage checks; feeds the
+  judge's security findings. Caveats: Phase 5 delegates to the plugin agent
+  differential-review:adversarial-modeler and /diff-review is a plugin command, neither inside this
+  directory; it always writes a markdown report file. CC-BY-SA-4.0 is share-alike (see report).

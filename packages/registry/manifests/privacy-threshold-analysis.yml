@@ -1,0 +1,24 @@
+name: privacy-threshold-analysis
+source: mukul975/Privacy-Data-Protection-Skills/skills/privacy/privacy-threshold-analysis
+pin: 9b2ef9eae161c00a17241d42a388571321b33e9f
+hash: "sha256:5f166ec55b3836ccc7967b5feaa4ab5544721fccbe0ad7ef3e3f704c548992bc"
+license: Apache-2.0
+scope: task
+sectors: [legal]
+phases: [brief]
+triggers:
+  paths: []
+  keywords: [personal data, pii, gdpr, dpia, privacy, consent, data processing]
+  flags: [handles-pii]
+provides: [privacy-threshold-analysis, dpia-screening, pta-record]
+conflicts: []
+requires: []
+commands: []
+tokens: 4000
+tools: [none]
+tested_on: "2026-11-09"
+notes: >
+  Drafts a GDPR Art. 35 / WP248rev.01 screening that says whether a DPIA is required before the
+  change ships; a DPO or lawyer signs. The repo has no single main skill (283 skills under
+  skills/privacy), so this screening skill is the entry point; GDPR-centric, it does not cover CCPA,
+  HIPAA or the EU AI Act, which live in sibling skills.

@@ -168,6 +168,9 @@ importers:
       '@arynbht/factory-engine':
         specifier: workspace:*
         version: link:../engine
+      '@arynbht/factory-registry':
+        specifier: workspace:*
+        version: link:../registry
       '@arynbht/factory-runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -217,6 +220,21 @@ importers:
       '@types/picomatch':
         specifier: ^4.0.3
         version: 4.0.3
+
+  packages/registry:
+    dependencies:
+      '@arynbht/factory-engine':
+        specifier: workspace:*
+        version: link:../engine
+      simple-git:
+        specifier: ^4.0.2
+        version: 4.0.2
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
 
   packages/runtime:
     dependencies:

@@ -1,0 +1,23 @@
+name: review-animations
+source: emilkowalski/skills/skills/review-animations
+pin: 715c1807e08c497cfd1dc4feb450a2a3300ef2a9
+hash: "sha256:d61144a0029a0ca583ce2f642725dc7819f5c3bdc256668443bc49ca8f18153a"
+license: MIT
+scope: task
+sectors: [motion]
+phases: [review]
+triggers:
+  paths: []
+  keywords: [animation, motion, transition, easing, keyframes, framer-motion]
+  flags: []
+provides: [motion-review, before-after-table, block-approve-verdict]
+conflicts: []
+requires: []
+commands: []
+tokens: 4500
+tools: [none]
+tested_on: "2026-11-09"
+notes: >
+  Diff-level motion review ending in Block or Approve; fits the judge when a diff touches motion.
+  Frontmatter sets disable-model-invocation: true, so it never self-triggers and the router must
+  load it explicitly. Same fixed-greeting caveat as animate.

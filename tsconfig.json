@@ -5,6 +5,7 @@
     { "path": "packages/catalog" },
     { "path": "packages/engine" },
     { "path": "packages/runtime" },
+    { "path": "packages/registry" },
     { "path": "packages/cli" },
     { "path": "packages/action" },
     { "path": "packages/skill" }

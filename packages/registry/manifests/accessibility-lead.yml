@@ -1,0 +1,28 @@
+name: accessibility-lead
+source: Community-Access/accessibility-agents/skills/accessibility-lead
+pin: a538edc9edfb98cdd8bae96d6b79542874b478f7
+hash: "sha256:1eb469df0c1e38f82b9f1e6b56c7287b756ffbd4a77b6883b533f957bf2f6fdc"
+license: MIT
+scope: task
+sectors: [a11y]
+phases: [build, review]
+triggers:
+  paths:
+    ["**/*.html", "**/*.tsx", "**/*.jsx", "**/*.vue", "**/*.svelte", "**/*.css"]
+  keywords:
+    [accessibility, a11y, wcag, aria, screen reader, keyboard, contrast, focus]
+  flags: [public-facing]
+provides: [wcag-2.2-aa-review, specialist-dispatch, findings-json, ship-verdict]
+conflicts: []
+requires: []
+commands:
+  - "node <skills-root>/a11y-core/scripts/render-report.mjs"
+tokens: 5500
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  Router skill of the Accessibility Agents pack: classifies a UI change, dispatches WCAG 2.2 AA
+  specialists in parallel, merges their findings JSON and gives a ships/does-not-ship verdict.
+  Caveat: on its own it does nothing useful; it reads sibling skills by path (a11y-core plus the web
+  specialists in references/dispatch-matrix.md), so those must be vendored beside it. The edit-gate
+  pattern the spec cites lives in the repo's hooks/guard.mjs, not in this directory.
