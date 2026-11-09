@@ -15,6 +15,7 @@ import {
   type GateStatus,
   laneCounts,
   Octokit,
+  QUIET_LOG,
   ProfileError,
   resolveToken,
   upsertStatusIssue,
@@ -104,11 +105,13 @@ export async function runCi(): Promise<number> {
     throw err;
   }
 
+  const all = await evaluateControls(controls, ctx, { profile, waivers });
+  // `severity-floor` trims what the report shows; the gate is always judged on
+  // every control, so a profile edit can't turn CI green.
   const floorRank = SEVERITIES.indexOf(profile?.["severity-floor"] ?? "low");
-  const selected = controls.filter(
-    (c) => SEVERITIES.indexOf(c.severity) <= floorRank,
+  const results = all.filter(
+    (r) => SEVERITIES.indexOf(r.severity) <= floorRank,
   );
-  const results = await evaluateControls(selected, ctx, { profile, waivers });
 
   // Annotations into the workflow log.
   process.stdout.write(`${renderReport(results, { format: "github" })}\n`);
@@ -116,11 +119,18 @@ export async function runCi(): Promise<number> {
   // Append a per-lane pass snapshot for the hygiene trend (best-effort).
   await appendHistory(workspace, {
     date: today(now),
-    byLane: laneCounts(results),
+    byLane: laneCounts(all),
   }).catch(() => undefined);
 
-  const gateResult = evaluateGate(gate, results);
-  const gateLine = `\n\n**${gateResult.title ?? `${gateName} gate`}: ${gateResult.status.toUpperCase()}**`;
+  const gateResult = evaluateGate(gate, all);
+  // Name the gate's blockers explicitly: one may sit below the severity floor and
+  // so be missing from the report table above.
+  const blocking = gateResult.controls
+    .filter((c) => c.status === "fail")
+    .map((c) => `\`${c.controlId}\``);
+  const gateLine =
+    `\n\n**${gateResult.title ?? `${gateName} gate`}: ${gateResult.status.toUpperCase()}**` +
+    (blocking.length > 0 ? ` — failing: ${blocking.join(", ")}` : "");
 
   const expiring = [
     ...waiversExpiringWithin(waivers, 30, now).map(
@@ -152,7 +162,7 @@ export async function runCi(): Promise<number> {
     );
     return exitCodeForCi(isPr, gateResult.status);
   }
-  const octokit = new Octokit({ auth: token });
+  const octokit = new Octokit({ auth: token, log: QUIET_LOG });
 
   if (isPr) {
     try {

@@ -42,10 +42,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: arynbht/software-factory@v1
+      - uses: arynbht/software-factory@<commit-sha> # pin a SHA; see below
 ```
 
 `factory init` scaffolds this workflow for you.
+
+> **Pin a commit SHA for now.** The floating `v1` tag is frozen at the original
+> 1.0.0 release (milestones worked through, not yet verified on external repos). It
+> will not move again until every check in [`FACTORY_V2.md`](./FACTORY_V2.md) §9
+> passes. Until then, reference a specific commit of this repo.
 
 ### CLI (`factory`)
 

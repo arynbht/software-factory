@@ -4,6 +4,9 @@ lane: performance
 phase: build
 severity: low
 effort: small
+# Web front ends only: a CLI, library or API has no page weight to budget.
+applies:
+  type: web-app
 detect:
   - type: file-exists
     path: "**/.size-limit*|**/size-limit*|**/bundlesize*|**/.bundlewatch*"

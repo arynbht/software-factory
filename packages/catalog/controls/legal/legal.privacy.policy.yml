@@ -11,6 +11,9 @@ detect:
   - type: file-matches
     path: docs/**/*.md|public/**/privacy*|src/**/privacy*
     pattern: (?i)privacy
+  # Claude drafts, humans sign: a factory draft counts once it is reviewed.
+  - type: reviewed
+    task: privacy-policy
 evidence: optional
 fix:
   type: claude

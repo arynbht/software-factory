@@ -44,7 +44,7 @@ References:
 ### `dev.formatter.configured` — Formatter configured
 
 - **phase**: scaffold · **severity**: low · **effort**: small
-- **detect**: `file-exists` · **fix**: template `formatter`
+- **detect**: `any-of` · **fix**: template `formatter`
 
 An enforced formatter ends style debates and keeps diffs focused on behavioural changes rather than reformatting churn.
 
@@ -54,7 +54,7 @@ References:
 ### `dev.linter.configured` — Linter configured
 
 - **phase**: scaffold · **severity**: medium · **effort**: small
-- **detect**: `file-exists` · **fix**: template `linter`
+- **detect**: `any-of` · **fix**: template `linter`
 
 A configured linter catches a class of bugs and style drift before review, keeping the codebase consistent as it and the team grow.
 
@@ -64,7 +64,7 @@ References:
 ### `dev.linter.in-ci` — Linter runs in CI
 
 - **phase**: build · **severity**: medium · **effort**: small
-- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
+- **detect**: `any-of` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 Running the linter in CI, not just locally, makes the standard enforceable on every pull request regardless of each contributor's local setup.
 

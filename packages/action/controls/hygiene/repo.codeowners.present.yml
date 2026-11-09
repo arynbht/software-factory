@@ -5,8 +5,11 @@ phase: scaffold
 severity: low
 effort: small
 detect:
-  - type: file-exists
+  - type: file-matches
     path: "CODEOWNERS|.github/CODEOWNERS|docs/CODEOWNERS"
+    # A rule line naming a real owner; the template placeholder does not count.
+    pattern: '(?m)^\s*[^#\s]\S*\s+@[\w./-]+'
+    absent: '@OWNER\b'
 evidence: none
 fix:
   type: template

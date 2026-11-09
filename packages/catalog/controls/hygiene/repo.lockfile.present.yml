@@ -4,10 +4,25 @@ lane: hygiene
 phase: scaffold
 severity: medium
 effort: small
+# Only once the repo declares dependencies: an empty repo has nothing to lock.
+applies:
+  file: "package.json|pyproject.toml|requirements.txt|Pipfile|go.mod|Cargo.toml"
 detect:
-  - type: file-exists
-    path: "pnpm-lock.yaml|package-lock.json|yarn.lock|npm-shrinkwrap.json|bun.lockb|Cargo.lock|poetry.lock|uv.lock|go.sum|Gemfile.lock"
+  - type: any-of
+    detect:
+      - type: file-exists
+        path: "pnpm-lock.yaml|package-lock.json|yarn.lock|npm-shrinkwrap.json|bun.lockb|bun.lock|Cargo.lock|poetry.lock|uv.lock|pdm.lock|Pipfile.lock|go.sum|Gemfile.lock"
+      # A fully pinned requirements file (pip-compile output) is a Python lockfile.
+      - type: file-matches
+        path: "requirements.txt|requirements.lock"
+        pattern: '(?m)^[A-Za-z0-9_.\-\[\]]+==[^\s]+'
 evidence: none
+fix:
+  type: command
+  byStack:
+    node: npm install --package-lock-only --ignore-scripts
+    go: go mod tidy
+    rust: cargo generate-lockfile
 references:
   - name: OpenSSF Scorecard
     url: https://github.com/ossf/scorecard/blob/main/docs/checks.md

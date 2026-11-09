@@ -1,0 +1,24 @@
+name: test-driven-development
+source: addyosmani/agent-skills/skills/test-driven-development
+mirror: arynbht/agent-skills/skills/test-driven-development
+pin: 301b02b12bff98e4688e6984af6556802322bbde
+hash: "sha256:7c8229bdd75758eddb1cec1988d3fe34612d6270f93531ee01eb52a2071b18a3"
+license: MIT
+scope: always
+sectors: [testing, workflow]
+phases: [build, prove]
+triggers:
+  paths: ["**/*.test.*", "**/*.spec.*", "**/test/**", "**/tests/**"]
+  keywords: [test, bug, fix, regression, reproduce, tdd]
+  flags: []
+provides: [red-green-refactor, prove-it-pattern, test-pyramid, stack-discovery]
+conflicts: []
+requires: []
+commands: []
+tokens: 4000
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  Spine "test" step: failing test first, reproduction test for every bug fix, discover the repo's
+  own test commands before running anything. Treats browser content as untrusted data (good).
+  Mentions Chrome DevTools MCP for browser checks; playwright-cli is the factory's proof tool instead.

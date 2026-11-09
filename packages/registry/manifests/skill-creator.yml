@@ -1,0 +1,30 @@
+name: skill-creator
+source: anthropics/skills/skills/skill-creator
+mirror: arynbht/anthropics-skills/skills/skill-creator
+pin: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
+hash: "sha256:ad4f350be137206c6cb509aaaccf80960fd216db6ad6ef8e6f1d8920acb860b6"
+license: Apache-2.0
+scope: always
+sectors: [workflow]
+phases: [build]
+triggers:
+  paths: ["**/SKILL.md", ".agents/skills/**", ".claude/skills/**"]
+  keywords: [skill, SKILL.md, eval, benchmark, skill description, triggering]
+  flags: []
+provides:
+  [skill-authoring, skill-evals, description-optimization, skill-packaging]
+conflicts: []
+requires: []
+commands:
+  - "python -m scripts.aggregate_benchmark <workspace>/iteration-N --skill-name <name>"
+  - "python <skill-creator-path>/eval-viewer/generate_review.py <workspace>/iteration-N --skill-name <name> --benchmark <workspace>/iteration-N/benchmark.json"
+  - "python -m scripts.run_loop --eval-set <path> --skill-path <path> --model <model-id> --max-iterations 5 --verbose"
+  - "python -m scripts.package_skill <path/to/skill-folder>"
+tokens: 56000
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  Official skill-authoring workflow; the factory's manifest format derives from its spec and it is
+  the tool for writing in-house skills such as factory-data. The eval loop spawns parallel
+  subagents, starts a local viewer server and calls "claude -p", so keep it to authoring sessions,
+  not task runs. Per-skill LICENSE.txt (Apache-2.0); the repo has no top-level license.

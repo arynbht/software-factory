@@ -15,6 +15,7 @@ import {
   evidenceExpiringWithin,
   loadState,
   ProfileError,
+  ratchetCoverageBaseline,
   resolveToken,
   saveState,
   WaiverError,
@@ -38,6 +39,8 @@ export interface AuditFlags {
   token?: string;
   color?: boolean;
   gate?: string;
+  /** Run `command` detectors (lint, typecheck, tests) instead of skipping them. */
+  commands?: boolean;
 }
 
 export interface RunAuditOptions {
@@ -85,7 +88,7 @@ export async function runAudit(
     options.token === null
       ? undefined
       : (options.token ?? resolveToken(flags.token));
-  const ctx = buildContext(root, { token });
+  const ctx = buildContext(root, { token, runCommands: flags.commands });
 
   let profile;
   let waivers;
@@ -100,18 +103,18 @@ export async function runAudit(
     throw err;
   }
 
-  const floorRank = SEVERITIES.indexOf(profile?.["severity-floor"] ?? "low");
-  const selected = controls.filter(
-    (c) =>
-      (!flags.lane || c.lane === flags.lane) &&
-      SEVERITIES.indexOf(c.severity) <= floorRank,
-  );
-
-  const results = await evaluateControls(selected, ctx, {
+  const selected = controls.filter((c) => !flags.lane || c.lane === flags.lane);
+  const all = await evaluateControls(selected, ctx, {
     now: options.now,
     profile,
     waivers,
   });
+  // `severity-floor` trims what the report shows; gates and the exit code are
+  // always judged on every control.
+  const floorRank = SEVERITIES.indexOf(profile?.["severity-floor"] ?? "low");
+  const results = all.filter(
+    (r) => SEVERITIES.indexOf(r.severity) <= floorRank,
+  );
 
   const format: ReportFormat = flags.json ? "json" : (flags.format ?? "table");
   const machine = format !== "table";
@@ -125,7 +128,7 @@ export async function runAudit(
   // into the machine report instead of appending human text that corrupts it.
   let gateResults: GateResult[] | null = null;
   if (flags.gate) {
-    const resolved = await resolveGates(flags.gate, results);
+    const resolved = await resolveGates(flags.gate, all);
     if ("error" in resolved) {
       console.error(resolved.error);
       return 1;
@@ -189,12 +192,21 @@ export async function runAudit(
     );
   }
 
-  await writeState(ctx.repoPath, results);
+  await writeState(ctx.repoPath, all);
+  // Record the coverage baseline at the first measured run, and raise it when
+  // coverage improves (it never moves down). Best-effort.
+  const raised = await ratchetCoverageBaseline(
+    ctx,
+    (options.now ?? new Date()).toISOString().slice(0, 10),
+  ).catch(() => null);
+  if (raised !== null) {
+    warn(`\nCoverage baseline set to ${raised}% (.factory/quality.json)\n`);
+  }
 
   if (gateResults) {
     return gateResults.some((g) => g.status === "red") ? 1 : 0;
   }
-  return exitCodeFor(results);
+  return exitCodeFor(all);
 }
 
 /**

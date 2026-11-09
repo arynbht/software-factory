@@ -79,7 +79,7 @@ describe("openFixPr", () => {
     expect(calls[0]).toMatchObject({
       head: "factory/2026-11-01-scaffold",
       base: "main",
-      title: "factory: 2 fixes for scaffold",
+      title: "chore(factory): 2 fixes for scaffold",
     });
 
     const { simpleGit } = await import("simple-git");

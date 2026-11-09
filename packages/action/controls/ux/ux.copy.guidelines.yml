@@ -7,6 +7,9 @@ effort: small
 detect:
   - type: file-exists
     path: "docs/**/content*.md|docs/**/copy*.md|docs/**/voice*.md|docs/**/tone*.md"
+  # Claude drafts, humans sign: a factory draft counts once it is reviewed.
+  - type: reviewed
+    task: copy-guidelines
 fix:
   type: claude
   task: copy-guidelines

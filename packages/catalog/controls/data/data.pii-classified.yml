@@ -4,6 +4,8 @@ lane: data
 phase: architecture
 severity: high
 effort: medium
+applies:
+  flag: handles-pii
 detect:
   - type: manual
 evidence: required

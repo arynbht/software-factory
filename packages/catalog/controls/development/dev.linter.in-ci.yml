@@ -4,10 +4,25 @@ lane: development
 phase: build
 severity: medium
 effort: small
+applies:
+  any:
+    - stack: node
+    - stack: python
+    - stack: go
+    - stack: rust
 detect:
-  - type: file-matches
-    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
-    pattern: '(?i)(eslint|biome|ruff|golangci-lint|\blint\b)'
+  - type: any-of
+    detect:
+      - type: file-yaml-path
+        file: ".github/workflows/*.yml|.github/workflows/*.yaml"
+        exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
+        path: "jobs.*.steps[*].uses"
+        matches: "(?i)^(golangci/golangci-lint-action|biomejs/setup-biome)"
+      - type: file-yaml-path
+        file: ".github/workflows/*.yml|.github/workflows/*.yaml"
+        exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
+        path: "jobs.*.steps[*].run"
+        matches: '(?is)^(?!.*--if-present).*\b(eslint|biome (check|lint|ci)|ruff check|flake8|pylint|golangci-lint|go vet|cargo clippy|(npm|pnpm|yarn)( run)? lint)\b'
 evidence: none
 fix:
   type: merge-yaml

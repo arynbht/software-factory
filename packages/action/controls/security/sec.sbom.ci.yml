@@ -5,9 +5,18 @@ phase: harden
 severity: low
 effort: medium
 detect:
-  - type: file-matches
-    path: ".github/workflows/*.yml|.github/workflows/*.yaml"
-    pattern: '(?i)(cyclonedx|\bsbom\b|anchore/sbom-action|syft)'
+  - type: any-of
+    detect:
+      - type: file-yaml-path
+        file: ".github/workflows/*.yml|.github/workflows/*.yaml"
+        exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
+        path: "jobs.*.steps[*].uses"
+        matches: "(?i)^(anchore/sbom-action|CycloneDX/)"
+      - type: file-yaml-path
+        file: ".github/workflows/*.yml|.github/workflows/*.yaml"
+        exclude: ".github/workflows/factory.yml|.github/workflows/factory.yaml"
+        path: "jobs.*.steps[*].run"
+        matches: '(?i)\b(syft|cyclonedx-\w+|cdxgen)\b'
 evidence: none
 fix:
   type: merge-yaml

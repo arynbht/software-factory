@@ -1,0 +1,36 @@
+name: improve-animations
+source: emilkowalski/skills/skills/improve-animations
+pin: 715c1807e08c497cfd1dc4feb450a2a3300ef2a9
+hash: "sha256:1b2a35c1d6cbea98c192fc4e4114e39335c771605fb3b059930b19a9d21aeb95"
+license: MIT
+scope: task
+sectors: [motion]
+phases: [review]
+triggers:
+  paths: []
+  keywords: [improve animations, audit motion, animation audit, feel better]
+  flags: []
+provides: [motion-audit, implementation-plans]
+conflicts: []
+requires: []
+commands:
+  - "improve-animations quick"
+  - "improve-animations deep"
+  - "improve-animations plan <description>"
+  - "improve-animations execute <plan>"
+  - "improve-animations reconcile"
+tokens: 4500
+tools: [shell]
+tested_on: "2026-11-09"
+notes: >
+  Read-only codebase motion audit that writes plans to plans/; it explicitly treats repository
+  content as data, not instructions (the scanner's override-instructions hit is that sentence).
+  "execute <plan>" dispatches a subagent in a worktree, which overlaps the factory's build step;
+  prefer audit and plan only.
+scan_allow:
+  - rule: override-instructions
+    file: SKILL.md
+    match_sha256: 7f8ec20b24cc60b4817e4174e8b70d6b7e7c1ec7ce893e7c68f76d5345c4e142
+    reviewed_by: arynbht
+    reviewed: "2026-11-09"
+    note: "Quotes the injection phrase to tell the agent to flag it, not follow it."

@@ -13,7 +13,7 @@ Discovery briefs, requirements, risk registers, and launch readiness.
 ### `product.discovery.brief` — Discovery brief with success metrics and kill criteria
 
 - **phase**: discovery · **severity**: medium · **effort**: medium
-- **detect**: `file-exists` · **fix**: claude `brief`
+- **detect**: `file-exists`, `reviewed` · **fix**: claude `brief`
 
 Capturing the problem, target users, success metrics, and kill criteria before building forces a clear hypothesis and a pre-agreed way to tell whether the work is succeeding or should be stopped.
 
@@ -33,7 +33,7 @@ References:
 ### `product.requirements.nfrs` — Non-functional requirements captured as numbers
 
 - **phase**: requirements · **severity**: medium · **effort**: medium
-- **detect**: `file-matches` · **fix**: claude `nfrs`
+- **detect**: `file-matches`, `reviewed` · **fix**: claude `nfrs`
 
 Quantified non-functional requirements such as latency, throughput, and availability are testable, whereas prose like "fast" or "reliable" cannot be verified or held to account.
 
@@ -53,7 +53,7 @@ References:
 ### `product.scope.out-of-scope` — Out-of-scope list recorded
 
 - **phase**: requirements · **severity**: low · **effort**: small
-- **detect**: `file-matches` · **fix**: claude `out-of-scope`
+- **detect**: `file-matches`, `reviewed` · **fix**: claude `out-of-scope`
 
 An explicit list of non-goals prevents scope creep by making it clear what is deliberately not being built, so added work becomes a visible decision rather than a silent drift.
 
@@ -63,7 +63,7 @@ References:
 ### `product.stories.acceptance` — User stories with acceptance criteria
 
 - **phase**: requirements · **severity**: medium · **effort**: medium
-- **detect**: `file-exists` · **fix**: claude `stories`
+- **detect**: `file-exists`, `reviewed` · **fix**: claude `stories`
 
 Testable acceptance criteria turn user intent into verifiable scope, giving a shared, unambiguous definition of done that both builders and reviewers can check against.
 

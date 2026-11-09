@@ -74,8 +74,16 @@ export function parseDuration(value: string): number | null {
   }
 }
 
-/** An entry is valid if it is dated and (if `valid-for` is set) not yet expired. */
-export function isEvidenceValid(entry: EvidenceEntry, now: Date): boolean {
+/**
+ * An entry is valid if it is dated and not yet expired. Its own `valid-for` wins;
+ * otherwise `fallbackValidFor` (the control's `valid-for`) applies, so a threat
+ * model can't stay current forever just because the entry omitted a window.
+ */
+export function isEvidenceValid(
+  entry: EvidenceEntry,
+  now: Date,
+  fallbackValidFor?: string,
+): boolean {
   if (!entry.date) return false;
   // Anchor the window to the START of the issue date so a `valid-for: 30d`
   // entry dated 2026-10-01 expires at 2026-10-31T00:00:00Z. Anchoring to the
@@ -85,7 +93,7 @@ export function isEvidenceValid(entry: EvidenceEntry, now: Date): boolean {
   const start = startOfDayMs(entry.date);
   if (start === null) return false;
 
-  const window = entry["valid-for"];
+  const window = entry["valid-for"] ?? fallbackValidFor;
   if (!window) return true;
   const days = parseDuration(window);
   // Fail closed: an unparseable `valid-for` (a typo like "3m") must not make the
@@ -100,10 +108,13 @@ export function findValidEvidence(
   entries: EvidenceEntry[],
   controlId: string,
   now: Date,
+  fallbackValidFor?: string,
 ): EvidenceEntry | null {
   return (
-    entries.find((e) => e.control === controlId && isEvidenceValid(e, now)) ??
-    null
+    entries.find(
+      (e) =>
+        e.control === controlId && isEvidenceValid(e, now, fallbackValidFor),
+    ) ?? null
   );
 }
 

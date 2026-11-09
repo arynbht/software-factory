@@ -10,6 +10,9 @@ applies:
 detect:
   - type: file-exists
     path: "docs/legal/license-summary.md|docs/**/licenses*.md|THIRD_PARTY_NOTICES*|NOTICE"
+  # Claude drafts, humans sign: a factory draft counts once it is reviewed.
+  - type: reviewed
+    task: license-summary
 evidence: optional
 fix:
   type: claude

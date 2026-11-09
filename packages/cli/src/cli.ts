@@ -6,6 +6,16 @@ import { runCi } from "./commands/ci.js";
 import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
 import { type FixFlags, runFix } from "./commands/fix.js";
 import { type InitFlags, runInit } from "./commands/init.js";
+import { type JudgeFlags, runJudge } from "./commands/judge.js";
+import {
+  runSkillsAdd,
+  runSkillsInit,
+  runSkillsStatus,
+  runSkillsSync,
+  runSkillsUpdate,
+  runSkillsVendor,
+  type SkillsFlags,
+} from "./commands/skills.js";
 import { type MetricsFlags, runMetrics } from "./commands/metrics.js";
 import { type MultiFlags, runAuditAll } from "./commands/multi.js";
 import { runProfileSet, runProfileShow } from "./commands/profile.js";
@@ -39,10 +49,117 @@ export function buildProgram(): Command {
       "--severity-floor <severity>",
       "ignore controls below this severity",
     )
+    .option("--license <spdx>", "project license, an SPDX id (default MIT)")
+    .option("--owner <handle>", "code owner, a GitHub @handle or @org/team")
+    .option(
+      "--security-contact <contact>",
+      "where to report vulnerabilities (email or URL)",
+    )
     .option("--yes", "non-interactive; use flags and defaults")
     .option("--force", "overwrite existing .factory config")
     .action(async (path: string, flags: InitFlags) => {
       process.exitCode = await runInit(path, flags);
+    });
+
+  const skills = program
+    .command("skills")
+    .description("Pinned, hashed, scanned agent skills for this repo");
+  skills
+    .command("init")
+    .description("Lock the skills the factory ships manifests for")
+    .argument("[path]", "path to the repo", ".")
+    .option("--spine-only", "only the always-scope skills")
+    .action(
+      async (path: string, flags: SkillsFlags & { spineOnly?: boolean }) => {
+        process.exitCode = await runSkillsInit(path, flags);
+      },
+    );
+  skills
+    .command("sync")
+    .description(
+      "Fetch, verify, scan and install the skills in .factory/skills.lock",
+    )
+    .argument("[path]", "path to the repo", ".")
+    .option("--refetch", "replace a cache entry that fails its hash")
+    .action(async (path: string, flags: SkillsFlags) => {
+      process.exitCode = await runSkillsSync(path, flags);
+    });
+  skills
+    .command("status")
+    .description("Check installed skills against the lock (fails when stale)")
+    .argument("[path]", "path to the repo", ".")
+    .action(async (path: string) => {
+      process.exitCode = await runSkillsStatus(path);
+    });
+  skills
+    .command("add")
+    .description("Pin a skill (owner/repo[/path]) and add it to the lock")
+    .argument("<source>", "owner/repo or owner/repo/path/to/skill")
+    .argument("[path]", "path to the repo", ".")
+    .option("--pin <sha>", "commit to pin (default: the source's HEAD)")
+    .option("--name <name>", "install directory name")
+    .option("--scope <scope>", "always | task")
+    .option("--sectors <csv>", "sectors, for skills without a shipped manifest")
+    .option("--phases <csv>", "phases, for skills without a shipped manifest")
+    .option(
+      "--license <spdx>",
+      "license, for skills without a shipped manifest",
+    )
+    .action(async (source: string, path: string, flags: SkillsFlags) => {
+      process.exitCode = await runSkillsAdd(source, path, flags);
+    });
+  skills
+    .command("update")
+    .description("Show what changed upstream; move the lock only with --yes")
+    .argument("[name]", "one skill (default: all)")
+    .option("--path <path>", "path to the repo", ".")
+    .option("--yes", "apply: move the lock to the reviewed commits")
+    .action(
+      async (
+        name: string | undefined,
+        flags: SkillsFlags & { path: string },
+      ) => {
+        process.exitCode = await runSkillsUpdate(name, flags.path, flags);
+      },
+    );
+  skills
+    .command("vendor")
+    .description(
+      "Copy verified skills into .factory/vendor/skills/ for offline runs",
+    )
+    .argument("[path]", "path to the repo", ".")
+    .option("--refetch", "replace a cache entry that fails its hash")
+    .action(async (path: string, flags: SkillsFlags) => {
+      process.exitCode = await runSkillsVendor(path, flags);
+    });
+
+  program
+    .command("judge")
+    .description(
+      "Judge a change: lint/typecheck/tests on a clean clone of base + the change, with protected paths from base",
+    )
+    .argument("[path]", "path to the repo", ".")
+    .option("--base <ref>", "the base the change targets", "origin/main")
+    .option("--head <ref>", "the change to judge (default HEAD)")
+    .option(
+      "--check <id>",
+      "a control to run (repeatable; default: the quality lane)",
+      collect,
+      [],
+    )
+    .option("--json", "output JSON")
+    .option("--keep", "keep the clean clone for inspection")
+    .option("--work-dir <dir>", "clone here instead of a temp dir")
+    .option("--no-install", "don't install dependencies in the clone")
+    .option(
+      "--env <name>",
+      "pass this environment variable to installs and checks (repeatable; default: none beyond system paths)",
+      collect,
+      [],
+    )
+    .option("--no-color", "disable coloured output")
+    .action(async (path: string, flags: JudgeFlags) => {
+      process.exitCode = await runJudge(path, flags);
     });
 
   program
@@ -64,6 +181,10 @@ export function buildProgram(): Command {
       "evaluate a phase gate (or 'all') and fail if red",
     )
     .option("--token <token>", "GitHub token (else GITHUB_TOKEN or gh auth)")
+    .option(
+      "--commands",
+      "run command checks (lint, typecheck, tests) instead of skipping them",
+    )
     .option("--no-color", "disable coloured output")
     .option("--all", "audit every repo in the repo list (combined table)")
     .option(

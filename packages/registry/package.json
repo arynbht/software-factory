@@ -1,0 +1,26 @@
+{
+  "name": "@arynbht/factory-registry",
+  "version": "0.0.0",
+  "description": "Skill registry: pinned, hashed, scanned skills with manifests; sync, add, update and vendor.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "manifests"
+  ],
+  "scripts": {},
+  "dependencies": {
+    "@arynbht/factory-engine": "workspace:*",
+    "simple-git": "^4.0.2",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  }
+}

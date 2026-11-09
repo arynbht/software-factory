@@ -5,8 +5,10 @@ phase: scaffold
 severity: high
 effort: small
 detect:
-  - type: file-exists
+  - type: file-matches
     path: "LICENSE|LICENSE.md|LICENSE.txt|COPYING|COPYING.md"
+    pattern: "(?i)(licen[cs]e|copyright)"
+    absent: '(?i)(\[year\]|\[fullname\]|<copyright holders?>|\[name of copyright owner\])'
 evidence: none
 fix:
   type: template

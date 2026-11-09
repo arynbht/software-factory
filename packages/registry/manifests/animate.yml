@@ -1,0 +1,23 @@
+name: animate
+source: emilkowalski/skills/skills/animate
+pin: 715c1807e08c497cfd1dc4feb450a2a3300ef2a9
+hash: "sha256:f52ba5956f8e96792f6c55ba5d7f9084d866a0a6b193a2a0b871bd2e19f099b9"
+license: MIT
+scope: task
+sectors: [motion]
+phases: [build]
+triggers:
+  paths: []
+  keywords: [animate, animation, motion, transition, easing, spring, keyframes]
+  flags: []
+provides: [animation-build, easing-tables, duration-tables, reduced-motion]
+conflicts: []
+requires: []
+commands: []
+tokens: 5000
+tools: [none]
+tested_on: "2026-11-09"
+notes: >
+  Builds one animation through a should-it-animate gate, then tool, properties, curve and duration.
+  Loads only on motion keywords. Caveat: invoked with no question, it is told to reply with a fixed
+  greeting only, so the agent must hand it a concrete request.

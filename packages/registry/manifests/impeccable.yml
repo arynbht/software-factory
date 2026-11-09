@@ -1,0 +1,73 @@
+name: impeccable
+source: pbakaus/impeccable/.agents/skills/impeccable
+pin: 3842da6efefa843f0a8bc63a80aeb19568172a90
+hash: "sha256:b8a61981eeef05386d68cc512c462157b3a5e235193f043713d3fe9dd4d8b3a9"
+license: Apache-2.0
+scope: task
+sectors: [ui]
+phases: [brief, polish, review]
+triggers:
+  paths:
+    [
+      "src/components/**",
+      "src/styles/**",
+      "app/**/page.*",
+      "**/*.css",
+      "DESIGN.md",
+      "PRODUCT.md",
+    ]
+  keywords:
+    [
+      redesign,
+      polish,
+      design,
+      layout,
+      visual,
+      slop,
+      critique,
+      typography,
+      design system,
+    ]
+  flags: [public-facing]
+provides: [critique, audit, polish, DESIGN.md, PRODUCT.md, design-detector]
+conflicts: [taste-skill, hallmark]
+requires: []
+commands:
+  - "<skill-base-dir>/scripts/impeccable context"
+  - "$impeccable init"
+  - "$impeccable document"
+  - "$impeccable shape [feature]"
+  - "$impeccable extract [target]"
+  - "$impeccable critique [target]"
+  - "$impeccable audit [target]"
+  - "$impeccable polish [target]"
+  - "$impeccable bolder [target]"
+  - "$impeccable quieter [target]"
+  - "$impeccable distill [target]"
+  - "$impeccable harden [target]"
+  - "$impeccable onboard [target]"
+  - "$impeccable animate [target]"
+  - "$impeccable colorize [target]"
+  - "$impeccable typeset [target]"
+  - "$impeccable layout [target]"
+  - "$impeccable delight [target]"
+  - "$impeccable overdrive [target]"
+  - "$impeccable clarify [target]"
+  - "$impeccable adapt [target]"
+  - "$impeccable optimize [target]"
+  - "$impeccable live"
+  - "$impeccable generate [n] [action] [element]"
+  - "$impeccable hooks <on|off|status|ignore-rule|ignore-file|ignore-value|reset>"
+  - "$impeccable doctor"
+tokens: 3000
+tools: [shell, network, browser]
+tested_on: "2026-11-09"
+notes: >
+  Blocked by decision (2026-11-09): SKILL.md documents `$impeccable hooks on`, which
+  writes a hook into .claude/settings.local.json (usually git-ignored, so the judge
+  never sees it) that runs the engine unsandboxed with the agent's environment and
+  network. Its five reference/hooks.md findings stay unallowed until the registry
+  supports variants that leave a file out; frontend-design is the critique skill
+  until then. Otherwise: `document` once per repo for DESIGN.md, `critique` in the
+  judge's design pass; the launcher downloads a sha256-checked engine binary on
+  first run. tokens counts SKILL.md only.

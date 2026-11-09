@@ -13,7 +13,7 @@ Continuous integration, caching, action pinning, versioning, and release automat
 ### `ci.actions-pinned-sha` — GitHub Actions pinned by commit SHA
 
 - **phase**: harden · **severity**: medium · **effort**: medium
-- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
+- **detect**: `file-yaml-path` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 Pinning third-party actions to a full commit SHA, not a mutable tag, stops a compromised or retagged action from silently executing new code in CI.
 
@@ -35,7 +35,7 @@ References:
 ### `ci.concurrency` — CI cancels superseded runs
 
 - **phase**: build · **severity**: low · **effort**: small
-- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
+- **detect**: `any-of` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 A concurrency group cancels superseded in-progress runs on the same ref, saving runner minutes and giving faster feedback on the latest commit.
 
@@ -45,7 +45,7 @@ References:
 ### `ci.dependency-caching` — CI caches dependencies
 
 - **phase**: build · **severity**: low · **effort**: small
-- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
+- **detect**: `any-of` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 Caching dependencies cuts CI time and cost and reduces load on upstream registries, keeping the feedback loop fast as the project grows.
 
@@ -55,7 +55,7 @@ References:
 ### `ci.runs-on-pr` — CI runs on pull requests
 
 - **phase**: scaffold · **severity**: high · **effort**: small
-- **detect**: `file-matches` · **fix**: —
+- **detect**: `file-yaml-path` · **fix**: —
 
 Running CI on pull requests is what lets required checks block a merge; a workflow that only runs on push cannot gate incoming changes.
 
@@ -65,7 +65,7 @@ References:
 ### `ci.runs-on-push` — CI runs on push
 
 - **phase**: scaffold · **severity**: medium · **effort**: small
-- **detect**: `file-matches` · **fix**: —
+- **detect**: `file-yaml-path` · **fix**: —
 
 A push trigger keeps the mainline continuously verified, catching breakage introduced by merges. (This heuristic detects any push trigger; confirming it targets the default branch specifically is left to a future structured check.)
 
@@ -75,7 +75,7 @@ References:
 ### `ci.workflow-permissions` — Workflow token permissions declared
 
 - **phase**: harden · **severity**: medium · **effort**: small
-- **detect**: `file-matches` · **fix**: merge-yaml `.github/workflows/ci.yml`
+- **detect**: `file-yaml-path`, `file-yaml-path` · **fix**: merge-yaml `.github/workflows/ci.yml`
 
 An explicit permissions block scopes the workflow's GITHUB_TOKEN to least privilege, limiting the blast radius if a step or dependency is compromised.
 

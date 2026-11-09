@@ -27,6 +27,11 @@ const profile = (over: Partial<Profile> = {}): Profile =>
     stack: [],
     flags: {},
     "severity-floor": "low",
+    project: {
+      license: "MIT",
+      owner: "@acme",
+      "security-contact": "security@acme.test",
+    },
     ...over,
   }) as Profile;
 
@@ -42,7 +47,7 @@ describe("renderTemplate", () => {
     for (const name of names) {
       const changes = await renderTemplate(
         name,
-        templateVars(profile(), 2026),
+        templateVars(profile({ stack: ["typescript"] }), 2026),
         "c.x.y",
       );
       expect(changes.length).toBeGreaterThan(0);
@@ -50,7 +55,8 @@ describe("renderTemplate", () => {
         expect(change.type).toBe("file");
         if (change.type === "file") {
           expect(change.path).not.toMatch(/\.eta$/);
-          expect(change.path).not.toMatch(/^(node|python|common)\//);
+          expect(change.path).not.toMatch(/^(node|python|go|rust|common)\//);
+          expect(change.contents).not.toMatch(/@OWNER|security@example\.com/);
           expect(change.contents.length).toBeGreaterThan(0);
         }
       }
@@ -124,7 +130,7 @@ describe("renderTemplate", () => {
     await mkdir(join(dir, ".factory"), { recursive: true });
     await writeFile(
       join(dir, ".factory", "profile.yml"),
-      "version: 1\nname: Acme\ntype: library\n",
+      "version: 1\nname: Acme\ntype: library\nproject:\n  license: MIT\n",
     );
 
     const ctx = buildContext(dir, { now: new Date("2019-07-04T00:00:00Z") });
@@ -139,6 +145,61 @@ describe("renderTemplate", () => {
     expect(license?.type === "file" && license.contents).toContain(
       "Copyright (c) 2019 Acme",
     );
+  });
+
+  it("returns a note instead of a placeholder when a required value is unset", async () => {
+    const vars = templateVars(profile({ project: {} }), 2026);
+    for (const name of ["codeowners", "security", "license"]) {
+      const changes = await renderTemplate(name, vars, "c.x.y");
+      expect(changes).toHaveLength(1);
+      expect(changes[0]?.type).toBe("note");
+    }
+  });
+
+  it("returns a note for a license it has no text for", async () => {
+    const changes = await renderTemplate(
+      "license",
+      templateVars(profile({ project: { license: "GPL-3.0-only" } }), 2026),
+      "repo.license.present",
+    );
+    expect(changes[0]).toMatchObject({ type: "note" });
+  });
+
+  it("renders the ISC text when the project chooses ISC", async () => {
+    const changes = await renderTemplate(
+      "license",
+      templateVars(profile({ project: { license: "ISC" } }), 2026),
+      "repo.license.present",
+    );
+    const license = changes[0];
+    expect(license?.type === "file" && license.contents).toMatch(
+      /^ISC License/,
+    );
+  });
+
+  it("skips stack-specific files with a note when the stack is unknown", async () => {
+    const changes = await renderTemplate(
+      "ci-workflow",
+      templateVars(profile({ stack: [] }), 2026),
+      "ci.workflow.present",
+    );
+    expect(changes).toHaveLength(1);
+    expect(changes[0]).toMatchObject({ type: "note" });
+  });
+
+  it("renders go and rust CI workflows", async () => {
+    for (const stack of ["go", "rust"]) {
+      const changes = await renderTemplate(
+        "ci-workflow",
+        templateVars(profile({ stack: [stack] }), 2026),
+        "ci.workflow.present",
+      );
+      const ci = changes[0];
+      expect(ci?.type === "file" && ci.path).toBe(".github/workflows/ci.yml");
+      expect(ci?.type === "file" && ci.contents).toContain(
+        stack === "go" ? "go test" : "cargo test",
+      );
+    }
   });
 
   it("every fix:template control points to a template dir that renders", async () => {

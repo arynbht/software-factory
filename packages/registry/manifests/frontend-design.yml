@@ -1,0 +1,24 @@
+name: frontend-design
+source: anthropics/skills/skills/frontend-design
+mirror: arynbht/anthropics-skills/skills/frontend-design
+pin: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
+hash: "sha256:19de668f2da4a0cd78cce1a5e7e10094ac01d0feb80bcc7190fee085ce49df32"
+license: Apache-2.0
+scope: task
+sectors: [ui]
+phases: [build, polish, review]
+triggers:
+  paths: ["src/components/**", "src/styles/**", "app/**/page.*", "**/*.css"]
+  keywords: [design, ui, landing page, layout, typography, visual]
+  flags: []
+provides: [design-direction, token-plan, self-critique, ui-copy-guidance]
+conflicts: []
+requires: []
+commands: []
+tokens: 5000
+tools: [none]
+tested_on: "2026-11-09"
+notes: >
+  Fallback design and critique guidance, loaded only when no critique skill (impeccable,
+  taste-skill) is in the assembly. The router enforces that rule; the spec does not state it as a
+  conflict, so none is listed. Short, no scripts, nothing unsafe in the body.

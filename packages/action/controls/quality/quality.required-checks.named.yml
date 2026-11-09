@@ -1,0 +1,20 @@
+id: quality.required-checks.named
+title: Merges require passing status checks
+lane: quality
+phase: build
+severity: high
+effort: small
+detect:
+  - type: github-api
+    check: required-status-checks
+evidence: none
+fix:
+  type: github-setting
+  setting: branch-protection
+references:
+  - name: GitHub Docs — About protected branches
+    url: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches
+    section: Require status checks before merging
+rationale: >
+  Checks that don't block a merge are advisory. Requiring them on the default
+  branch is what turns lint, typecheck and tests into a gate.

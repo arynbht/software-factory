@@ -1,4 +1,4 @@
-// Taxonomy: the 14 lanes, 9 phases, and 4 severities every control is classified
+// Taxonomy: the 15 lanes, 9 phases, and 4 severities every control is classified
 // by. This is the single source of truth the schema derives its enums from.
 //
 // Control ids are `<laneCode>.<topic>.<name>` (e.g. `sec.secret-scanning.pre-commit`).
@@ -111,6 +111,13 @@ export const LANES = [
     title: "Product & launch",
     description:
       "Discovery briefs, requirements, risk registers, and launch readiness.",
+  },
+  {
+    key: "quality",
+    code: "quality",
+    title: "Code quality",
+    description:
+      "Outcomes, not configuration: lint, typecheck, and tests actually pass; coverage holds its floor; merges require them.",
   },
 ] as const satisfies readonly LaneDef[];
 
