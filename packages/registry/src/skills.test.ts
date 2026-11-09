@@ -462,3 +462,28 @@ describe("secret scanning fails closed", () => {
     ]);
   });
 });
+
+describe("mirror fallback", () => {
+  it("fetches from the mirror when the source commit is gone, still verifying the hash", async () => {
+    const hash = await hashAt("acme/skills/spine", pin);
+    const spine = manifest({ hash, mirror: "mirror/skills/spine" });
+    await writeManifests(spine);
+    await writeLockFor(spine);
+    await writeFile(
+      join(repo, ".factory/skills.lock"),
+      (await readFile(join(repo, ".factory/skills.lock"), "utf8")).replace(
+        "scope: always",
+        "scope: always\n    mirror: mirror/skills/spine",
+      ),
+    );
+    // The source repo has disappeared; only the mirror still has the commit.
+    const gone = (r: string) =>
+      r === "mirror/skills" ? upstream : "/nonexistent/repo";
+    const result = await syncSkills(repo, {
+      ...opts(),
+      root: await tmp("factory-fresh-cache-"),
+      gitUrl: gone,
+    });
+    expect(result.installed).toEqual(["spine"]);
+  });
+});

@@ -1,5 +1,6 @@
 name: spec-driven-development
 source: addyosmani/agent-skills/skills/spec-driven-development
+mirror: arynbht/agent-skills/skills/spec-driven-development
 pin: 301b02b12bff98e4688e6984af6556802322bbde
 hash: "sha256:962752b58f16f8fe1fcc7d638385b8cd7261595113a903e0233544807301a42f"
 license: MIT

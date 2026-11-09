@@ -1,5 +1,6 @@
 name: playwright-cli
 source: microsoft/playwright-cli/skills/playwright-cli
+mirror: arynbht/playwright-cli/skills/playwright-cli
 pin: ce9b41b619c588c7dc0e89217d3469a70374acdd
 hash: "sha256:f4be5508fdcec8f3a4cf6698c861088e2bb2af57a8c8a6d3ee0f2604e9105110"
 license: Apache-2.0

@@ -1,5 +1,6 @@
 name: planning-and-task-breakdown
 source: addyosmani/agent-skills/skills/planning-and-task-breakdown
+mirror: arynbht/agent-skills/skills/planning-and-task-breakdown
 pin: 301b02b12bff98e4688e6984af6556802322bbde
 hash: "sha256:3db676a1bf0dfe4233768f541c8364022e88fb62e70ad4aab3aba8fac7de1dfc"
 license: MIT

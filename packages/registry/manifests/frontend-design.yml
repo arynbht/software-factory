@@ -1,5 +1,6 @@
 name: frontend-design
 source: anthropics/skills/skills/frontend-design
+mirror: arynbht/anthropics-skills/skills/frontend-design
 pin: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
 hash: "sha256:19de668f2da4a0cd78cce1a5e7e10094ac01d0feb80bcc7190fee085ce49df32"
 license: Apache-2.0

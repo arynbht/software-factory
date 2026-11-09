@@ -1,5 +1,6 @@
 name: shipping-and-launch
 source: addyosmani/agent-skills/skills/shipping-and-launch
+mirror: arynbht/agent-skills/skills/shipping-and-launch
 pin: 301b02b12bff98e4688e6984af6556802322bbde
 hash: "sha256:38142bf94e2d52377b1c0c1c62efd132303cfcdbc34a8aead14d658e2223cdbb"
 license: MIT

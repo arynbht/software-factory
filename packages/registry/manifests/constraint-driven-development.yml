@@ -1,5 +1,6 @@
 name: constraint-driven-development
 source: addyosmani/agent-skills/skills/constraint-driven-development
+mirror: arynbht/agent-skills/skills/constraint-driven-development
 pin: 301b02b12bff98e4688e6984af6556802322bbde
 hash: "sha256:5c2dcebe5a2359afc54d3efbdb481c7afd7521c6cb20e4af596cbd6da5d94227"
 license: MIT

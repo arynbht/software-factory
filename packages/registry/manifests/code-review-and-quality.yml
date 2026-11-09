@@ -1,5 +1,6 @@
 name: code-review-and-quality
 source: addyosmani/agent-skills/skills/code-review-and-quality
+mirror: arynbht/agent-skills/skills/code-review-and-quality
 pin: 301b02b12bff98e4688e6984af6556802322bbde
 hash: "sha256:99c1241d837e786f5fd10230e73a21911bb6abd2671914a38b98f948fa2c04f0"
 license: MIT

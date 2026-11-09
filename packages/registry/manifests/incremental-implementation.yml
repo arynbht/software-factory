@@ -1,5 +1,6 @@
 name: incremental-implementation
 source: addyosmani/agent-skills/skills/incremental-implementation
+mirror: arynbht/agent-skills/skills/incremental-implementation
 pin: 301b02b12bff98e4688e6984af6556802322bbde
 hash: "sha256:b6a791172452145768a86a16b78253153a1b47e04687e2a16eb9260f874e73ab"
 license: MIT

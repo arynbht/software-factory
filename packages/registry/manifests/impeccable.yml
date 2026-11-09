@@ -63,9 +63,11 @@ tokens: 3000
 tools: [shell, network, browser]
 tested_on: "2026-11-09"
 notes: >
-  Run document once per repo for DESIGN.md; use critique in the judge's design pass (audit overlaps
-  axe and Lighthouse). Caveats: the launcher downloads a native engine binary from GitHub releases
-  on first run (sha256-checked against the vendored engine-checksums.txt, fails closed), and
-  "hooks on" writes hooks into .claude/settings.local.json or ~/.claude/settings.json, so keep hooks
-  off in task worktrees. tokens is bytes/4 over the whole dir (scripts/live-browser.js alone is
-  ~564 KB); SKILL.md by itself is ~3k tokens.
+  Blocked by decision (2026-11-09): SKILL.md documents `$impeccable hooks on`, which
+  writes a hook into .claude/settings.local.json (usually git-ignored, so the judge
+  never sees it) that runs the engine unsandboxed with the agent's environment and
+  network. Its five reference/hooks.md findings stay unallowed until the registry
+  supports variants that leave a file out; frontend-design is the critique skill
+  until then. Otherwise: `document` once per repo for DESIGN.md, `critique` in the
+  judge's design pass; the launcher downloads a sha256-checked engine binary on
+  first run. tokens counts SKILL.md only.

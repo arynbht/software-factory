@@ -1,5 +1,6 @@
 name: skill-creator
 source: anthropics/skills/skills/skill-creator
+mirror: arynbht/anthropics-skills/skills/skill-creator
 pin: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
 hash: "sha256:ad4f350be137206c6cb509aaaccf80960fd216db6ad6ef8e6f1d8920acb860b6"
 license: Apache-2.0

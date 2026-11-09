@@ -1,5 +1,6 @@
 name: webapp-testing
 source: anthropics/skills/skills/webapp-testing
+mirror: arynbht/anthropics-skills/skills/webapp-testing
 pin: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
 hash: "sha256:564acfdb5fc84463905a3c4e2562cb325ae6ffaf2a4bac92d93777373363501f"
 license: Apache-2.0

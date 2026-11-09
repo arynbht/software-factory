@@ -1,5 +1,6 @@
 name: differential-review
 source: trailofbits/skills/plugins/differential-review/skills/differential-review
+mirror: arynbht/trailofbits-skills/plugins/differential-review/skills/differential-review
 pin: e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff
 hash: "sha256:9c15c845af144f21626c3c3cd94a886ec0b033a5df42300e20a1eae4673ddaa0"
 license: CC-BY-SA-4.0
@@ -30,3 +31,7 @@ notes: >
   judge's security findings. Caveats: Phase 5 delegates to the plugin agent
   differential-review:adversarial-modeler and /diff-review is a plugin command, neither inside this
   directory; it always writes a markdown report file. CC-BY-SA-4.0 is share-alike (see report).
+license_review:
+  reviewed_by: arynbht
+  reviewed: "2026-11-09"
+  note: CC-BY-SA-4.0; used and mirrored unmodified (variants, not edits).
