@@ -57,6 +57,14 @@ export const ProfileSchema = z.strictObject({
   lanes: LanesSchema,
   "severity-floor": z.enum(SEVERITIES).default("low"),
   project: ProjectSchema,
+  ai: z
+    .strictObject({
+      /** Model for drafting and agent work. */
+      model: z.string().min(1).optional(),
+      /** Model for the judge's review; defaults to a different one from `model`. */
+      judge_model: z.string().min(1).optional(),
+    })
+    .optional(),
   quality: z
     .strictObject({
       /**

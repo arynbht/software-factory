@@ -48,3 +48,24 @@ export {
   TASKS_DIR,
   whoami,
 } from "./task/tasks.js";
+export {
+  BLOCKING_KINDS,
+  extractJson,
+  type Finding,
+  FINDING_KINDS,
+  JUDGE_DEFAULT_MODEL,
+  newSideLines,
+  packChange,
+  renderReview,
+  REVIEW_MARKER,
+  runTier2,
+  type Tier2Result,
+} from "./judge/tier2.js";
+export {
+  MAX_ROUNDS,
+  reviewLocal,
+  reviewPullRequest,
+  type ReviewOutcome,
+  roundVerdict,
+  type ReviewVerdict,
+} from "./judge/review.js";
