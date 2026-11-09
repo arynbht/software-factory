@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import {
   type Control,
+  type Gate,
   loadBundledCatalog,
   loadBundledGates,
   SEVERITIES,
@@ -10,6 +11,7 @@ import {
 import {
   applyChanges,
   buildContext,
+  type Change,
   evaluateControls,
   EvidenceError,
   type FixPrOptions,
@@ -111,41 +113,53 @@ export async function runFix(
     );
   }
 
-  const results = await evaluateControls(candidates, ctx, {
-    now: options.now,
-    profile,
-    waivers,
-  });
-
-  let toFix = results.filter((r) => FIXABLE.has(r.status));
+  let gate: Gate | undefined;
   if (flags.gate) {
     const { gates } = await loadBundledGates();
-    const gate = gates.find((g) => g.phase === flags.gate);
+    gate = gates.find((g) => g.phase === flags.gate);
     if (!gate) {
       console.error(`factory fix: unknown gate "${flags.gate}".`);
       return 1;
     }
-    const inGate = new Set(
-      selectForGate(gate, results).map((r) => r.controlId),
-    );
-    toFix = toFix.filter((r) => inGate.has(r.controlId));
   }
 
-  const fixIds = new Set(toFix.map((r) => r.controlId));
-  const controlsToFix = candidates.filter((c) => fixIds.has(c.id) && c.fix);
+  // Evaluate and plan against whatever is checked out. `--pr` calls this again
+  // after switching to the factory branch, so a reused branch is planned from its
+  // own tip.
+  let controlsToFix: Control[] = [];
+  const plan = async () => {
+    const results = await evaluateControls(candidates, ctx, {
+      now: options.now,
+      profile,
+      waivers,
+    });
+    let toFix = results.filter((r) => FIXABLE.has(r.status));
+    if (gate) {
+      const inGate = new Set(
+        selectForGate(gate, results).map((r) => r.controlId),
+      );
+      toFix = toFix.filter((r) => inGate.has(r.controlId));
+    }
+    const fixIds = new Set(toFix.map((r) => r.controlId));
+    controlsToFix = candidates.filter((c) => fixIds.has(c.id) && c.fix);
 
-  const { changes, errors: genErrors } = await planControls(ctx, controlsToFix);
-  // Surface generator failures instead of silently reporting "nothing to fix".
-  for (const e of genErrors) {
-    console.error(
-      `factory fix: generator for ${e.controlId} (${e.fixType}) failed: ${e.message}`,
-    );
-  }
+    const planned = await planControls(ctx, controlsToFix);
+    // Surface generator failures instead of silently reporting "nothing to fix".
+    for (const e of planned.errors) {
+      console.error(
+        `factory fix: generator for ${e.controlId} (${e.fixType}) failed: ${e.message}`,
+      );
+    }
+    return planned.changes;
+  };
   const color = flags.color !== false && process.stdout.isTTY === true;
 
   if (flags.pr) {
-    return runFixPr(ctx, changes, controlsToFix, flags, options, color);
+    const titles = Object.fromEntries(candidates.map((c) => [c.id, c.title]));
+    return runFixPr(ctx, plan, titles, flags, options, color);
   }
+
+  const changes = await plan();
 
   const changeResults = await applyChanges(root, changes, {
     mode: flags.write ? "write" : "dry-run",
@@ -160,13 +174,12 @@ export async function runFix(
 /** The `--pr` path: branch, commit-per-control, push, open/reuse a PR. */
 async function runFixPr(
   ctx: ReturnType<typeof buildContext>,
-  changes: Awaited<ReturnType<typeof planControls>>["changes"],
-  controlsToFix: Control[],
+  plan: () => Promise<Change[]>,
+  titles: Record<string, string>,
   flags: FixFlags,
   options: RunFixOptions,
   color: boolean,
 ): Promise<number> {
-  const titles = Object.fromEntries(controlsToFix.map((c) => [c.id, c.title]));
   const today = options.today ?? isoToday();
   const prOptions: FixPrOptions = {
     gate: flags.gate ?? "all",
@@ -175,7 +188,7 @@ async function runFixPr(
   };
   if (options.openPr) prOptions.openPr = options.openPr;
   try {
-    const result = await openFixPr(ctx, changes, prOptions);
+    const result = await openFixPr(ctx, plan, prOptions);
 
     process.stdout.write(
       `${renderFixPlan(result.changeResults, true, color)}\n`,

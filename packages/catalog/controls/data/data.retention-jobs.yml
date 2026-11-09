@@ -4,6 +4,8 @@ lane: data
 phase: harden
 severity: medium
 effort: medium
+applies:
+  flag: handles-pii
 detect:
   - type: manual
 evidence: required

@@ -84,14 +84,9 @@ export async function runStatus(
     throw err;
   }
 
-  // Apply the profile's severity-floor like audit/ci/ai/fix do, so `status` does
-  // not infer a phase from — or list — blockers the user chose to ignore.
-  const floorRank = SEVERITIES.indexOf(profile?.["severity-floor"] ?? "low");
-  const selected = controls.filter(
-    (c) => SEVERITIES.indexOf(c.severity) <= floorRank,
-  );
-
-  const results = await evaluateControls(selected, ctx, {
+  // Every control counts toward the gates: `severity-floor` trims what reports
+  // show, it never lowers the bar a phase is judged against.
+  const results = await evaluateControls(controls, ctx, {
     now: options.now,
     profile,
     waivers,
@@ -114,8 +109,15 @@ export async function runStatus(
     };
   });
 
-  // Inferred phase = the lowest-order phase whose gate is defined and not green.
-  const firstBlocked = perPhase.find((p) => p.status && p.status !== "green");
+  // Inferred phase = the lowest-order phase whose gate is defined and not green,
+  // but never below the profile's declared phase: that is a floor the user set
+  // (e.g. a shipped product without a discovery brief is not "in discovery").
+  const floorOrder = PHASES.find((p) => p.key === profile?.phase)?.order ?? 0;
+  const atOrAboveFloor = (key: string) =>
+    (PHASES.find((p) => p.key === key)?.order ?? 0) >= floorOrder;
+  const firstBlocked = perPhase.find(
+    (p) => p.status && p.status !== "green" && atOrAboveFloor(p.phase),
+  );
   const defined = perPhase.filter((p) => p.status);
   const allGreen = defined.length > 0 && !firstBlocked;
 

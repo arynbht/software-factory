@@ -14,6 +14,8 @@ export {
 } from "./run.js";
 export {
   renderTemplate,
+  resolveTemplateVars,
+  SUPPORTED_LICENSES,
   templateGenerator,
   templateVars,
   type TemplateVars,

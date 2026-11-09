@@ -29,6 +29,19 @@ export interface GitHubClient {
   cached<T>(key: string, fn: () => Promise<T>): Promise<T>;
 }
 
+/**
+ * Octokit's request log prints every failed call (`GET /repos/… - 404`) — noise
+ * for the factory, which probes endpoints that legitimately 404 and turns each
+ * failure into a detector result. Errors surface as exceptions; warnings (e.g.
+ * deprecations) still go to stderr.
+ */
+export const QUIET_LOG = {
+  debug: () => undefined,
+  info: () => undefined,
+  warn: (message: string) => console.warn(message),
+  error: () => undefined,
+};
+
 export interface AuditContext {
   /** Absolute path to the repo being audited. */
   readonly repoPath: string;
@@ -184,7 +197,7 @@ async function createGitHubClient(
   const slug = options.github ?? (await resolveRepoSlug(root));
   if (!slug) return null;
 
-  const octokit = new Octokit({ auth: options.token });
+  const octokit = new Octokit({ auth: options.token, log: QUIET_LOG });
   const cache = new Map<string, Promise<unknown>>();
 
   return {
@@ -206,7 +219,7 @@ async function createGitHubClient(
   };
 }
 
-async function resolveRepoSlug(root: string): Promise<RepoSlug | null> {
+export async function resolveRepoSlug(root: string): Promise<RepoSlug | null> {
   try {
     const remotes = await simpleGit(root).getRemotes(true);
     const origin = remotes.find((r) => r.name === "origin") ?? remotes[0];

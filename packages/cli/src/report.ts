@@ -172,6 +172,11 @@ export function renderFixPlan(
   let failed = 0;
 
   for (const r of results) {
+    if (r.type === "note") {
+      skipped++;
+      lines.push(c.dim(`  · ${r.controlId}: ${r.message}`));
+      continue;
+    }
     if (r.type === "effect") {
       if (r.error) {
         failed++;

@@ -4,10 +4,16 @@ lane: testing
 phase: build
 severity: low
 effort: small
+applies:
+  any:
+    - stack: node
+    - stack: python
+    - stack: go
+    - stack: rust
 detect:
   - type: file-matches
-    path: "vitest.config.ts|vitest.config.js|vitest.config.mjs|jest.config.js|jest.config.ts|package.json|.nycrc|.nycrc.json|pyproject.toml"
-    pattern: "(?i)coverage"
+    path: "vitest.config.ts|vitest.config.js|vitest.config.mjs|vitest.config.mts|jest.config.js|jest.config.ts|jest.config.mjs|package.json|.nycrc|.nycrc.json|.c8rc.json|pyproject.toml|.coveragerc|setup.cfg|tox.ini|.github/workflows/*.yml|.github/workflows/*.yaml"
+    pattern: '(?i)(coverage|--cov\b|-coverprofile|cargo[- ](llvm-cov|tarpaulin))'
 evidence: none
 references:
   - name: Google — Software Engineering at Google (Test Coverage)

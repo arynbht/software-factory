@@ -71,6 +71,14 @@ export function splitArgs(line: string): string[] {
   return line.trim().split(/\s+/).filter(Boolean);
 }
 
+/** A tool that did not finish within its timeout (and was killed). */
+export class ToolTimeoutError extends Error {
+  constructor(binary: string, timeoutMs: number) {
+    super(`"${binary}" did not finish within ${Math.round(timeoutMs / 1000)}s`);
+    this.name = "ToolTimeoutError";
+  }
+}
+
 /**
  * Run a binary (no shell) in `cwd`, capturing output and exit code. A missing
  * binary raises {@link ToolNotFoundError}; a non-zero exit is returned normally
@@ -87,6 +95,7 @@ export async function runTool(
   binary: string,
   args: string[],
   cwd: string,
+  options: { timeoutMs?: number | undefined } = {},
 ): Promise<ToolResult> {
   let file = binary;
   let argv = args;
@@ -107,14 +116,19 @@ export async function runTool(
       cwd,
       maxBuffer: 16 * 1024 * 1024,
       windowsHide: true,
+      timeout: options.timeoutMs ?? 0,
     });
     return { exitCode: 0, stdout: String(stdout), stderr: String(stderr) };
   } catch (err) {
     const e = err as NodeJS.ErrnoException & {
       stdout?: string | Buffer;
       stderr?: string | Buffer;
+      killed?: boolean;
     };
     if (e.code === "ENOENT") throw new ToolNotFoundError(binary);
+    if (e.killed && options.timeoutMs) {
+      throw new ToolTimeoutError(binary, options.timeoutMs);
+    }
     if (typeof e.code === "number") {
       return {
         exitCode: e.code,

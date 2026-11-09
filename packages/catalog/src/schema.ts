@@ -34,6 +34,13 @@ const FileMatchesSchema = z.object({
     "Glob (may be `a|b|c`); files whose contents are searched.",
   ),
   pattern: z.string().min(1).describe("Regex matched against file contents."),
+  absent: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Regex that must NOT match in the file that matched `pattern` — e.g. a template placeholder such as `@OWNER`, so an unfilled scaffold does not pass.",
+    ),
 });
 
 const FileJsonPathSchema = z.object({
@@ -119,6 +126,27 @@ const ManualSchema = z.object({
   type: z.literal("manual"),
 });
 
+/** The automated detectors — everything but `manual` and the `any-of` combinator. */
+const LeafDetectorSchema = z.discriminatedUnion("type", [
+  FileExistsSchema,
+  FileMatchesSchema,
+  FileJsonPathSchema,
+  FileYamlPathSchema,
+  GithubApiSchema,
+  CommandSchema,
+  ScorecardSchema,
+]);
+
+const AnyOfSchema = z.object({
+  type: z.literal("any-of"),
+  detect: z
+    .array(LeafDetectorSchema)
+    .min(2, "any-of needs at least two alternatives")
+    .describe(
+      "Passes if any alternative passes. For controls one stack satisfies one way and another stack another way (eslint vs ruff vs golangci).",
+    ),
+});
+
 export const DetectorConfigSchema = z.discriminatedUnion("type", [
   FileExistsSchema,
   FileMatchesSchema,
@@ -128,6 +156,7 @@ export const DetectorConfigSchema = z.discriminatedUnion("type", [
   CommandSchema,
   ScorecardSchema,
   ManualSchema,
+  AnyOfSchema,
 ]);
 
 export type DetectorConfig = z.infer<typeof DetectorConfigSchema>;
@@ -139,16 +168,29 @@ export type DetectorType = DetectorConfig["type"];
 
 /**
  * Per-stack override for a merge value. The generator resolves the audited repo's
- * stack (node vs python) and, when a matching entry is present, appends/sets that
+ * detected stacks and, when a matching entry is present, appends/sets that
  * fragment instead of the default `value` — so one control can carry a `pytest`
  * step for Python repos and an `npm test` step for Node repos.
  */
 const ByStackSchema = z
-  .object({
+  .strictObject({
     node: z.unknown().optional(),
     python: z.unknown().optional(),
+    go: z.unknown().optional(),
+    rust: z.unknown().optional(),
   })
-  .describe("Per-stack value overrides (node/python); falls back to `value`.");
+  .describe(
+    "Per-stack value overrides (node/python/go/rust); falls back to `value`.",
+  );
+
+const ByStackCommandSchema = z
+  .strictObject({
+    node: z.string().min(1).optional(),
+    python: z.string().min(1).optional(),
+    go: z.string().min(1).optional(),
+    rust: z.string().min(1).optional(),
+  })
+  .describe("Per-stack command lines; falls back to `run`.");
 
 export const FixConfigSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("template"), template: z.string().min(1) }),
@@ -177,9 +219,19 @@ export const FixConfigSchema = z.discriminatedUnion("type", [
     file: z.string().min(1),
     path: z.string().min(1),
     value: z.unknown().optional(),
+    createIfMissing: z
+      .boolean()
+      .optional()
+      .describe(
+        "When the target file is absent, create it holding just this value (e.g. a minimal strict tsconfig.json). Default: absent target is a no-op.",
+      ),
   }),
   z.object({ type: z.literal("github-setting"), setting: z.string().min(1) }),
-  z.object({ type: z.literal("command"), run: z.string().min(1) }),
+  z.object({
+    type: z.literal("command"),
+    run: z.string().min(1).optional(),
+    byStack: ByStackCommandSchema.optional(),
+  }),
   z.object({ type: z.literal("claude"), task: z.string().min(1) }),
 ]);
 
@@ -203,6 +255,11 @@ export const PredicateSchema = z.object({
   type: z.enum(PROJECT_TYPES).optional(),
   stack: z.string().optional(),
   "phase-at-least": z.enum(PHASE_KEYS).optional(),
+  file: glob
+    .optional()
+    .describe(
+      "Glob (may be `a|b|c`); holds when at least one file in the repo matches.",
+    ),
 });
 
 export type Predicate = z.infer<typeof PredicateSchema>;
@@ -266,6 +323,13 @@ export const ControlSchema = ControlObjectSchema.refine(
   },
 ).superRefine((control, ctx) => {
   const fix = control.fix;
+  if (fix?.type === "command" && fix.run === undefined && !fix.byStack) {
+    ctx.addIssue({
+      code: "custom",
+      message: "a command fix must specify 'run' (or 'byStack')",
+      path: ["fix", "run"],
+    });
+  }
   if (fix?.type !== "merge-yaml" && fix?.type !== "merge-json") return;
 
   // A merge fix must carry something to merge. `value` is the default; a
@@ -274,7 +338,7 @@ export const ControlSchema = ControlObjectSchema.refine(
   const hasByStack =
     fix.type === "merge-yaml" &&
     fix.byStack !== undefined &&
-    (fix.byStack.node !== undefined || fix.byStack.python !== undefined);
+    Object.values(fix.byStack).some((v) => v !== undefined);
   if (fix.value === undefined && !hasByStack) {
     ctx.addIssue({
       code: "custom",

@@ -28,6 +28,23 @@ const LanesSchema = z
   )
   .optional();
 
+/**
+ * Who the project belongs to, read by templates (LICENSE, CODEOWNERS, SECURITY.md)
+ * so no scaffold ships a placeholder like `@OWNER` or `security@example.com`.
+ */
+const ProjectSchema = z
+  .strictObject({
+    /** SPDX license id, e.g. MIT or Apache-2.0. */
+    license: z.string().min(1).optional(),
+    /** GitHub handle (`@user` or `@org/team`) that owns the code. */
+    owner: z.string().min(1).optional(),
+    /** Copyright holder; defaults to the project name. */
+    "copyright-holder": z.string().min(1).optional(),
+    /** Where to report vulnerabilities: an email or a URL. */
+    "security-contact": z.string().min(1).optional(),
+  })
+  .optional();
+
 export const ProfileSchema = z.strictObject({
   version: z.literal(1),
   name: z.string().min(1),
@@ -39,6 +56,7 @@ export const ProfileSchema = z.strictObject({
   /** Optional per-lane on/off toggle; a lane absent here defaults to on. */
   lanes: LanesSchema,
   "severity-floor": z.enum(SEVERITIES).default("low"),
+  project: ProjectSchema,
 });
 
 export type Profile = z.infer<typeof ProfileSchema>;

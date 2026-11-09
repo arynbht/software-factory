@@ -53,7 +53,7 @@ References:
 ### `test.runner.configured` — Test runner configured
 
 - **phase**: build · **severity**: medium · **effort**: small
-- **detect**: `file-matches` · **fix**: merge-json `package.json`
+- **detect**: `any-of` · **fix**: —
 
 A configured, runnable test suite is the baseline for changing code with confidence; without one, every change is a guess.
 

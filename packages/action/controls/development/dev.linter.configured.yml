@@ -4,9 +4,23 @@ lane: development
 phase: scaffold
 severity: medium
 effort: small
+applies:
+  any:
+    - stack: node
+    - stack: python
+    - stack: go
+    - stack: rust
 detect:
-  - type: file-exists
-    path: "eslint.config.js|eslint.config.mjs|eslint.config.cjs|eslint.config.ts|.eslintrc|.eslintrc.json|.eslintrc.js|.eslintrc.cjs|biome.json|biome.jsonc|ruff.toml|.ruff.toml"
+  - type: any-of
+    detect:
+      - type: file-exists
+        path: "eslint.config.js|eslint.config.mjs|eslint.config.cjs|eslint.config.ts|.eslintrc|.eslintrc.json|.eslintrc.js|.eslintrc.cjs|biome.json|biome.jsonc|ruff.toml|.ruff.toml|.flake8|.pylintrc|.golangci.yml|.golangci.yaml|.golangci.toml|clippy.toml|.clippy.toml"
+      - type: file-matches
+        path: "pyproject.toml|setup.cfg|tox.ini"
+        pattern: '\[(tool\.)?(ruff|flake8|pylint)'
+      - type: file-matches
+        path: "Cargo.toml"
+        pattern: '\[(workspace\.)?lints'
 evidence: none
 fix:
   type: template

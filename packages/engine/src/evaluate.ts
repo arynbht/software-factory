@@ -1,6 +1,6 @@
 import type { Control, Profile, Waiver } from "@arynbht/factory-catalog";
 
-import { appliesTo } from "./applicability.js";
+import { appliesTo, type RepoFacts } from "./applicability.js";
 import type { AuditContext } from "./context.js";
 import { runDetector } from "./detectors/run.js";
 import type { DetectorResult } from "./detectors/types.js";
@@ -31,6 +31,8 @@ export interface EvaluateOptions {
   profile?: Profile | null | undefined;
   /** Active waivers; a matching one turns a non-passing control into `waived`. */
   waivers?: Waiver[] | undefined;
+  /** What the repo shows (stacks, matched `{ file }` globs), for applicability. */
+  facts?: RepoFacts | undefined;
 }
 
 /**
@@ -51,7 +53,7 @@ export async function evaluateControl(
   const now = options.now ?? new Date();
   const start = performance.now();
 
-  if (!appliesTo(control, options.profile ?? null)) {
+  if (!appliesTo(control, options.profile ?? null, options.facts)) {
     return {
       controlId: control.id,
       title: control.title,

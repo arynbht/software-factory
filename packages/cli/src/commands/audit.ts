@@ -100,18 +100,18 @@ export async function runAudit(
     throw err;
   }
 
-  const floorRank = SEVERITIES.indexOf(profile?.["severity-floor"] ?? "low");
-  const selected = controls.filter(
-    (c) =>
-      (!flags.lane || c.lane === flags.lane) &&
-      SEVERITIES.indexOf(c.severity) <= floorRank,
-  );
-
-  const results = await evaluateControls(selected, ctx, {
+  const selected = controls.filter((c) => !flags.lane || c.lane === flags.lane);
+  const all = await evaluateControls(selected, ctx, {
     now: options.now,
     profile,
     waivers,
   });
+  // `severity-floor` trims what the report shows; gates and the exit code are
+  // always judged on every control.
+  const floorRank = SEVERITIES.indexOf(profile?.["severity-floor"] ?? "low");
+  const results = all.filter(
+    (r) => SEVERITIES.indexOf(r.severity) <= floorRank,
+  );
 
   const format: ReportFormat = flags.json ? "json" : (flags.format ?? "table");
   const machine = format !== "table";
@@ -125,7 +125,7 @@ export async function runAudit(
   // into the machine report instead of appending human text that corrupts it.
   let gateResults: GateResult[] | null = null;
   if (flags.gate) {
-    const resolved = await resolveGates(flags.gate, results);
+    const resolved = await resolveGates(flags.gate, all);
     if ("error" in resolved) {
       console.error(resolved.error);
       return 1;
@@ -189,12 +189,12 @@ export async function runAudit(
     );
   }
 
-  await writeState(ctx.repoPath, results);
+  await writeState(ctx.repoPath, all);
 
   if (gateResults) {
     return gateResults.some((g) => g.status === "red") ? 1 : 0;
   }
-  return exitCodeFor(results);
+  return exitCodeFor(all);
 }
 
 /**

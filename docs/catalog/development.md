@@ -44,7 +44,7 @@ References:
 ### `dev.formatter.configured` — Formatter configured
 
 - **phase**: scaffold · **severity**: low · **effort**: small
-- **detect**: `file-exists` · **fix**: template `formatter`
+- **detect**: `any-of` · **fix**: template `formatter`
 
 An enforced formatter ends style debates and keeps diffs focused on behavioural changes rather than reformatting churn.
 
@@ -54,7 +54,7 @@ References:
 ### `dev.linter.configured` — Linter configured
 
 - **phase**: scaffold · **severity**: medium · **effort**: small
-- **detect**: `file-exists` · **fix**: template `linter`
+- **detect**: `any-of` · **fix**: template `linter`
 
 A configured linter catches a class of bugs and style drift before review, keeping the codebase consistent as it and the team grow.
 

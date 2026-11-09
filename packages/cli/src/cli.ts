@@ -39,6 +39,12 @@ export function buildProgram(): Command {
       "--severity-floor <severity>",
       "ignore controls below this severity",
     )
+    .option("--license <spdx>", "project license, an SPDX id (default MIT)")
+    .option("--owner <handle>", "code owner, a GitHub @handle or @org/team")
+    .option(
+      "--security-contact <contact>",
+      "where to report vulnerabilities (email or URL)",
+    )
     .option("--yes", "non-interactive; use flags and defaults")
     .option("--force", "overwrite existing .factory config")
     .action(async (path: string, flags: InitFlags) => {

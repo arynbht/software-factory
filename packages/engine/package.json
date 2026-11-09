@@ -22,8 +22,12 @@
     "@octokit/rest": "^22.0.1",
     "eta": "^4.6.0",
     "jsonc-parser": "^3.3.1",
+    "picomatch": "^4.0.7",
     "simple-git": "^4.0.2",
     "tinyglobby": "^0.2.17",
     "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/picomatch": "^4.0.3"
   }
 }

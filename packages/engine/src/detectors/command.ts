@@ -20,6 +20,9 @@ const skip = (message: string): DetectorResult => ({ status: "skip", message });
  * the path (optionally against `equals`); otherwise compare the exit code to
  * `expectExitCode` (default 0). A missing tool is a skip, not a failure.
  */
+/** A hung tool must not hang the audit: give up and report `skip`. */
+const COMMAND_TIMEOUT_MS = 60_000;
+
 export async function command(
   ctx: AuditContext,
   config: CommandConfig,
@@ -29,7 +32,9 @@ export async function command(
 
   let result;
   try {
-    result = await runTool(binary, args, ctx.repoPath);
+    result = await runTool(binary, args, ctx.repoPath, {
+      timeoutMs: COMMAND_TIMEOUT_MS,
+    });
   } catch (err) {
     if (err instanceof ToolNotFoundError) {
       return skip(`"${binary}" is not installed; skipping`);

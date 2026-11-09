@@ -108,6 +108,11 @@
                 "type": "string",
                 "minLength": 1,
                 "description": "Regex matched against file contents."
+              },
+              "absent": {
+                "description": "Regex that must NOT match in the file that matched `pattern` — e.g. a template placeholder such as `@OWNER`, so an unfilled scaffold does not pass.",
+                "type": "string",
+                "minLength": 1
               }
             },
             "required": [
@@ -275,6 +280,229 @@
               "type"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "any-of"
+              },
+              "detect": {
+                "minItems": 2,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "file-exists"
+                        },
+                        "path": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Glob; passes if at least one file matches."
+                        },
+                        "exclude": {
+                          "description": "Glob (may be `a|b|c`) of paths that do NOT count as a match, e.g. the factory's own workflow. Files matching `exclude` are removed before the pass/fail decision.",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "path"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "file-matches"
+                        },
+                        "path": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Glob (may be `a|b|c`); files whose contents are searched."
+                        },
+                        "pattern": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Regex matched against file contents."
+                        },
+                        "absent": {
+                          "description": "Regex that must NOT match in the file that matched `pattern` — e.g. a template placeholder such as `@OWNER`, so an unfilled scaffold does not pass.",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "path",
+                        "pattern"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "file-json-path"
+                        },
+                        "file": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "path": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Dot/bracket path, e.g. compilerOptions.strict."
+                        },
+                        "equals": {
+                          "description": "If set, the value at `path` must equal this."
+                        },
+                        "exists": {
+                          "description": "Ignored when `equals` is set. `true` (default): pass if the path exists. `false`: pass only if the path is absent in every matched file.",
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "file",
+                        "path"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "file-yaml-path"
+                        },
+                        "file": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "path": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Dot/bracket path into the YAML document."
+                        },
+                        "equals": {},
+                        "exists": {
+                          "description": "Ignored when `equals` is set. `true` (default): pass if the path exists. `false`: pass only if the path is absent in every matched file.",
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "file",
+                        "path"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "github-api"
+                        },
+                        "check": {
+                          "type": "string",
+                          "enum": [
+                            "branch-protection",
+                            "required-status-checks",
+                            "required-pull-request",
+                            "dependabot-security-updates",
+                            "vulnerability-alerts",
+                            "secret-scanning",
+                            "secret-scanning-push-protection",
+                            "default-branch",
+                            "visibility",
+                            "actions-permissions"
+                          ],
+                          "description": "Named repository check to query via the API."
+                        },
+                        "equals": {}
+                      },
+                      "required": [
+                        "type",
+                        "check"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "command"
+                        },
+                        "run": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Command line to execute in the repo root."
+                        },
+                        "expectExitCode": {
+                          "description": "Pass only on this exit code (default 0).",
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "jsonPath": {
+                          "description": "Path into JSON stdout to compare.",
+                          "type": "string"
+                        },
+                        "equals": {}
+                      },
+                      "required": [
+                        "type",
+                        "run"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "scorecard"
+                        },
+                        "check": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "OpenSSF Scorecard check name, e.g. Token-Permissions."
+                        },
+                        "min": {
+                          "description": "Minimum acceptable check score (0-10).",
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 10
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "check"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "description": "Passes if any alternative passes. For controls one stack satisfies one way and another stack another way (eslint vs ruff vs golangci)."
+              }
+            },
+            "required": [
+              "type",
+              "detect"
+            ],
+            "additionalProperties": false
           }
         ]
       }
@@ -328,10 +556,12 @@
               "type": "object",
               "properties": {
                 "node": {},
-                "python": {}
+                "python": {},
+                "go": {},
+                "rust": {}
               },
               "additionalProperties": false,
-              "description": "Per-stack value overrides (node/python); falls back to `value`."
+              "description": "Per-stack value overrides (node/python/go/rust); falls back to `value`."
             },
             "mergeStrategy": {
               "description": "`set` (default) replaces the node at `path`. `append-if-missing` treats the node at `path` as an array and appends `value` only if no existing item matches `dedupeKey`.",
@@ -369,7 +599,11 @@
               "type": "string",
               "minLength": 1
             },
-            "value": {}
+            "value": {},
+            "createIfMissing": {
+              "description": "When the target file is absent, create it holding just this value (e.g. a minimal strict tsconfig.json). Default: absent target is a no-op.",
+              "type": "boolean"
+            }
           },
           "required": [
             "type",
@@ -406,11 +640,33 @@
             "run": {
               "type": "string",
               "minLength": 1
+            },
+            "byStack": {
+              "type": "object",
+              "properties": {
+                "node": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "python": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "go": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "rust": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false,
+              "description": "Per-stack command lines; falls back to `run`."
             }
           },
           "required": [
-            "type",
-            "run"
+            "type"
           ],
           "additionalProperties": false
         },
@@ -548,6 +804,11 @@
             "launch",
             "operate"
           ]
+        },
+        "file": {
+          "description": "Glob (may be `a|b|c`); holds when at least one file in the repo matches.",
+          "type": "string",
+          "minLength": 1
         }
       },
       "additionalProperties": false
