@@ -7,7 +7,13 @@ import { join } from "node:path";
 import { loadManifests } from "@arynbht/factory-registry";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { confirmTask, loadTask, newTask, nextStep } from "../task/tasks.js";
+import {
+  confirmTask,
+  loadTask,
+  newTask,
+  nextStep,
+  sha256,
+} from "../task/tasks.js";
 import {
   approveRoute,
   type RouteContext,
@@ -140,6 +146,20 @@ describe("task route and approve", () => {
     expect(await readFile(task.ledger.mdPath, "utf8")).toContain(
       "assembly edited before approval",
     );
+  });
+
+  it("refuses to approve an assembly that changed after it was shown", async () => {
+    const id = await confirmedTask();
+    const { task } = await routeTask(repo, id, { ...by, context });
+    const shown = sha256(task.assemblyText ?? "");
+    const path = join(repo, ".factory/tasks", id, "assembly.yml");
+    await writeFile(
+      path,
+      (await readFile(path, "utf8")).replace("steps: 12", "steps: 8"),
+    );
+    await expect(
+      approveRoute(repo, id, { ...by, context, shown }),
+    ).rejects.toThrow("assembly.yml changed while it was being approved");
   });
 
   it("refuses to route on skills that weren't synced", async () => {

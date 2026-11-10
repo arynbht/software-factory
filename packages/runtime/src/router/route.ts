@@ -433,6 +433,17 @@ export function validateAssembly(
   const problems: string[] = [];
   if (a.task !== context.task)
     problems.push(`task is ${a.task}, not ${context.task}`);
+  // A conflict counts from either side, reported once per pair.
+  const clashes = new Set<string>();
+  for (const name of a.skills) {
+    for (const other of a.skills) {
+      if (
+        name !== other &&
+        manifests.get(name)?.conflicts.includes(other) === true
+      )
+        clashes.add([name, other].sort().join(" conflicts with "));
+    }
+  }
   for (const name of a.skills) {
     const m = manifests.get(name);
     if (!m) problems.push(`skills: no manifest for ${name}`);
@@ -443,11 +454,8 @@ export function validateAssembly(
     for (const r of m?.requires ?? []) {
       if (!a.skills.includes(r)) problems.push(`skills: ${name} requires ${r}`);
     }
-    for (const c of m?.conflicts ?? []) {
-      if (a.skills.includes(c) && name < c)
-        problems.push(`skills: ${name} conflicts with ${c}`);
-    }
   }
+  for (const clash of [...clashes].sort()) problems.push(`skills: ${clash}`);
   if (a.skills.filter((s) => CRITIQUE.includes(s)).length > 1)
     problems.push("skills: one critique skill per task");
   if (new Set(a.skills).size !== a.skills.length)
@@ -456,7 +464,17 @@ export function validateAssembly(
     const m = manifests.get(name);
     if (!m || m.scope !== "always")
       problems.push(`spine: ${name} isn't an always-scope skill`);
+    else if (!available.has(name))
+      problems.push(`spine: ${name} isn't available (lock and sync it first)`);
   }
+  const tokens = a.skills.reduce(
+    (sum, n) => sum + (manifests.get(n)?.tokens ?? 0),
+    0,
+  );
+  if (a.budget.skill_tokens !== tokens)
+    problems.push(
+      `budget.skill_tokens is ${a.budget.skill_tokens}; the skills add up to ${tokens}`,
+    );
   for (const id of a.checks) {
     if (!context.checks.includes(id))
       problems.push(`checks: ${id} isn't a check the judge can run`);

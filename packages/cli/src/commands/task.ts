@@ -14,6 +14,7 @@ import {
   nextStep,
   parseAcceptanceFlag,
   routeTask,
+  sha256,
   type Task,
   TaskError,
   whoami,
@@ -208,7 +209,19 @@ export function runTaskApprove(
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
     const task = await loadTask(repo, id);
-    if (task.assemblyText) process.stdout.write(`${task.assemblyText}\n`);
+    // Say what's wrong before asking anyone to approve anything.
+    if (task.approved) {
+      console.error(`factory task: ${id}'s route is already approved`);
+      return 1;
+    }
+    if (task.assemblyText === undefined) {
+      console.error(
+        `factory task: ${id} hasn't been routed: \`factory task route ${id}\``,
+      );
+      return 1;
+    }
+    const shown = sha256(task.assemblyText);
+    process.stdout.write(`${task.assemblyText}\n`);
     if (!flags.yes) {
       if (!process.stdin.isTTY) {
         console.error(
@@ -225,7 +238,10 @@ export function runTaskApprove(
       }
     }
     const by = await whoami(repo);
-    await approveRoute(repo, id, { by: flags.yes ? `${by} (--yes)` : by });
+    await approveRoute(repo, id, {
+      by: flags.yes ? `${by} (--yes)` : by,
+      shown,
+    });
     process.stdout.write(`${id} route approved; next: isolate\n`);
     return 0;
   });

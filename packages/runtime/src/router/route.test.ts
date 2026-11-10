@@ -229,6 +229,16 @@ describe("validateAssembly", () => {
       checks: CHECKS,
     }).problems;
 
+  /** The routed assembly with other skills, budget kept consistent. */
+  const withSkills = (skills: string[]) => {
+    const a = routed();
+    const tokens = skills.reduce(
+      (sum, n) => sum + (manifests.get(n)?.tokens ?? 0),
+      0,
+    );
+    return { ...a, skills, budget: { ...a.budget, skill_tokens: tokens } };
+  };
+
   it("accepts what the router produced", () => {
     expect(check(routed())).toEqual([]);
   });
@@ -237,24 +247,51 @@ describe("validateAssembly", () => {
     const a = routed();
     expect(
       check(
-        { ...a, skills: ["impeccable", "taste-skill"] },
+        withSkills(["impeccable", "taste-skill"]),
         new Set([...synced(), "impeccable", "taste-skill"]),
       ),
     ).toEqual([
       "skills: impeccable conflicts with taste-skill",
       "skills: one critique skill per task",
     ]);
-    expect(check({ ...a, skills: ["impeccable"] })).toEqual([
+    expect(check(withSkills(["impeccable"]))).toEqual([
       "skills: impeccable isn't available (lock and sync it first)",
     ]);
-    expect(check({ ...a, skills: ["accessibility-lead"] })).toEqual([
+    expect(check(withSkills(["accessibility-lead"]))).toEqual([
       "skills: accessibility-lead requires a11y-core",
     ]);
-    expect(check({ ...a, skills: ["playwright-cli"] })).toEqual([
+    expect(check(withSkills(["playwright-cli"]))).toEqual([
       "skills: playwright-cli is a spine skill; list it under spine",
     ]);
     expect(check({ ...a, checks: ["a11y.axe.clean"] })).toEqual([
       "checks: a11y.axe.clean isn't a check the judge can run",
+    ]);
+  });
+
+  it("catches a conflict only one side declares", () => {
+    const oneSided = new Map(manifests);
+    const animate = manifests.get("animate");
+    if (!animate) throw new Error("no animate manifest");
+    oneSided.set("animate", { ...animate, conflicts: ["a11y-core"] });
+    expect(
+      validateAssembly(withSkills(["animate", "a11y-core"]), {
+        task: "T-0142",
+        manifests: oneSided,
+        available: synced(),
+        checks: CHECKS,
+      }).problems,
+    ).toEqual(["skills: a11y-core conflicts with animate"]);
+  });
+
+  it("refuses an unavailable spine skill and a budget that doesn't add up", () => {
+    const a = routed();
+    const without = new Set(synced());
+    without.delete("playwright-cli");
+    expect(check(a, without)).toEqual([
+      "spine: playwright-cli isn't available (lock and sync it first)",
+    ]);
+    expect(check({ ...a, budget: { ...a.budget, skill_tokens: 1 } })).toEqual([
+      `budget.skill_tokens is 1; the skills add up to ${a.budget.skill_tokens}`,
     ]);
   });
 

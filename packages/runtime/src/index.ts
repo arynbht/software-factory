@@ -46,6 +46,7 @@ export {
   newTask,
   nextStep,
   nextTaskId,
+  sha256,
   type Task,
   TaskError,
   TASKS_DIR,

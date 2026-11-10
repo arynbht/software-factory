@@ -77,7 +77,10 @@ export async function routingContext(
     .filter(Boolean);
   return {
     manifests,
-    available: new Set(state?.skills.map((s) => s.name) ?? []),
+    // An empty lock means nothing is locked, whatever an old sync left behind.
+    available: new Set(
+      lock.skills.length > 0 ? (state?.skills.map((s) => s.name) ?? []) : [],
+    ),
     flags: profile?.flags ?? {},
     files,
     checks: (await changeChecks()).map((c) => c.id),
@@ -163,6 +166,8 @@ export async function approveRoute(
     by: string;
     now?: Date | undefined;
     context?: RouteContext | undefined;
+    /** sha256 of the assembly the person was shown; refused if it changed since. */
+    shown?: string | undefined;
   },
 ): Promise<{ task: Task; assembly: Assembly }> {
   const task = await loadTask(repoPath, id);
@@ -173,6 +178,10 @@ export async function approveRoute(
   if (text === undefined)
     throw new TaskError(
       `task ${id} hasn't been routed: \`factory task route ${id}\``,
+    );
+  if (options.shown !== undefined && options.shown !== sha256(text))
+    throw new TaskError(
+      "assembly.yml changed while it was being approved; review it again",
     );
   const context = options.context ?? (await routingContext(repoPath));
   let input: unknown;
