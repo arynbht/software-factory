@@ -98,7 +98,8 @@ describe("redact guards", () => {
     expect(looksLikeSecret("const token = resolveToken(flags.token);")).toBe(
       false,
     );
-    expect(looksLikeSecret("secret: process.env.SECRET,")).toBe(false);
+    // A dotted unquoted value is still a secret.
+    expect(looksLikeSecret("password: correct.horse.battery")).toBe(true); // gitleaks:allow
   });
 
   it("detects binary content by a NUL byte", () => {

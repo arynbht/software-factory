@@ -134,9 +134,11 @@ export async function reviewPullRequest(
     comments: typeof comments;
   }[] = [
     { event, comments },
+    // An inline comment on a line GitHub won't accept: keep the verdict, move
+    // the findings into the body.
+    { event, comments: [] },
     // GitHub refuses approve/request-changes on your own PR: say it in a comment.
     { event: "COMMENT", comments },
-    // An inline comment on a line GitHub won't accept: keep everything in the body.
     { event: "COMMENT", comments: [] },
   ];
   let lastError: unknown;

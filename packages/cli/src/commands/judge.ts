@@ -10,6 +10,8 @@ import {
 } from "@arynbht/factory-runtime";
 import pc from "picocolors";
 
+import { today } from "../dates.js";
+
 export interface JudgeFlags {
   base?: string;
   head?: string;
@@ -104,7 +106,7 @@ export async function runJudge(
       model: flags.model ?? profile?.ai?.judge_model ?? JUDGE_DEFAULT_MODEL,
       base: result.mergeBase,
       head: result.head,
-      usageDate: new Date().toISOString().slice(0, 10),
+      usageDate: today(),
       log: flags.json
         ? undefined
         : (line) => process.stderr.write(`· ${line}\n`),

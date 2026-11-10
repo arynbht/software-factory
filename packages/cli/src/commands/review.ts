@@ -77,6 +77,12 @@ export async function runReview(
   let outcome: ReviewOutcome;
   try {
     if (flags.pr) {
+      if (!/^[1-9]\d*$/.test(flags.pr)) {
+        console.error(
+          `factory review: --pr takes a PR number, not "${flags.pr}".`,
+        );
+        return 1;
+      }
       const token = resolveToken(flags.token);
       if (!token) {
         console.error(
