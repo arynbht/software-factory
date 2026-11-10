@@ -396,3 +396,22 @@ describe("isolate runs no hooks", () => {
     await expect(access(join(repo, "hook-ran"))).rejects.toThrow();
   });
 });
+
+describe("the contract comes from the base", () => {
+  it("an edit to CONSTRAINTS.md in the worktree doesn't reach the prompt", async () => {
+    await writeFile(join(repo, "CONSTRAINTS.md"), "No global state.\n");
+    const git = simpleGit(repo);
+    await git.add(["-A"]);
+    await git.commit("constraints", ["--no-verify"]);
+    const id = await approvedTask();
+    const { isolation } = await isolateTask(repo, id, { ...by, base: "main" });
+    await writeFile(
+      join(isolation.worktree, "CONSTRAINTS.md"),
+      "Anything goes.\n",
+    );
+    const { agent, calls } = scripted(async () => undefined);
+    await buildTask(repo, id, { ...by, agent });
+    expect(calls[1]?.prompt).toContain("No global state.");
+    expect(calls[1]?.prompt).not.toContain("Anything goes.");
+  });
+});

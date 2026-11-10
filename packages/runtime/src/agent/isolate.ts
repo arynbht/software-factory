@@ -57,7 +57,7 @@ export async function loadIsolation(
   return JSON.parse(text) as Isolation;
 }
 
-/** origin's default branch (origin/HEAD), else origin/main, else local main. */
+/** origin's default branch (origin/HEAD), else origin/main, else HEAD. */
 async function defaultBase(repoPath: string): Promise<string> {
   const git = simpleGit(repoPath);
   const remotes = await git.getRemotes();
@@ -69,7 +69,8 @@ async function defaultBase(repoPath: string): Promise<string> {
     if (head.trim()) return head.trim().replace(/^refs\/remotes\//, "");
     return "origin/main";
   }
-  return "main";
+  // No remote: the checkout's current commit (pass --base to choose).
+  return "HEAD";
 }
 
 /** The lowest port no other isolated task holds. */
@@ -169,7 +170,7 @@ export async function isolateTask(
       baseRef,
       base,
       port: await freePort(repoPath, options.otherTasks ?? []),
-      database: `${repoName || "app"}_${id.toLowerCase().replace("-", "")}`,
+      database: `${repoName || "app"}_${id.toLowerCase().replace(/[^a-z0-9]+/g, "")}`,
     };
     const text = `${JSON.stringify(isolation, null, 2)}\n`;
     await writeFile(envPath(repoPath, id), text, "utf8");

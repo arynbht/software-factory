@@ -32,18 +32,18 @@ function body(skillMd: string): string {
   return skillMd.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "").trim();
 }
 
-/** The files a task's slice starts from: contract docs, touches, their tests. */
+/** The contract docs, read from the base so a change can't rewrite its rules. */
+const CONTRACT_DOCS = ["AGENTS.md", "CONSTRAINTS.md", "DESIGN.md"] as const;
+
+/** The files a task's slice starts from: the README, touches, their tests. */
 export function sliceGlobs(card: Card): string[] {
   const tests = card.touches.flatMap((t) =>
     /\*\*?$/.test(t) ? [] : [t.replace(/\.([a-z0-9]+)$/i, ".test.$1")],
   );
-  return [
-    "DESIGN.md",
-    "CONSTRAINTS.md",
-    "README.md",
-    ...card.touches,
-    ...tests,
-  ];
+  const contract = new Set<string>(CONTRACT_DOCS);
+  return ["README.md", ...card.touches, ...tests].filter(
+    (g) => !contract.has(g),
+  );
 }
 
 const SYSTEM = [
@@ -67,12 +67,13 @@ export async function assemblePrompt(options: {
   const parts: string[] = [];
 
   // 1. The contract, from the base: the change can't rewrite its own rules.
-  const agents = await simpleGit(options.repoPath)
-    .show([`${isolation.base}:AGENTS.md`])
-    .catch(() => null);
-  parts.push(
-    `# The contract (AGENTS.md)\n${agents?.trim() || "(this repo has no AGENTS.md yet)"}`,
-  );
+  const git = simpleGit(options.repoPath);
+  for (const doc of CONTRACT_DOCS) {
+    const text = await git.show([`${isolation.base}:${doc}`]).catch(() => null);
+    if (text?.trim()) parts.push(`# ${doc} (from the base)\n${text.trim()}`);
+    else if (doc === "AGENTS.md")
+      parts.push("# AGENTS.md\n(this repo has no AGENTS.md yet)");
+  }
 
   // 2. The card.
   parts.push(`# Task card ${card.id}\n\`\`\`yaml\n${stringify(card)}\`\`\``);

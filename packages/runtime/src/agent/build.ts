@@ -79,6 +79,8 @@ export const claudeAgent: AgentRunner = async (call) => {
         ? resolve(out)
         : reject(new Error(err.trim() || `claude exited with code ${code}`)),
     );
+    // A child that exits early closes stdin; its exit code says why, not EPIPE.
+    child.stdin.on("error", () => undefined);
     child.stdin.end(call.prompt);
   });
   return parseClaudeJson(stdout, call.model ?? "").text;
@@ -117,7 +119,12 @@ function pendingAnswer(
 ): { allowed: boolean; note: string; stops: string[] } | null {
   let roundEnd = -1;
   task.entries.forEach((e, i) => {
-    if (e.section === "timeline" && ROUND_END.test(e.text)) roundEnd = i;
+    // A replan after a budget denial (build started) acts on it too.
+    if (
+      e.section === "timeline" &&
+      (ROUND_END.test(e.text) || PLAN_START.test(e.text))
+    )
+      roundEnd = i;
   });
   let asked: string[] = [];
   let pending: { allowed: boolean; note: string; stops: string[] } | null =
