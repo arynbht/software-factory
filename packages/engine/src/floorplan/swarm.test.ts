@@ -167,6 +167,34 @@ describe("runSwarm", () => {
     );
   });
 
+  it("never lets mutual parents detach nodes from their system", async () => {
+    const cycle: SwarmInvoke = ({ role }) =>
+      role === "map"
+        ? Promise.resolve({
+            system: { title: "A", summary: "" },
+            nodes: [
+              { id: "a", title: "A", parent: "b" },
+              { id: "b", title: "B", parent: "a" },
+            ],
+          })
+        : Promise.resolve({ edges: [] });
+    const model = await runSwarm("/repo", {
+      ...opts,
+      invoke: cycle,
+      listSlices: () => Promise.resolve([SLICES[0]!]),
+    });
+    const parent = new Map(model.nodes.map((n) => [n.id, n.parent]));
+    for (const id of ["pkg-a/a", "pkg-a/b"]) {
+      let at: string | undefined = id;
+      const seen = new Set<string>();
+      while (at && !at.startsWith("system:") && !seen.has(at)) {
+        seen.add(at);
+        at = parent.get(at);
+      }
+      expect(at).toBe("system:pkg-a");
+    }
+  });
+
   it("marks the model partial when slices are dropped over the cap", async () => {
     const model = await runSwarm("/repo", { ...opts, maxSlices: 1 });
     expect(model.summary.partial).toBe(true);
@@ -195,6 +223,23 @@ describe("defaultListSlices", () => {
 
 describe("runSwarm — incremental reuse", () => {
   const stableFp = { ...opts, fingerprint: () => Promise.resolve("fp1") };
+
+  it("retries a failed reduce even when no slice changed", async () => {
+    const reduceFails: SwarmInvoke = (spec) =>
+      spec.role === "reduce"
+        ? Promise.reject(new Error("rate limited"))
+        : invoke(spec);
+    const first = await runSwarm("/repo", { ...stableFp, invoke: reduceFails });
+    expect(first.summary.partial).toBe(true);
+    const again = vi.fn(invoke);
+    const second = await runSwarm("/repo", {
+      ...stableFp,
+      previous: first,
+      invoke: again,
+    });
+    expect(again.mock.calls.map((c) => c[0].role)).toContain("reduce");
+    expect(second.summary.partial).toBe(false);
+  });
 
   it("reuses every slice and skips map + reduce when nothing changed", async () => {
     const base = await runSwarm("/repo", stableFp);

@@ -4,7 +4,7 @@
 // over simple-git (already a dep, used by fix-pr.ts); the build pipeline injects a
 // fake of these in tests so it needs no real git.
 import { randomBytes } from "node:crypto";
-import { rm } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -46,16 +46,32 @@ export async function createWorktree(
   return { path, branch, base };
 }
 
+/**
+ * Git for the worktree with hooks off. The agent can edit any file in it,
+ * including an in-repo hooks dir (`.husky`), and those hooks would run with
+ * the factory's full environment on commit or push.
+ */
+async function hooklessGit(worktreePath: string) {
+  const noHooks = join(tmpdir(), "factory-no-hooks");
+  await mkdir(noHooks, { recursive: true });
+  // simple-git guards core.hooksPath against injection; this points it at an
+  // empty directory, the opposite of injection.
+  return simpleGit(worktreePath, {
+    config: [`core.hooksPath=${noHooks}`],
+    unsafe: { allowUnsafeHooksPath: true },
+  });
+}
+
 /** Stage everything and commit; returns false when there was nothing to commit. */
 export async function commitAll(
   worktreePath: string,
   message: string,
 ): Promise<boolean> {
-  const git = simpleGit(worktreePath);
+  const git = await hooklessGit(worktreePath);
   await git.add(["-A"]);
   const staged = (await git.raw(["diff", "--cached", "--name-only"])).trim();
   if (staged === "") return false;
-  await git.commit(message);
+  await git.commit(message, ["--no-verify"]);
   return true;
 }
 
@@ -65,7 +81,9 @@ export async function pushBranch(
   remote: string,
   branch: string,
 ): Promise<void> {
-  await simpleGit(worktreePath).push([remote, branch, "--set-upstream"]);
+  await (
+    await hooklessGit(worktreePath)
+  ).push([remote, branch, "--set-upstream", "--no-verify"]);
 }
 
 /** Remove the linked worktree (best-effort) and delete its directory. */

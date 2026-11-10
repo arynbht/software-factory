@@ -332,17 +332,26 @@ function normalizeMap(slice: Slice, raw: unknown): MapPayload {
     node.parent = parent && parent !== id ? parent : systemId;
     return node;
   });
-  // Second pass fixes parents that referenced a sibling defined later.
+  // Second pass fixes parents that referenced a sibling defined later, unless
+  // that would make a cycle (a→b→a): every node must still reach its system.
+  const byId = new Map(nodes.map((n) => [n.id, n] as const));
+  const reachesSelf = (id: string, parent: string): boolean => {
+    const seen = new Set<string>();
+    for (let at: string | undefined = parent; at; at = byId.get(at)?.parent) {
+      if (at === id) return true;
+      if (seen.has(at)) return true;
+      seen.add(at);
+    }
+    return false;
+  };
   for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i]!;
     const parentRef = asString(
       (rawNodes[i] as Record<string, unknown>)?.parent,
     );
-    if (
-      parentRef &&
-      idMap.has(parentRef) &&
-      idMap.get(parentRef) !== nodes[i]!.id
-    ) {
-      nodes[i]!.parent = idMap.get(parentRef)!;
+    const parent = parentRef ? idMap.get(parentRef) : undefined;
+    if (parent && parent !== node.id && !reachesSelf(node.id, parent)) {
+      node.parent = parent;
     }
   }
 
@@ -676,7 +685,9 @@ export async function runSwarm(
   const nodeIds = new Set(nodes.map((n) => n.id));
   let detected: DetectedProfile;
 
-  if (previous && toRemap.length === 0) {
+  // Reuse the last connections only if they were complete: a failed reduce
+  // left the model partial, and is retried even when no slice changed.
+  if (previous && toRemap.length === 0 && !previous.summary.partial) {
     report({
       phase: "reduce",
       message: "All slices unchanged — reusing connections",
