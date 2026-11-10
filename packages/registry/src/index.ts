@@ -15,9 +15,12 @@ export {
   LOCAL_MANIFESTS,
   loadManifests,
   LOCK_FILE,
+  lockDigest,
   readLock,
+  readState,
   RegistryError,
   STATE_FILE,
+  type SyncState,
   VENDOR_DIR,
 } from "./repo.js";
 export {
@@ -38,8 +41,10 @@ export {
   type Manifest,
   ManifestSchema,
   parseSource,
+  type Sector,
   SECTORS,
   SKILL_PHASES,
+  type SkillPhase,
   validateManifestSet,
 } from "./schema.js";
 export {

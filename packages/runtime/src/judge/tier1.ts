@@ -254,20 +254,28 @@ export async function runTier1(options: Tier1Options): Promise<Tier1Result> {
   }
 }
 
+/**
+ * The checks a change is judged on by default: the quality lane's code checks.
+ * Repository settings (github-api) are posture, judged by `factory audit`, not
+ * by a change.
+ */
+export async function changeChecks(): Promise<Control[]> {
+  const { controls } = await loadBundledCatalog();
+  return controls.filter(
+    (c) =>
+      c.lane === "quality" && !c.detect.some((d) => d.type === "github-api"),
+  );
+}
+
 async function runChecks(
   dir: string,
   options: Tier1Options,
 ): Promise<ControlResult[]> {
-  const { controls } = await loadBundledCatalog();
   const selected: Control[] = options.checks
-    ? controls.filter((c) => options.checks?.includes(c.id))
-    : // The code checks of the quality lane: repository settings (github-api)
-      // are posture, judged by `factory audit`, not by a change.
-      controls.filter(
-        (c) =>
-          c.lane === "quality" &&
-          !c.detect.some((d) => d.type === "github-api"),
-      );
+    ? (await loadBundledCatalog()).controls.filter((c) =>
+        options.checks?.includes(c.id),
+      )
+    : await changeChecks();
   // One at a time, test runs first: coverage is read from what *this* side's
   // test run wrote, so the previous side's report is removed before it starts.
   const ordered = [...selected].sort(

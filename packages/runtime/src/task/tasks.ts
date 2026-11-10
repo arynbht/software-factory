@@ -22,7 +22,9 @@ export class TaskError extends Error {
 const taskDir = (repoPath: string, id: string) => join(repoPath, TASKS_DIR, id);
 const cardPath = (repoPath: string, id: string) =>
   join(taskDir(repoPath, id), "card.yml");
-const sha256 = (text: string) =>
+export const assemblyPath = (repoPath: string, id: string) =>
+  join(taskDir(repoPath, id), "assembly.yml");
+export const sha256 = (text: string) =>
   createHash("sha256").update(text, "utf8").digest("hex");
 
 /** Task records are per-machine working state: keep them out of git. */
@@ -64,6 +66,10 @@ export interface Task {
   ledger: Ledger;
   entries: LedgerEntry[];
   confirmed: boolean;
+  /** assembly.yml as written (unvalidated), once the task has been routed. */
+  assemblyText?: string | undefined;
+  /** The human approved the assembly (§3.2); its hash is sealed in the ledger. */
+  approved: boolean;
   /** The beat of the latest entry. */
   beat: Beat;
   /** Ledger and card integrity problems (empty when intact). */
@@ -72,6 +78,8 @@ export interface Task {
 
 /** The confirmation entry seals the card: its text carries the card's hash. */
 const CONFIRMED = /^intake confirmed; card sha256 ([0-9a-f]{64})$/;
+/** Likewise the route approval seals the assembly. */
+export const APPROVED = /^route approved; assembly sha256 ([0-9a-f]{64})$/;
 
 export async function loadTask(repoPath: string, id: string): Promise<Task> {
   let text: string;
@@ -95,11 +103,26 @@ export async function loadTask(repoPath: string, id: string): Promise<Task> {
   if (sealed && sealed !== sha256(text)) {
     problems.push("card.yml changed after intake was confirmed");
   }
+  const assemblyText = await readFile(assemblyPath(repoPath, id), "utf8").catch(
+    () => undefined,
+  );
+  const approved = entries
+    .map((e) => APPROVED.exec(e.text)?.[1])
+    .find((hash) => hash !== undefined);
+  if (approved && approved !== sha256(assemblyText ?? "")) {
+    problems.push(
+      assemblyText === undefined
+        ? "assembly.yml is missing, but the route was approved"
+        : "assembly.yml changed after the route was approved",
+    );
+  }
   return {
     card,
     ledger,
     entries,
     confirmed: sealed !== undefined,
+    assemblyText,
+    approved: approved !== undefined,
     beat: entries[entries.length - 1]?.beat ?? "intake",
     problems,
   };
@@ -175,6 +198,11 @@ export function nextStep(task: Task): string {
   if (task.problems.length > 0)
     return "stop: the task record fails verification";
   if (!task.confirmed) return "intake: review the card and confirm it";
+  if (!task.approved) {
+    return task.assemblyText === undefined
+      ? `route: \`factory task route ${task.card.id}\``
+      : `route: review assembly.yml, then \`factory task approve ${task.card.id}\``;
+  }
   const last = task.entries[task.entries.length - 1];
   if (last?.beat === "close") return "done";
   const i = BEATS.indexOf(task.beat);
