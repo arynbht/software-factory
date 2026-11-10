@@ -137,6 +137,60 @@ describe("runSwarm", () => {
     expect(phases).toContain("reduce");
     expect(phases).toContain("done");
   });
+
+  it("gives every node a unique id and never makes a node its own parent", async () => {
+    const dupes: SwarmInvoke = ({ role }) =>
+      role === "map"
+        ? Promise.resolve({
+            system: { title: "A", summary: "" },
+            nodes: [
+              { kind: "api" },
+              { kind: "feature" },
+              { id: "x", title: "X" },
+              { id: "x", title: "X again" },
+              { id: "self", title: "Self", parent: "self" },
+            ],
+          })
+        : Promise.resolve({ edges: [] });
+    const model = await runSwarm("/repo", {
+      ...opts,
+      invoke: dupes,
+      listSlices: () => Promise.resolve([SLICES[0]!]),
+    });
+    const ids = model.nodes.map((n) => n.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toEqual(
+      expect.arrayContaining(["pkg-a/n0", "pkg-a/n1", "pkg-a/x", "pkg-a/x-2"]),
+    );
+    expect(model.nodes.find((n) => n.id === "pkg-a/self")?.parent).toBe(
+      "system:pkg-a",
+    );
+  });
+
+  it("marks the model partial when slices are dropped over the cap", async () => {
+    const model = await runSwarm("/repo", { ...opts, maxSlices: 1 });
+    expect(model.summary.partial).toBe(true);
+  });
+});
+
+describe("defaultListSlices", () => {
+  it("skips dot-dirs so config never takes a package's slice", async () => {
+    const { mkdtemp, mkdir, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { defaultListSlices } = await import("./swarm.js");
+    const root = await mkdtemp(join(tmpdir(), "slices-"));
+    try {
+      for (const d of [".github", ".changeset", "packages/a", "packages/b"])
+        await mkdir(join(root, d), { recursive: true });
+      expect((await defaultListSlices(root)).map((s) => s.key)).toEqual([
+        "packages/a",
+        "packages/b",
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("runSwarm — incremental reuse", () => {

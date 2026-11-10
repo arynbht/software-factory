@@ -56,6 +56,10 @@ export async function runBuildTask(
   onProgress: (p: BuildProgress) => void,
   signal?: AbortSignal,
 ): Promise<BuildResult> {
+  // The IPC is reachable whatever the renderer showed: gate it here too.
+  if (!(await buildAvailable())) {
+    throw new Error("Building needs the Claude CLI (and isn't run under E2E).");
+  }
   const ctx = buildContext(repoPath, token ? { token } : {});
   return runBuild(ctx, plan, {
     date: today(),

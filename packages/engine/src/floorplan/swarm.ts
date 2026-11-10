@@ -122,10 +122,19 @@ const IGNORED_DIRS = new Set([
 async function subdirs(abs: string): Promise<string[]> {
   try {
     const entries = await readdir(abs, { withFileTypes: true });
-    return entries
-      .filter((e) => e.isDirectory() && !IGNORED_DIRS.has(e.name))
-      .map((e) => e.name)
-      .sort();
+    return (
+      entries
+        // Dot-dirs (.github, .changeset, .husky) are config, not systems, and
+        // sort first: left in, they'd take the slice cap from real packages.
+        .filter(
+          (e) =>
+            e.isDirectory() &&
+            !IGNORED_DIRS.has(e.name) &&
+            !e.name.startsWith("."),
+        )
+        .map((e) => e.name)
+        .sort()
+    );
   } catch {
     return [];
   }
@@ -293,11 +302,18 @@ function normalizeMap(slice: Slice, raw: unknown): MapPayload {
   // First pass: assign prefixed ids and remember the raw→prefixed id mapping so
   // intra-slice parent/edge references can be rewritten.
   const idMap = new Map<string, string>();
+  const used = new Set<string>();
   const nodes: FloorPlanNode[] = rawNodes.map((n, i) => {
     const nn = (n ?? {}) as Record<string, unknown>;
-    const rawId = asString(nn.id) || slug(asString(nn.title)) || `n${i}`;
-    const id = `${slice.key}/${rawId}`;
-    idMap.set(rawId, id);
+    // slug() never returns "", so the index fallback has to come first.
+    const rawId =
+      asString(nn.id) ||
+      (asString(nn.title) ? slug(asString(nn.title)) : `n${i}`);
+    // Two nodes with one id would make Cytoscape throw: suffix the repeats.
+    let id = `${slice.key}/${rawId}`;
+    for (let k = 2; used.has(id); k++) id = `${slice.key}/${rawId}-${k}`;
+    used.add(id);
+    if (!idMap.has(rawId)) idMap.set(rawId, id);
     idMap.set(id, id);
     const node: FloorPlanNode = {
       id,
@@ -310,9 +326,10 @@ function normalizeMap(slice: Slice, raw: unknown): MapPayload {
         : {}),
     };
     // Default parent is the slice's system node; a reference to a sibling wins.
+    // A node is never its own parent.
     const parentRef = asString(nn.parent);
-    node.parent =
-      parentRef && idMap.has(parentRef) ? idMap.get(parentRef)! : systemId;
+    const parent = parentRef ? idMap.get(parentRef) : undefined;
+    node.parent = parent && parent !== id ? parent : systemId;
     return node;
   });
   // Second pass fixes parents that referenced a sibling defined later.
@@ -629,7 +646,8 @@ export async function runSwarm(
     children: string[];
   }[] = [];
   const signals: MapPayload["signals"][] = [];
-  let partial = false;
+  // Slices dropped over the cap mean the model doesn't cover the repo.
+  let partial = dropped > 0;
 
   for (const outcome of outcomes as SliceOutcome[]) {
     systemIds.push(outcome.systemNode.id);

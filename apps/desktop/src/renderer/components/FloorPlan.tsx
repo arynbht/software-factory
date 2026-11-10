@@ -83,6 +83,12 @@ function Graph({
   onReady: (cy: Core) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // The latest callbacks, read through refs: the graph is rebuilt (and re-laid
+  // out) only when the elements change, never because a parent re-rendered.
+  const onSelectRef = useRef(onSelect);
+  const onReadyRef = useRef(onReady);
+  onSelectRef.current = onSelect;
+  onReadyRef.current = onReady;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -176,16 +182,18 @@ function Graph({
       } as unknown as cytoscape.LayoutOptions,
     });
 
-    cy.on("tap", "node", (evt) => onSelect(evt.target.id() as string));
+    cy.on("tap", "node", (evt) =>
+      onSelectRef.current(evt.target.id() as string),
+    );
     cy.on("tap", (evt) => {
-      if (evt.target === cy) onSelect(null);
+      if (evt.target === cy) onSelectRef.current(null);
     });
 
-    onReady(cy);
+    onReadyRef.current(cy);
     return () => {
       cy.destroy();
     };
-  }, [elements, onSelect, onReady]);
+  }, [elements]);
 
   return (
     <div
@@ -216,6 +224,7 @@ export function FloorPlan({
   repoPath,
   running,
   version,
+  runError,
   onRefresh,
 }: {
   repoPath: string;
@@ -223,6 +232,8 @@ export function FloorPlan({
   running: boolean;
   /** Bumped by App after a run completes, so we reload the persisted model. */
   version: number;
+  /** Why the latest swarm run failed, if it did. */
+  runError?: string | null;
   /** Ask App to (re)run the swarm for this repo. */
   onRefresh: () => void;
 }) {
@@ -330,9 +341,9 @@ export function FloorPlan({
           The deterministic scorecard still works without it.
         </p>
       )}
-      {error && (
+      {(error ?? runError) && (
         <p className="text-sm text-rose-400" role="alert">
-          {error}
+          {error ?? runError}
         </p>
       )}
       {running && progress && (

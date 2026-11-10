@@ -1,10 +1,11 @@
 // A WRITE-capable Claude Code agent for the build pipeline — the counterpart to the
 // read-only audit agent (floorplan/agent.ts). It runs headless inside an isolated
 // git worktree (`cwd = worktree`) with `--permission-mode acceptEdits` so it can
-// edit files and run the repo's build/test commands without prompting, but its tool
-// allow-list is scoped: file tools plus only pnpm/npm/node/git Bash — never
-// arbitrary shell. Combined with worktree isolation and PR review, that's the safety
-// envelope for letting an agent write code.
+// edit files and run the repo's build/test commands without prompting. Its tools
+// are file tools, the package managers and node, and read-only git. Running code it
+// wrote is inherent to building, so the envelope is what that code can reach: the
+// worktree, and an allowlisted environment that holds none of the caller's tokens.
+// Combined with PR review, that's the safety envelope for letting an agent write code.
 //
 // The runner is injectable so the build pipeline is unit-tested without spawning
 // `claude` or touching a real worktree.
@@ -12,8 +13,12 @@ import { spawn } from "node:child_process";
 
 import { claudeCommand, parseClaudeJson } from "../ai/claude-cli.js";
 import { DEFAULT_MODEL } from "../ai/client.js";
+import { allowlistedEnv } from "../detectors/exec.js";
 
-/** Scoped tool allow-list: file edits + build/test/git Bash only. */
+/**
+ * Scoped tool allow-list: file edits, build/test commands, and git only to look
+ * (a bare `git:*` lets `git -C . push` or an alias past any deny rule).
+ */
 export const BUILD_TOOLS = [
   "Edit",
   "Write",
@@ -23,8 +28,29 @@ export const BUILD_TOOLS = [
   "Bash(pnpm:*)",
   "Bash(npm:*)",
   "Bash(node:*)",
-  "Bash(git:*)",
+  "Bash(git status:*)",
+  "Bash(git diff:*)",
+  "Bash(git log:*)",
+  "Bash(git show:*)",
 ] as const;
+
+/** The factory never honours the target repo's .claude config (FACTORY_V2 §12). */
+export const ISOLATED_AGENT_ARGS = [
+  "--safe-mode",
+  "--strict-mcp-config",
+  "--no-session-persistence",
+] as const;
+
+/**
+ * A write-agent's environment: the allowlist (the repo code it runs never sees
+ * the caller's tokens) plus what `claude` itself needs to sign in, and `extra`.
+ */
+export function agentEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  return {
+    ...allowlistedEnv(["ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN"]),
+    ...extra,
+  };
+}
 
 /**
  * Carved out of BUILD_TOOLS (deny wins over allow): inline code and ad-hoc
@@ -72,6 +98,7 @@ const defaultRunner: WriteAgentRunner = async ({
     "json",
     "--model",
     model ?? DEFAULT_MODEL,
+    ...ISOLATED_AGENT_ARGS,
     "--permission-mode",
     "acceptEdits",
     "--append-system-prompt",
@@ -85,6 +112,7 @@ const defaultRunner: WriteAgentRunner = async ({
   return new Promise<string>((resolve, reject) => {
     const child = spawn(command, argv, {
       cwd,
+      env: agentEnv(),
       windowsHide: true,
       ...(signal ? { signal } : {}),
     });

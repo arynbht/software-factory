@@ -120,6 +120,8 @@ export function App() {
   // Floor Plan tab reloads the freshly-persisted model.
   const [floorPlanRunning, setFloorPlanRunning] = useState(false);
   const [floorPlanVersion, setFloorPlanVersion] = useState(0);
+  const [floorPlanError, setFloorPlanError] = useState<string | null>(null);
+  const floorPlanRun = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("scorecard");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -215,11 +217,20 @@ export function App() {
    * surfaced inside the Floor Plan tab via its own load, so they're swallowed here.
    */
   function triggerFloorPlan(path: string): void {
+    // Main aborts a superseded run; only the latest one may settle the UI.
+    const run = ++floorPlanRun.current;
     setFloorPlanRunning(true);
-    window.factory.floorplan.run(path).finally(() => {
-      setFloorPlanRunning(false);
-      setFloorPlanVersion((v) => v + 1);
-    });
+    setFloorPlanError(null);
+    window.factory.floorplan
+      .run(path)
+      .catch((err: unknown) => {
+        if (run === floorPlanRun.current) setFloorPlanError(errorMessage(err));
+      })
+      .finally(() => {
+        if (run !== floorPlanRun.current) return;
+        setFloorPlanRunning(false);
+        setFloorPlanVersion((v) => v + 1);
+      });
   }
 
   async function handleAudit(): Promise<void> {
@@ -423,6 +434,7 @@ export function App() {
                   repoPath={selectedRepo.path}
                   running={floorPlanRunning}
                   version={floorPlanVersion}
+                  runError={floorPlanError}
                   onRefresh={() => triggerFloorPlan(selectedRepo.path)}
                 />
               </div>

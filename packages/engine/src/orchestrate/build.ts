@@ -5,6 +5,8 @@
 // branch is committed, pushed, and a PR is opened. Every external effect (the agent,
 // git, verify, the PR call) is an injectable seam, so the whole flow is unit-tested
 // with no `claude`, git, or network — mirroring fix-pr.ts.
+import { randomBytes } from "node:crypto";
+
 import type { AuditContext } from "../context.js";
 import {
   openOrReusePr,
@@ -167,7 +169,12 @@ export async function runBuild(
     options.onProgress?.(p);
   };
 
-  const branch = `factory/build-${options.date}-${slugify(plan.request)}`;
+  // A short suffix so retrying the same request the same day gets its own branch.
+  const branch = `factory/build-${options.date}-${slugify(plan.request)}-${randomBytes(3).toString("hex")}`;
+  // Know we can open the PR before anything is pushed (or built).
+  const openPr = push
+    ? (options.openPr ?? (await defaultOpenPr(ctx)))
+    : undefined;
 
   report({
     phase: "worktree",
@@ -261,7 +268,7 @@ export async function runBuild(
       `factory: build — ${plan.request.split("\n")[0]}`,
     );
 
-    if (committed && push && result.passed) {
+    if (committed && openPr && result.passed) {
       report({
         phase: "pr",
         message: "Pushing and opening a PR…",
@@ -269,7 +276,6 @@ export async function runBuild(
         total: 1,
       });
       await git.pushBranch(worktree.path, remote, branch);
-      const openPr = options.openPr ?? (await defaultOpenPr(ctx));
       pr = await openPr({
         head: branch,
         base: worktree.base,

@@ -204,5 +204,10 @@ export async function verify(
 
   checks.push(await gateCheck(dir));
 
-  return { passed: checks.every((c) => !c.ran || c.passed), checks };
+  // A build nothing checked hasn't passed: at least one check has to run.
+  return {
+    passed:
+      checks.some((c) => c.ran) && checks.every((c) => !c.ran || c.passed),
+    checks,
+  };
 }

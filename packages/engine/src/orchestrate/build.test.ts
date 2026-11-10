@@ -136,4 +136,37 @@ describe("runBuild", () => {
     ).rejects.toThrow(/agent died/);
     expect(git.removed).toEqual(["/wt"]);
   });
+
+  it("refuses before building or pushing when no PR can be opened", async () => {
+    const git = fakeGit();
+    const signedOut = {
+      repoPath: "/repo",
+      github: () => Promise.resolve(null),
+    } as unknown as AuditContext;
+    await expect(
+      runBuild(signedOut, plan, {
+        date,
+        git,
+        writeAgent: okRunner,
+        verify: () => Promise.resolve(pass),
+      }),
+    ).rejects.toThrow(/no GitHub token/);
+    expect(git.createWorktree).not.toHaveBeenCalled();
+    expect(git.pushBranch).not.toHaveBeenCalled();
+  });
+
+  it("gives each build of the same request its own branch", async () => {
+    const opts = { date, verify: () => Promise.resolve(pass), openPr };
+    const a = await runBuild(ctx, plan, {
+      ...opts,
+      git: fakeGit(),
+      writeAgent: okRunner,
+    });
+    const b = await runBuild(ctx, plan, {
+      ...opts,
+      git: fakeGit(),
+      writeAgent: okRunner,
+    });
+    expect(a.branch).not.toBe(b.branch);
+  });
 });

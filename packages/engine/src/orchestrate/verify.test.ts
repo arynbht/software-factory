@@ -101,3 +101,20 @@ describe("verify runs repo code without the caller's secrets", () => {
     expect(result.passed).toBe(true);
   }, 30_000);
 });
+
+describe("verify with nothing to run", () => {
+  it("doesn't pass a build that no check looked at", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "verify-none-"));
+    try {
+      await writeFile(
+        join(dir, "package.json"),
+        JSON.stringify({ scripts: {} }),
+      );
+      const result = await verify(dir, { gate: skipGate });
+      expect(result.checks.every((c) => !c.ran)).toBe(true);
+      expect(result.passed).toBe(false);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
