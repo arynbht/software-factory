@@ -4,8 +4,11 @@ import { resolve } from "node:path";
 import { confirm, isCancel } from "@clack/prompts";
 import { RegistryError } from "@arynbht/factory-registry";
 import {
+  answerStops,
   approveRoute,
+  buildTask,
   CardError,
+  isolateTask,
   confirmTask,
   LedgerError,
   listTasks,
@@ -243,6 +246,69 @@ export function runTaskApprove(
       shown,
     });
     process.stdout.write(`${id} route approved; next: isolate\n`);
+    return 0;
+  });
+}
+
+/** `factory task isolate <id>`: the task's worktree, branch, port and database. */
+export function runTaskIsolate(
+  id: string,
+  flags: { base?: string; path?: string },
+): Promise<number> {
+  return guarded(async () => {
+    const repo = resolve(flags.path ?? ".");
+    const others = (await listTasks(repo)).map((t) => t.card.id);
+    const { isolation } = await isolateTask(repo, id, {
+      by: await whoami(repo),
+      base: flags.base,
+      otherTasks: others,
+    });
+    process.stdout.write(
+      `${id}: worktree ${isolation.worktree} on ${isolation.branch} from ${isolation.baseRef} · port ${isolation.port} · db ${isolation.database}\nnext: \`factory task build ${id}\`\n`,
+    );
+    return 0;
+  });
+}
+
+/**
+ * `factory task build <id>`: plan, then build in the worktree; pauses on
+ * anything the operating rules say to ask about.
+ */
+export function runTaskBuild(
+  id: string,
+  flags: { model?: string; path?: string },
+): Promise<number> {
+  return guarded(async () => {
+    const repo = resolve(flags.path ?? ".");
+    const outcome = await buildTask(repo, id, {
+      by: await whoami(repo),
+      model: flags.model,
+    });
+    for (const s of outcome.stops)
+      process.stdout.write(`stop: ${s.trigger}: ${s.detail}\n`);
+    process.stdout.write(`next: ${nextStep(outcome.task)}\n`);
+    return outcome.stops.length > 0 ? 2 : 0;
+  });
+}
+
+/** `factory task answer <id> --allow|--deny [note]`: answer the open stops. */
+export function runTaskAnswer(
+  id: string,
+  note: string | undefined,
+  flags: { allow?: boolean; deny?: boolean; path?: string },
+): Promise<number> {
+  return guarded(async () => {
+    if (Boolean(flags.allow) === Boolean(flags.deny)) {
+      console.error("factory task answer: give one of --allow or --deny.");
+      return 1;
+    }
+    const repo = resolve(flags.path ?? ".");
+    const task = await answerStops(repo, id, {
+      allow: Boolean(flags.allow),
+      note,
+      by: await whoami(repo),
+    });
+    process.stdout.write(`next: ${nextStep(task)}\n`);
     return 0;
   });
 }

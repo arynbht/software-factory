@@ -65,7 +65,7 @@ async function requireManifests(repoPath: string, options: RegistryOptions) {
 }
 
 /** Load a locked skill: the repo's vendored copy if present, else the cache. */
-async function load(
+export async function loadSkill(
   repoPath: string,
   entry: LockEntry,
   options: RegistryOptions,
@@ -128,7 +128,7 @@ export async function syncSkills(
     }
     let loaded;
     try {
-      loaded = await load(repoPath, entry, options);
+      loaded = await loadSkill(repoPath, entry, options);
     } catch (err) {
       result.blocked.push({ name: entry.name, reason: (err as Error).message });
       continue;

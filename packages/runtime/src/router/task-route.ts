@@ -135,10 +135,12 @@ export async function routeTask(
       at: options.now,
     });
   await entry(
-    `routed to ${a.sectors.join(", ") || "no sector"}: ${routing.scores
-      .filter((s) => a.sectors.includes(s.sector))
-      .map((s) => `${s.sector} (${s.reasons.join("; ")})`)
-      .join(", ")}`,
+    a.sectors.length > 0
+      ? `routed to ${a.sectors.join(", ")}: ${routing.scores
+          .filter((s) => a.sectors.includes(s.sector))
+          .map((s) => `${s.sector} (${s.reasons.join("; ")})`)
+          .join(", ")}`
+      : "routed to no sector: nothing in the card or its paths matched one; the agent works from the spine",
     "decision",
   );
   if (routing.borderline.length > 0)

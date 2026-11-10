@@ -10,8 +10,11 @@ import { type InitFlags, runInit } from "./commands/init.js";
 import { type JudgeFlags, runJudge } from "./commands/judge.js";
 import { type ReviewFlags, runReview } from "./commands/review.js";
 import {
+  runTaskAnswer,
   runTaskApprove,
+  runTaskBuild,
   runTaskConfirm,
+  runTaskIsolate,
   runTaskNew,
   runTaskResume,
   runTaskRoute,
@@ -170,6 +173,51 @@ export function buildProgram(): Command {
     .action(async (id: string, flags: { yes?: boolean; path?: string }) => {
       process.exitCode = await runTaskApprove(id, flags);
     });
+  task
+    .command("isolate")
+    .description(
+      "Give an approved task its worktree, branch, port and database",
+    )
+    .argument("<id>", "task id")
+    .option(
+      "--base <ref>",
+      "cut the worktree from this ref (default origin's default branch)",
+    )
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { base?: string; path?: string }) => {
+      process.exitCode = await runTaskIsolate(id, flags);
+    });
+  task
+    .command("build")
+    .description(
+      "Plan, then build in the task's worktree; pauses to ask when the rules say so",
+    )
+    .argument("<id>", "task id")
+    .option("--model <model>", "the sector agent's model")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { model?: string; path?: string }) => {
+      process.exitCode = await runTaskBuild(id, flags);
+    });
+  task
+    .command("answer")
+    .description("Answer a paused task's stop-and-ask questions")
+    .argument("<id>", "task id")
+    .argument(
+      "[note]",
+      "why, or what to do instead (passed to the agent on --deny)",
+    )
+    .option("--allow", "allow what it asked about")
+    .option("--deny", "deny it; the next build round undoes it")
+    .option("--path <path>", "path to the repo", ".")
+    .action(
+      async (
+        id: string,
+        note: string | undefined,
+        flags: { allow?: boolean; deny?: boolean; path?: string },
+      ) => {
+        process.exitCode = await runTaskAnswer(id, note, flags);
+      },
+    );
   task
     .command("status")
     .description("List tasks, their beat, and whether their records are intact")

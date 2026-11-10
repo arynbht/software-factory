@@ -46,6 +46,7 @@ export {
   newTask,
   nextStep,
   nextTaskId,
+  openStops,
   sha256,
   type Task,
   TaskError,
@@ -95,3 +96,24 @@ export {
   routingContext,
 } from "./router/task-route.js";
 export { SECTOR_SIGNALS, SENSITIVE_PATHS } from "./router/signals.js";
+export {
+  FIRST_PORT,
+  type Isolation,
+  isolateTask,
+  loadIsolation,
+  WORKTREES_DIR,
+} from "./agent/isolate.js";
+export {
+  type AssembledPrompt,
+  assemblePrompt,
+  sliceGlobs,
+} from "./agent/prompt.js";
+export { findStops, type Stop, type StopTrigger } from "./agent/stops.js";
+export {
+  type AgentCall,
+  type AgentRunner,
+  answerStops,
+  buildTask,
+  type BuildOutcome,
+  claudeAgent,
+} from "./agent/build.js";
