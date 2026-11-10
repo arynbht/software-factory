@@ -69,6 +69,9 @@ export const DENIED_BUILD_TOOLS = [
   "Bash(git push:*)",
   "Edit(.factory/**)",
   "Write(.factory/**)",
+  // Workflows run with the repo's secrets as soon as the branch is pushed.
+  "Edit(.github/workflows/**)",
+  "Write(.github/workflows/**)",
 ] as const;
 
 export interface WriteAgentSpec {

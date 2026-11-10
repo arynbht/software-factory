@@ -205,6 +205,9 @@ export function App() {
     setScorecard(null);
     setError(null);
     setView("scorecard");
+    // The previous repo's swarm run, if any, no longer speaks for this one.
+    floorPlanRun.current++;
+    setFloorPlanError(null);
     setFloorPlanRunning(false);
     setFloorPlanVersion((v) => v + 1); // make the Floor Plan tab reload for the new repo
     setOpened(new Set<View>(["scorecard"])); // fresh state for the new repo

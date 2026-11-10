@@ -12,6 +12,7 @@ import { spawn } from "node:child_process";
 
 import { claudeCommand, parseClaudeJson } from "../ai/claude-cli.js";
 import { DEFAULT_MODEL } from "../ai/client.js";
+import { agentEnv, ISOLATED_AGENT_ARGS } from "../orchestrate/write-agent.js";
 
 /** Read-only tool allow-list handed to every swarm agent. No edit tools. */
 export const READ_ONLY_TOOLS = [
@@ -51,6 +52,8 @@ const defaultRunner: AgentRunner = async ({
     "json",
     "--model",
     model ?? DEFAULT_MODEL,
+    // Never the target repo's .claude config: its hooks would run in here.
+    ...ISOLATED_AGENT_ARGS,
     "--append-system-prompt",
     system,
     "--allowedTools",
@@ -60,6 +63,7 @@ const defaultRunner: AgentRunner = async ({
   return new Promise<string>((resolve, reject) => {
     const child = spawn(command, argv, {
       cwd,
+      env: agentEnv(),
       windowsHide: true,
       ...(signal ? { signal } : {}),
     });
