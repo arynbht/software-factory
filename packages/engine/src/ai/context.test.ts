@@ -94,6 +94,12 @@ describe("redact guards", () => {
     ).toBe(true);
     // A benign assignment doesn't trip it.
     expect(looksLikeSecret("const name = getUser();")).toBe(false);
+    // Nor does code that passes a token around.
+    expect(looksLikeSecret("const token = resolveToken(flags.token);")).toBe(
+      false,
+    );
+    // A dotted unquoted value is still a secret.
+    expect(looksLikeSecret("password: correct.horse.battery")).toBe(true); // gitleaks:allow
   });
 
   it("detects binary content by a NUL byte", () => {

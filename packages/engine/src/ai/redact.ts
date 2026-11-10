@@ -65,8 +65,10 @@ const SECRET_CONTENT = [
   /\bAccountKey=[A-Za-z0-9+/=]{20,}/i, // Azure storage connection string
   // Connection URL with an inline password: scheme://user:password@host.
   /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|rediss|amqps?|ftp|ssh):\/\/[^\s:@/]+:[^\s:@/]+@/i,
-  // Generic secret assignment, quoted or unquoted.
-  /(?:api[_-]?key|secret|token|password|passwd|client[_-]?secret)\s*[:=]\s*(?:['"][^'"\s]{8,}['"]|[^\s'"]{8,})/i,
+  // Generic secret assignment, quoted or unquoted. An unquoted value must end
+  // there (a dot is fine: passwords and JWTs have them), so
+  // `token = resolveToken(flags.token)` is code, not a credential.
+  /(?:api[_-]?key|secret|token|password|passwd|client[_-]?secret)\s*[:=]\s*(?:['"][^'"\s]{8,}['"]|[^\s'"()]{8,}(?=$|[\s,;'"]))/im,
 ];
 
 /** True if a file's contents look like they contain a secret. */
