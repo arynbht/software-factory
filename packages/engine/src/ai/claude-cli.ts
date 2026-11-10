@@ -3,6 +3,9 @@
 // subscription (`claude login`), not an API key. The subprocess runner is
 // injectable so the JSON parsing is unit-tested without spawning anything.
 import { spawn } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { resolveOnWindows } from "../detectors/exec.js";
 import {
@@ -17,6 +20,7 @@ export type ClaudeRunner = (
   args: string[],
   input: string,
   signal?: AbortSignal,
+  cwd?: string,
 ) => Promise<string>;
 
 export interface ClaudeCliOptions {
@@ -38,11 +42,12 @@ export async function claudeCommand(
   return { command: resolved, argv: args };
 }
 
-const defaultRunner: ClaudeRunner = async (args, input, signal) => {
+const defaultRunner: ClaudeRunner = async (args, input, signal, cwd) => {
   const { command, argv } = await claudeCommand(args);
   return new Promise<string>((resolve, reject) => {
     const child = spawn(command, argv, {
       windowsHide: true,
+      ...(cwd ? { cwd } : {}),
       ...(signal ? { signal } : {}),
     });
     let stdout = "";
@@ -89,6 +94,22 @@ export function parseClaudeJson(
   };
 }
 
+/**
+ * Flags that make a `claude -p` call a pure completion: the model sees only the
+ * prompt (the context packer's output) and can't reach anything else.
+ *  - no tools, so it can't read `.env` or any file;
+ *  - safe mode: no CLAUDE.md, skills, plugins, hooks or MCP from any repo or
+ *    user config (the factory never honours a target repo's .claude settings);
+ *  - no saved session.
+ */
+export const LOCKED_DOWN_ARGS = [
+  "--tools",
+  "",
+  "--safe-mode",
+  "--strict-mcp-config",
+  "--no-session-persistence",
+];
+
 /** Build a transport backed by the local `claude` CLI (subscription auth). */
 export function claudeCliTransport(
   options: ClaudeCliOptions = {},
@@ -96,16 +117,28 @@ export function claudeCliTransport(
   const run = options.run ?? defaultRunner;
   return {
     async create(req: TransportRequest, signal) {
-      const args = ["-p", "--output-format", "json", "--model", req.model];
+      const args = [
+        "-p",
+        "--output-format",
+        "json",
+        "--model",
+        req.model,
+        ...LOCKED_DOWN_ARGS,
+      ];
       if (req.system) args.push("--append-system-prompt", req.system);
+      // An empty working directory: even a tool that slipped through finds
+      // nothing to read.
+      const cwd = await mkdtemp(join(tmpdir(), "factory-claude-"));
       let stdout: string;
       try {
-        stdout = await run(args, req.prompt, signal);
+        stdout = await run(args, req.prompt, signal, cwd);
       } catch (err) {
         throw new AiError(
           `claude CLI failed: ${(err as Error).message}`,
           false,
         );
+      } finally {
+        await rm(cwd, { recursive: true, force: true }).catch(() => undefined);
       }
       return parseClaudeJson(stdout, req.model);
     },

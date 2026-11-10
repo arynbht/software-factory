@@ -1,7 +1,7 @@
 {
   "name": "@arynbht/factory-runtime",
   "version": "0.0.0",
-  "description": "Task runtime: the judge (and, later, router and sector agents) for factory v2.",
+  "description": "Task runtime: task cards and ledger, the router, and the judge (and, later, sector agents) for factory v2.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@arynbht/factory-catalog": "workspace:*",
     "@arynbht/factory-engine": "workspace:*",
+    "@arynbht/factory-registry": "workspace:*",
     "picomatch": "^4.0.7",
     "simple-git": "^4.0.2",
     "yaml": "^2.9.1",

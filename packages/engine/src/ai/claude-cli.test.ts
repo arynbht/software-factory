@@ -1,7 +1,13 @@
+import { readdir } from "node:fs/promises";
+
 import { describe, expect, it, vi } from "vitest";
 
 import { AiError } from "./client.js";
-import { claudeCliTransport, parseClaudeJson } from "./claude-cli.js";
+import {
+  claudeCliTransport,
+  LOCKED_DOWN_ARGS,
+  parseClaudeJson,
+} from "./claude-cli.js";
 
 describe("parseClaudeJson", () => {
   it("extracts text, usage, and model from the CLI result JSON", () => {
@@ -50,6 +56,32 @@ describe("claudeCliTransport", () => {
     expect(args).toContain("claude-opus-4-8");
     expect(args).toContain("--append-system-prompt");
     expect(args).toContain("be terse");
+  });
+
+  it("runs locked down: no tools, safe mode, in an empty temp directory", async () => {
+    let seenCwd: string | undefined;
+    const run = vi.fn(
+      async (
+        _args: string[],
+        _input: string,
+        _signal?: AbortSignal,
+        cwd?: string,
+      ) => {
+        seenCwd = cwd;
+        expect(await readdir(cwd as string)).toEqual([]);
+        return JSON.stringify({ result: "ok", usage: {}, model: "m" });
+      },
+    );
+    await claudeCliTransport({ run }).create(
+      { model: "m", system: undefined, prompt: "p", maxTokens: 10 },
+      undefined,
+    );
+    const [args] = run.mock.calls[0]!;
+    expect(args).toEqual(expect.arrayContaining(LOCKED_DOWN_ARGS));
+    expect(args[args.indexOf("--tools") + 1]).toBe("");
+    expect(seenCwd).toContain("factory-claude-");
+    // The scratch directory is gone afterwards.
+    await expect(readdir(seenCwd as string)).rejects.toThrow();
   });
 
   it("wraps a runner failure as an AiError", async () => {

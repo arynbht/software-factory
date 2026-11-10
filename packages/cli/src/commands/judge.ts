@@ -1,8 +1,16 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { runTier1, type Tier1Result } from "@arynbht/factory-runtime";
+import { buildContext, createAiClient } from "@arynbht/factory-engine";
+import {
+  JUDGE_DEFAULT_MODEL,
+  reviewLocal,
+  runTier1,
+  type Tier1Result,
+} from "@arynbht/factory-runtime";
 import pc from "picocolors";
+
+import { today } from "../dates.js";
 
 export interface JudgeFlags {
   base?: string;
@@ -14,6 +22,9 @@ export interface JudgeFlags {
   env?: string[];
   workDir?: string;
   color?: boolean;
+  /** Run tier 2 (the AI review) after tier 1, unless tier 1 needs a human. */
+  review?: boolean;
+  model?: string;
 }
 
 const EXIT: Record<Tier1Result["verdict"], number> = {
@@ -59,13 +70,64 @@ export async function runJudge(
     return 1;
   }
 
-  if (flags.json) {
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-  } else {
+  if (!flags.json) {
     const color = flags.color !== false && process.stdout.isTTY === true;
     process.stdout.write(`${renderJudge(result, color)}\n`);
   }
-  return EXIT[result.verdict];
+  if (!flags.review) {
+    if (flags.json)
+      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return EXIT[result.verdict];
+  }
+
+  // Tier 2 only when tier 1 leaves the decision to the code: a change that
+  // touched protected paths goes to a person first (§8.2).
+  if (result.verdict === "needs-human") {
+    if (flags.json) {
+      process.stdout.write(
+        `${JSON.stringify({ tier1: result, tier2: null }, null, 2)}\n`,
+      );
+    } else {
+      process.stdout.write(
+        "\nTier 2 skipped: the change needs a human first.\n",
+      );
+    }
+    return EXIT[result.verdict];
+  }
+
+  const profile = await buildContext(root)
+    .profile()
+    .catch(() => null);
+  let review;
+  try {
+    review = await reviewLocal({
+      repoPath: root,
+      ai: createAiClient({ timeoutMs: 900_000 }),
+      model: flags.model ?? profile?.ai?.judge_model ?? JUDGE_DEFAULT_MODEL,
+      base: result.mergeBase,
+      head: result.head,
+      usageDate: today(),
+      log: flags.json
+        ? undefined
+        : (line) => process.stderr.write(`· ${line}\n`),
+    });
+  } catch (err) {
+    console.error(`factory judge: tier 2 failed: ${(err as Error).message}`);
+    return 1;
+  }
+  if (flags.json) {
+    process.stdout.write(
+      `${JSON.stringify({ tier1: result, tier2: { verdict: review.verdict, body: review.body } }, null, 2)}\n`,
+    );
+  } else {
+    process.stdout.write(`\n${review.body}\n`);
+  }
+  if (result.verdict === "fail") return EXIT.fail;
+  return review.verdict === "approve"
+    ? 0
+    : review.verdict === "needs-human"
+      ? 2
+      : 1;
 }
 
 export function renderJudge(result: Tier1Result, color: boolean): string {

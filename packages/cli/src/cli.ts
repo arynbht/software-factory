@@ -8,10 +8,13 @@ import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
 import { type FixFlags, runFix } from "./commands/fix.js";
 import { type InitFlags, runInit } from "./commands/init.js";
 import { type JudgeFlags, runJudge } from "./commands/judge.js";
+import { type ReviewFlags, runReview } from "./commands/review.js";
 import {
+  runTaskApprove,
   runTaskConfirm,
   runTaskNew,
   runTaskResume,
+  runTaskRoute,
   runTaskStatus,
   type TaskNewFlags,
 } from "./commands/task.js";
@@ -69,6 +72,34 @@ export function buildProgram(): Command {
       process.exitCode = await runInit(path, flags);
     });
 
+  program
+    .command("review")
+    .description(
+      "Judge tier 2: an AI review where only defects, contract breaches and unmet acceptance criteria block",
+    )
+    .argument("[path]", "path to the repo", ".")
+    .option("--pr <number>", "review this pull request and post one review")
+    .option("--dry-run", "with --pr: print the review instead of posting it")
+    .option(
+      "--base <ref>",
+      "local mode: the base the change targets",
+      "origin/main",
+    )
+    .option("--head <ref>", "local mode: the change (default HEAD)")
+    .option(
+      "--task <id>",
+      "review against this confirmed task card's acceptance criteria",
+    )
+    .option("--model <model>", "judge model (default: profile ai.judge_model)")
+    .option(
+      "--token <token>",
+      "GitHub token for --pr (else GITHUB_TOKEN or gh auth)",
+    )
+    .option("--json", "output JSON")
+    .action(async (path: string, flags: ReviewFlags) => {
+      process.exitCode = await runReview(path, flags);
+    });
+
   const task = program
     .command("task")
     .description("Task cards and their ledgers: intake before anything runs");
@@ -117,6 +148,27 @@ export function buildProgram(): Command {
     .option("--path <path>", "path to the repo", ".")
     .action(async (id: string, flags: { yes?: boolean; path?: string }) => {
       process.exitCode = await runTaskConfirm(id, flags);
+    });
+  task
+    .command("route")
+    .description(
+      "Route a confirmed card: sectors, skills, checks, proof and budget, with reasons",
+    )
+    .argument("<id>", "task id")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { path?: string }) => {
+      process.exitCode = await runTaskRoute(id, flags);
+    });
+  task
+    .command("approve")
+    .description(
+      "Approve the routed assembly; the last approval before the agent starts",
+    )
+    .argument("<id>", "task id")
+    .option("--yes", "approve without the prompt (recorded as --yes)")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { yes?: boolean; path?: string }) => {
+      process.exitCode = await runTaskApprove(id, flags);
     });
   task
     .command("status")
@@ -224,6 +276,14 @@ export function buildProgram(): Command {
     .option("--keep", "keep the clean clone for inspection")
     .option("--work-dir <dir>", "clone here instead of a temp dir")
     .option("--no-install", "don't install dependencies in the clone")
+    .option(
+      "--review",
+      "then run tier 2, the AI review (skipped when tier 1 needs a human)",
+    )
+    .option(
+      "--model <model>",
+      "judge model for --review (default: profile ai.judge_model)",
+    )
     .option(
       "--env <name>",
       "pass this environment variable to installs and checks (repeatable; default: none beyond system paths)",
