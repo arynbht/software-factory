@@ -61,7 +61,7 @@ export const SECTOR_SIGNALS: Record<Sector, SectorSignals> = {
       "api",
       "endpoint",
       "route handler",
-      "rest",
+      "rest api",
       "graphql",
       "openapi",
       "webhook",

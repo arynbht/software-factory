@@ -103,8 +103,12 @@ export async function loadTask(repoPath: string, id: string): Promise<Task> {
   if (sealed && sealed !== sha256(text)) {
     problems.push("card.yml changed after intake was confirmed");
   }
+  // Missing means not routed yet; any other read error is a real failure.
   const assemblyText = await readFile(assemblyPath(repoPath, id), "utf8").catch(
-    () => undefined,
+    (err: NodeJS.ErrnoException) => {
+      if (err.code === "ENOENT") return undefined;
+      throw err;
+    },
   );
   const approved = entries
     .map((e) => APPROVED.exec(e.text)?.[1])
