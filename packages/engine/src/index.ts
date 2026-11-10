@@ -107,6 +107,7 @@ export type {
 export {
   claudeCliTransport,
   claudeCliAvailable,
+  claudeCommand,
   parseClaudeJson,
   type ClaudeCliOptions,
   type ClaudeRunner,

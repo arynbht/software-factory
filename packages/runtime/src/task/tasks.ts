@@ -197,6 +197,38 @@ export async function confirmTask(
   return loadTask(repoPath, id);
 }
 
+const ASKED = /^asked: /;
+export const ANSWERED = /^answered: (allowed|denied)(?: — (.*))?$/;
+
+/** Stop-and-ask questions raised since the last answer (§7.2). */
+export function openStops(task: Task): string[] {
+  const stops = task.entries.filter((e) => e.section === "stop");
+  const last = stops.map((e) => ANSWERED.test(e.text)).lastIndexOf(true);
+  return stops
+    .slice(last + 1)
+    .filter((e) => ASKED.test(e.text))
+    .map((e) => e.text.replace(ASKED, ""));
+}
+
+/** Where the build beat stands, from its ledger entries. */
+function buildStep(task: Task): string {
+  const id = task.card.id;
+  if (openStops(task).length > 0)
+    return `stop-and-ask: \`factory task answer ${id} --allow\` or \`--deny "<why>"\``;
+  const build = task.entries.filter((e) => e.beat === "build");
+  const stage = [...build]
+    .reverse()
+    .find((e) => e.section === "timeline")
+    ?.text.match(/^build (started|paused|done)/)?.[1];
+  const answer = [...build]
+    .reverse()
+    .find((e) => e.section === "stop")
+    ?.text.match(ANSWERED)?.[1];
+  if (stage === "done" || (stage === "paused" && answer === "allowed"))
+    return "prove";
+  return `build: \`factory task build ${id}\``;
+}
+
 /** What happens next for a task, from its ledger. */
 export function nextStep(task: Task): string {
   if (task.problems.length > 0)
@@ -209,6 +241,11 @@ export function nextStep(task: Task): string {
   }
   const last = task.entries[task.entries.length - 1];
   if (last?.beat === "close") return "done";
+  if (task.beat === "build") return buildStep(task);
+  if (task.beat === "isolate")
+    return `build: \`factory task build ${task.card.id}\``;
+  if (task.beat === "route")
+    return `isolate: \`factory task isolate ${task.card.id}\``;
   const i = BEATS.indexOf(task.beat);
   return `${BEATS[Math.min(i + 1, BEATS.length - 1)]}`;
 }

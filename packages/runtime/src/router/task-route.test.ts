@@ -102,7 +102,7 @@ describe("task route and approve", () => {
     const approved = await approveRoute(repo, id, { ...by, context });
     expect(approved.task.approved).toBe(true);
     expect(approved.task.problems).toEqual([]);
-    expect(nextStep(approved.task)).toBe("isolate");
+    expect(nextStep(approved.task)).toMatch(/^isolate: /);
     await expect(routeTask(repo, id, { ...by, context })).rejects.toThrow(
       /already approved/,
     );

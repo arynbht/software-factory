@@ -51,6 +51,7 @@ export {
   type AddOptions,
   addSkill,
   initLock,
+  loadSkill,
   type RegistryOptions,
   skillsStatus,
   syncSkills,
