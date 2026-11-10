@@ -70,7 +70,8 @@ const CHANGE = {
     "export function charge(amount) {\n  console.log(req.body);\n  return amount / 0;\n}\n",
 };
 
-describe("judge tier 2", () => {
+// Each test builds a real git repo: slower on Windows CI.
+describe("judge tier 2", { timeout: 30_000 }, () => {
   it("a nit labelled as a defect, with no reproduction, never requests changes", async () => {
     const r = await repoWithChange(BASE, CHANGE);
     const { ai } = scripted(

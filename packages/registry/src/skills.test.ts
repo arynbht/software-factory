@@ -139,7 +139,8 @@ const opts = () => ({
   secretScanner: noSecrets,
 });
 
-describe("skills sync", () => {
+// Real git clones and fetches: slower on Windows CI.
+describe("skills sync", { timeout: 30_000 }, () => {
   it("fetches the pinned commit, verifies the hash, and installs the spine", async () => {
     const hash = await hashAt("acme/skills/spine", pin);
     const spine = manifest({ hash });
@@ -276,7 +277,7 @@ describe("manifest validation", () => {
   });
 });
 
-describe("skills add, update and vendor", () => {
+describe("skills add, update and vendor", { timeout: 30_000 }, () => {
   it("adds a skill with no shipped manifest from flags, pinned to HEAD", async () => {
     await writeManifests();
     const { entry, manifestPath } = await addSkill(
@@ -463,7 +464,7 @@ describe("secret scanning fails closed", () => {
   });
 });
 
-describe("mirror fallback", () => {
+describe("mirror fallback", { timeout: 30_000 }, () => {
   it("fetches from the mirror when the source commit is gone, still verifying the hash", async () => {
     const hash = await hashAt("acme/skills/spine", pin);
     const spine = manifest({ hash, mirror: "mirror/skills/spine" });
