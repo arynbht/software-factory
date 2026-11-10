@@ -110,7 +110,8 @@ export async function runReview(
     return 1;
   }
 
-  if (task) {
+  // A dry run posted nothing, so it isn't a round.
+  if (task && !(flags.pr && flags.dryRun)) {
     const r = outcome.result;
     await task.ledger.append({
       beat: "judge",
