@@ -94,7 +94,6 @@ export function parseClaudeJson(
   };
 }
 
-/** Build a transport backed by the local `claude` CLI (subscription auth). */
 /**
  * Flags that make a `claude -p` call a pure completion: the model sees only the
  * prompt (the context packer's output) and can't reach anything else.
@@ -111,6 +110,7 @@ export const LOCKED_DOWN_ARGS = [
   "--no-session-persistence",
 ];
 
+/** Build a transport backed by the local `claude` CLI (subscription auth). */
 export function claudeCliTransport(
   options: ClaudeCliOptions = {},
 ): AiTransport {

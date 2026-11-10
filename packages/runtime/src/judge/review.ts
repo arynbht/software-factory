@@ -146,7 +146,7 @@ export async function reviewPullRequest(
         owner,
         repo,
         pull_number: options.pr,
-        commit_id: pr.head.sha,
+        commit_id: head,
         event: attempt.event,
         body,
         comments: attempt.comments,

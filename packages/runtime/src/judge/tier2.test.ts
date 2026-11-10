@@ -238,6 +238,105 @@ describe("judge tier 2", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("fails the review when a gate call fails, instead of approving", async () => {
+    const r = await repoWithChange(BASE, CHANGE);
+    const ai: AiClient = {
+      async complete(params) {
+        if (
+          params.system?.startsWith("You are checking one code-review finding")
+        )
+          throw new Error("rate limited");
+        return {
+          text: JSON.stringify({
+            findings: [
+              {
+                kind: "defect",
+                file: "src/pay.js",
+                line: 3,
+                title: "Divides by zero",
+                repro: "charge(1) returns Infinity",
+              },
+            ],
+          }),
+          usage: { inputTokens: 1, outputTokens: 1 },
+          model: "m",
+        };
+      },
+    };
+    await expect(
+      runTier2({ repoPath: r.dir, base: r.base, head: r.head, ai }),
+    ).rejects.toThrow("rate limited");
+  });
+
+  it("caps gate calls, not just confirmed findings", async () => {
+    const r = await repoWithChange(BASE, CHANGE);
+    const findings = Array.from({ length: 12 }, (_, i) => ({
+      kind: "defect",
+      file: "src/pay.js",
+      line: 2,
+      title: `Finding ${i}`,
+    }));
+    const { ai, calls } = scripted({ findings }, () => ({
+      reproducible: false,
+      reason: "no",
+    }));
+    const result = await runTier2({
+      repoPath: r.dir,
+      base: r.base,
+      head: r.head,
+      ai,
+    });
+    expect(calls).toHaveLength(1 + 8);
+    expect(
+      result.suggestions.filter(
+        (s) => s.downgraded === "over the review's check budget",
+      ),
+    ).toHaveLength(4);
+  });
+
+  it("keeps a review whose finding has a bad line or no title", async () => {
+    const r = await repoWithChange(BASE, CHANGE);
+    const { ai } = scripted(
+      {
+        findings: [
+          { kind: "style", file: "src/pay.js", line: "two" },
+          { kind: "style", file: "src/pay.js", line: 1, title: "Kept" },
+        ],
+      },
+      () => ({}),
+    );
+    const result = await runTier2({
+      repoPath: r.dir,
+      base: r.base,
+      head: r.head,
+      ai,
+    });
+    expect(result.suggestions.map((s) => [s.title, s.line])).toEqual([
+      ["(untitled)", null],
+      ["Kept", 1],
+    ]);
+  });
+
+  it("leaves out a file whose removed lines hold a secret", async () => {
+    const apiKey = ["sk", "live", "abc123def456"].join("_");
+    const r = await repoWithChange(
+      {
+        ...BASE,
+        "src/keys.js": `export const key = "${apiKey}";\nexport const n = 1;\n`,
+      },
+      { "src/keys.js": "export const n = 2;\n" },
+    );
+    const { ai, calls } = scripted({ findings: [] }, () => ({}));
+    const result = await runTier2({
+      repoPath: r.dir,
+      base: r.base,
+      head: r.head,
+      ai,
+    });
+    expect(calls[0]?.prompt ?? "").not.toContain(apiKey);
+    expect(result.packed.omitted.map((o) => o.path)).toContain("src/keys.js");
+  });
+
   it("hands blocking findings to a person after two rounds", async () => {
     const r = await repoWithChange(BASE, CHANGE);
     const { ai } = scripted(

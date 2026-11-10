@@ -64,9 +64,10 @@ const MAX_FP_CHECKS = 8;
 const FindingSchema = z.object({
   kind: z.enum(FINDING_KINDS).catch("suggestion"),
   file: z.string().default(""),
-  line: z.number().int().nonnegative().nullable().default(null),
+  // A bad line or a missing title shouldn't throw away the whole review.
+  line: z.number().int().nonnegative().nullable().default(null).catch(null),
   acceptance_id: z.string().nullable().optional(),
-  title: z.string().min(1),
+  title: z.string().min(1).catch("(untitled)"),
   detail: z.string().default(""),
   repro: z.string().default(""),
   fix: z.string().default(""),
@@ -201,11 +202,12 @@ export async function packChange(
       omitted.push({ path: entry.path, why: "binary" });
       continue;
     }
-    const added = fileDiff
+    // Every body line is sent (removed and context lines too), so scan them all.
+    const body = fileDiff
       .split("\n")
-      .filter((l) => l.startsWith("+") && !l.startsWith("+++"))
+      .filter((l) => /^[+\- ]/.test(l) && !/^(\+\+\+|---) /.test(l))
       .join("\n");
-    if (looksLikeSecret(added)) {
+    if (looksLikeSecret(body)) {
       omitted.push({ path: entry.path, why: "looks like it holds a secret" });
       continue;
     }
@@ -357,6 +359,7 @@ export async function runTier2(options: Tier2Options): Promise<Tier2Result> {
 
   const blocking: Finding[] = [];
   const suggestions: Finding[] = [];
+  let checked = 0;
   for (const finding of review.findings) {
     if (finding.kind === "suggestion") {
       suggestions.push(finding);
@@ -371,7 +374,7 @@ export async function runTier2(options: Tier2Options): Promise<Tier2Result> {
       });
       continue;
     }
-    if (blocking.length >= MAX_FP_CHECKS) {
+    if (checked >= MAX_FP_CHECKS) {
       suggestions.push({
         ...finding,
         kind: "suggestion",
@@ -385,17 +388,16 @@ export async function runTier2(options: Tier2Options): Promise<Tier2Result> {
           .split(/^(?=diff --git )/m)
           .find((d) => d.includes(` b/${finding.file}\n`)) ?? packed.diff)
       : packed.diff;
+    checked++;
+    // A failed call is an error, not a verdict: it must never turn into an approval.
+    const reply = await complete(
+      GATE,
+      `## Finding (${finding.kind})\n${JSON.stringify(finding, null, 2)}\n\n## The diff\n${fileDiff}`,
+      "judge-fp-gate",
+    );
     let gate: z.infer<typeof GateSchema>;
     try {
-      gate = GateSchema.parse(
-        extractJson(
-          await complete(
-            GATE,
-            `## Finding (${finding.kind})\n${JSON.stringify(finding, null, 2)}\n\n## The diff\n${fileDiff}`,
-            "judge-fp-gate",
-          ),
-        ),
-      );
+      gate = GateSchema.parse(extractJson(reply));
     } catch {
       gate = {
         reproducible: false,
@@ -404,7 +406,7 @@ export async function runTier2(options: Tier2Options): Promise<Tier2Result> {
       };
     }
     if (gate.reproducible && gate.repro.trim().length >= 20) {
-      blocking.push({ ...finding, repro: gate.repro.trim() || finding.repro });
+      blocking.push({ ...finding, repro: gate.repro.trim() });
     } else {
       suggestions.push({
         ...finding,
