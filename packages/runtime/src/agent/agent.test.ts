@@ -1,6 +1,14 @@
 // Isolate and build on a real repo with a scripted agent: the worktree, the
 // prompt it gets, plan-first, and stop-and-ask (a new dependency pauses it).
-import { readFile, rm, writeFile, mkdtemp, mkdir } from "node:fs/promises";
+import {
+  access,
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -276,5 +284,115 @@ describe("build", () => {
     });
     const outcome = await buildTask(repo, id, { ...by, agent });
     expect(outcome.stops.map((s) => s.trigger)).toEqual(["protected_path"]);
+  });
+
+  it("replans, never runs, a plan whose budget stop was denied", async () => {
+    const id = await approvedTask();
+    await isolateTask(repo, id, { ...by, base: "main" });
+    const long = Array.from({ length: 13 }, (_, i) => `step ${i + 1}`);
+    await buildTask(repo, id, {
+      ...by,
+      agent: scripted(async () => undefined, long).agent,
+    });
+    await answerStops(repo, id, {
+      allow: false,
+      note: "five steps at most",
+      by: "dev@example.com",
+    });
+    const short = scripted(
+      async (cwd) => {
+        await writeFile(join(cwd, "src/total.ts"), "export const total = 1;\n");
+      },
+      ["one", "two"],
+    );
+    const outcome = await buildTask(repo, id, { ...by, agent: short.agent });
+    expect(short.calls.map((c) => c.mode)).toEqual(["plan", "build"]);
+    expect(short.calls[0]?.prompt).toContain(
+      "your plan was over budget and was refused — five steps at most",
+    );
+    // The build runs the new plan, and isn't told to undo anything.
+    expect(short.calls[1]?.prompt).toContain("1. one");
+    expect(short.calls[1]?.prompt).not.toContain("step 13");
+    expect(short.calls[1]?.prompt).not.toContain("A person answered");
+    expect(outcome.stops).toEqual([]);
+  });
+
+  it("passes a denial to the next round only", async () => {
+    const id = await approvedTask();
+    await isolateTask(repo, id, { ...by, base: "main" });
+    await buildTask(repo, id, {
+      ...by,
+      agent: scripted((cwd) =>
+        writeFile(
+          join(cwd, "package.json"),
+          JSON.stringify({
+            name: "demo",
+            dependencies: { zod: "^4.0.0", ms: "^2.1.3" },
+          }),
+        ),
+      ).agent,
+    });
+    await answerStops(repo, id, {
+      allow: false,
+      note: "no ms",
+      by: "dev@example.com",
+    });
+    const undo = scripted((cwd) =>
+      writeFile(
+        join(cwd, "package.json"),
+        `${JSON.stringify({ name: "demo", dependencies: { zod: "^4.0.0" } }, null, 2)}\n`,
+      ),
+    );
+    await buildTask(repo, id, { ...by, agent: undo.agent });
+    expect(undo.calls[0]?.prompt).toContain("denied — no ms");
+    const later = scripted(async () => undefined);
+    await buildTask(repo, id, { ...by, agent: later.agent });
+    expect(later.calls[0]?.prompt).not.toContain("A person answered");
+  });
+
+  it("asks when a workspace package's scripts change", async () => {
+    const id = await approvedTask();
+    await isolateTask(repo, id, { ...by, base: "main" });
+    const { agent } = scripted(async (cwd) => {
+      await mkdir(join(cwd, "packages/a"), { recursive: true });
+      await writeFile(
+        join(cwd, "packages/a/package.json"),
+        JSON.stringify({ name: "a", scripts: { test: "exit 0" } }),
+      );
+    });
+    const outcome = await buildTask(repo, id, { ...by, agent });
+    expect(outcome.stops.map((s) => s.trigger)).toContain("protected_path");
+  });
+
+  it("won't build on an env.json edited after isolation", async () => {
+    const id = await approvedTask();
+    const { isolation } = await isolateTask(repo, id, { ...by, base: "main" });
+    const path = join(repo, ".factory/tasks", id, "env.json");
+    await writeFile(path, JSON.stringify({ ...isolation, worktree: repo }));
+    await expect(
+      buildTask(repo, id, {
+        ...by,
+        agent: scripted(async () => undefined).agent,
+      }),
+    ).rejects.toThrow("doesn't match the isolation sealed in the ledger");
+  });
+});
+
+describe("isolate runs no hooks", () => {
+  it("not even post-checkout during worktree add", async () => {
+    const git = simpleGit(repo, { unsafe: { allowUnsafeHooksPath: true } });
+    await mkdir(join(repo, ".husky"), { recursive: true });
+    const marker = join(repo, "hook-ran").split("\\").join("/");
+    await writeFile(
+      join(repo, ".husky/post-checkout"),
+      `#!/bin/sh\necho ran > "${marker}"\n`,
+    );
+    await chmod(join(repo, ".husky/post-checkout"), 0o755);
+    await git.add(["-A"]);
+    await git.commit("hooks", ["--no-verify"]);
+    await git.addConfig("core.hooksPath", ".husky");
+    const id = await approvedTask();
+    await isolateTask(repo, id, { ...by, base: "main" });
+    await expect(access(join(repo, "hook-ran"))).rejects.toThrow();
   });
 });

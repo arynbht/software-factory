@@ -85,15 +85,13 @@ async function addedPackages(
 
 /**
  * Every stop the change from `base` to `head` (in `worktree`) triggers, given
- * the approved assembly. `planSteps` is the agent's plan length, checked
- * against the budget.
+ * the approved assembly. (The plan's budget is checked before building.)
  */
 export async function findStops(
   worktree: string,
   base: string,
   head: string,
   assembly: Assembly,
-  planSteps?: number,
 ): Promise<Stop[]> {
   const git = simpleGit(worktree);
   const diff = parseNameStatus(
@@ -103,13 +101,6 @@ export async function findStops(
   const asks = new Set<string>(
     assembly.stop_and_ask.flatMap((s) => (typeof s === "string" ? [s] : [])),
   );
-
-  if (planSteps !== undefined && planSteps > assembly.budget.steps) {
-    stops.push({
-      trigger: "budget_exhausted",
-      detail: `the plan has ${planSteps} steps; the budget is ${assembly.budget.steps}`,
-    });
-  }
 
   if (asks.has("new_dependency")) {
     for (const entry of diff) {
@@ -153,9 +144,15 @@ export async function findStops(
   const added = parseAddedLines(
     await git.raw(["diff", "-U0", "--no-color", base, head]),
   );
-  const scripts = async (rev: string) =>
-    JSON.stringify((await jsonAt(git, rev, "package.json"))?.scripts ?? null);
-  const scriptsChanged = (await scripts(base)) !== (await scripts(head));
+  // Scripts are the commands the checks run, in any package of a workspace.
+  const scripts = async (rev: string, path: string) =>
+    JSON.stringify((await jsonAt(git, rev, path))?.scripts ?? null);
+  let scriptsChanged = false;
+  for (const entry of diff) {
+    if (!entry.path.endsWith("package.json")) continue;
+    const before = await scripts(base, entry.oldPath ?? entry.path);
+    if (before !== (await scripts(head, entry.path))) scriptsChanged = true;
+  }
   for (const f of findProtected(diff, added, scriptsChanged)) {
     stops.push({ trigger: "protected_path", detail: f.detail });
   }

@@ -105,19 +105,49 @@ function allowedDetails(task: Task): Set<string> {
   return allowed;
 }
 
-function lastAnswer(task: Task): { allowed: boolean; note: string } | null {
-  for (const e of [...task.entries].reverse()) {
-    if (e.section !== "stop") continue;
+const ROUND_END = /^build (done|paused)/;
+const PLAN_START = /^build started/;
+
+/**
+ * The answer the next round has to act on: one given since the last build
+ * round ended, with the stops it answered. An older answer was acted on already.
+ */
+function pendingAnswer(
+  task: Task,
+): { allowed: boolean; note: string; stops: string[] } | null {
+  let roundEnd = -1;
+  task.entries.forEach((e, i) => {
+    if (e.section === "timeline" && ROUND_END.test(e.text)) roundEnd = i;
+  });
+  let asked: string[] = [];
+  let pending: { allowed: boolean; note: string; stops: string[] } | null =
+    null;
+  task.entries.forEach((e, i) => {
+    if (e.section !== "stop") return;
+    if (e.text.startsWith("asked: ")) {
+      asked.push(e.text.slice("asked: ".length));
+      return;
+    }
     const m = ANSWERED.exec(e.text);
-    return m ? { allowed: m[1] === "allowed", note: m[2] ?? "" } : null;
-  }
-  return null;
+    if (!m) return;
+    if (i > roundEnd)
+      pending = { allowed: m[1] === "allowed", note: m[2] ?? "", stops: asked };
+    asked = [];
+  });
+  return pending;
 }
 
-const plan = (task: Task) =>
-  task.entries
+/** The latest plan: the plan entries after the last "build started". */
+function plan(task: Task): string[] {
+  let start = -1;
+  task.entries.forEach((e, i) => {
+    if (e.section === "timeline" && PLAN_START.test(e.text)) start = i;
+  });
+  return task.entries
+    .slice(start + 1)
     .filter((e) => e.section === "plan")
     .map((e) => e.text.replace(/^\d+\. /, ""));
+}
 
 export interface BuildOutcome {
   task: Task;
@@ -159,14 +189,24 @@ export async function buildTask(
     task.ledger.append({ beat: "build", section, text, by, at: options.now });
   const env = taskEnv(isolation);
 
+  const answer = pendingAnswer(task);
+  // A denied over-budget plan is replanned, never run.
+  const replan =
+    answer !== null &&
+    !answer.allowed &&
+    answer.stops.some((s) => s.startsWith("budget_exhausted"));
+
   // Plan first, recorded before any edit.
-  let steps = plan(task);
+  let steps = replan ? [] : plan(task);
   if (steps.length === 0) {
     const planning = await assemblePrompt({
       repoPath,
       card: task.card,
       assembly,
       isolation,
+      answer: replan
+        ? `your plan was over budget and was refused — ${answer.note || "plan fewer, larger steps"}`
+        : undefined,
     });
     const reply = await agent({
       mode: "plan",
@@ -193,7 +233,6 @@ export async function buildTask(
     }
   }
 
-  const answer = lastAnswer(task);
   const building = await assemblePrompt({
     repoPath,
     card: task.card,
@@ -201,7 +240,7 @@ export async function buildTask(
     isolation,
     plan: steps,
     answer:
-      answer && !answer.allowed
+      answer && !answer.allowed && !replan
         ? `denied — ${answer.note || "undo what you asked about"}`
         : undefined,
   });
