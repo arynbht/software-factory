@@ -72,3 +72,32 @@ describe("verify", () => {
     expect(result.passed).toBe(false);
   });
 });
+
+describe("verify runs repo code without the caller's secrets", () => {
+  let dir: string;
+  const saved = process.env.FACTORY_TEST_SECRET;
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "verify-env-"));
+    process.env.FACTORY_TEST_SECRET = "s3cret-from-the-caller";
+  });
+  afterEach(async () => {
+    if (saved === undefined) delete process.env.FACTORY_TEST_SECRET;
+    else process.env.FACTORY_TEST_SECRET = saved;
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("a script can't read a variable outside the allowlist", async () => {
+    await writeFile(join(dir, "package-lock.json"), "{}");
+    await writeFile(
+      join(dir, "package.json"),
+      JSON.stringify({
+        scripts: {
+          test: 'node -e "process.exit(process.env.FACTORY_TEST_SECRET ? 1 : 0)"',
+        },
+      }),
+    );
+    const result = await verify(dir, { scripts: ["test"], gate: skipGate });
+    expect(result.checks[0]).toMatchObject({ name: "test", ran: true });
+    expect(result.passed).toBe(true);
+  }, 30_000);
+});

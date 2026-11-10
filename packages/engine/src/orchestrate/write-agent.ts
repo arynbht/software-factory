@@ -26,6 +26,25 @@ export const BUILD_TOOLS = [
   "Bash(git:*)",
 ] as const;
 
+/**
+ * Carved out of BUILD_TOOLS (deny wins over allow): inline code and ad-hoc
+ * package execution (FACTORY_V2 §7.2), pushing (the pipeline pushes, after
+ * verify), and the factory's own state, which the agent never edits.
+ */
+export const DENIED_BUILD_TOOLS = [
+  "Bash(node -e:*)",
+  "Bash(node --eval:*)",
+  "Bash(node -p:*)",
+  "Bash(node --print:*)",
+  "Bash(npm exec:*)",
+  "Bash(npm x:*)",
+  "Bash(pnpm exec:*)",
+  "Bash(pnpm dlx:*)",
+  "Bash(git push:*)",
+  "Edit(.factory/**)",
+  "Write(.factory/**)",
+] as const;
+
 export interface WriteAgentSpec {
   /** The task/instruction fed on stdin. */
   prompt: string;
@@ -59,6 +78,8 @@ const defaultRunner: WriteAgentRunner = async ({
     system,
     "--allowedTools",
     BUILD_TOOLS.join(","),
+    "--disallowedTools",
+    DENIED_BUILD_TOOLS.join(","),
   ];
   const { command, argv } = await claudeCommand(args);
   return new Promise<string>((resolve, reject) => {

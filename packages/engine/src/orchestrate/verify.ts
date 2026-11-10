@@ -5,7 +5,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { runTool, type ToolResult } from "../detectors/exec.js";
+import { allowlistedEnv, runTool, type ToolResult } from "../detectors/exec.js";
 import type { VerifyCheck, VerifyResult } from "./types.js";
 
 export type CommandRunner = (
@@ -14,8 +14,15 @@ export type CommandRunner = (
   cwd: string,
 ) => Promise<ToolResult>;
 
+/**
+ * Installs and scripts are the repo's code: run them without the caller's
+ * secrets, on the same allowlisted environment as the judge.
+ */
+const runRepoCode: CommandRunner = (bin, args, cwd) =>
+  runTool(bin, args, cwd, { env: allowlistedEnv() });
+
 export interface VerifyOptions {
-  /** Inject the command runner (tests). Default runs real tools via runTool. */
+  /** Inject the command runner (tests). Default runs the repo's tools on an allowlisted env. */
   run?: CommandRunner;
   /** npm scripts to run if present, in order. Default: typecheck, lint, test. */
   scripts?: string[];
@@ -68,7 +75,7 @@ async function readScripts(dir: string): Promise<Record<string, string>> {
  */
 export async function installDeps(
   dir: string,
-  run: CommandRunner = runTool,
+  run: CommandRunner = runRepoCode,
 ): Promise<VerifyCheck> {
   try {
     await readFile(resolve(dir, "package.json"), "utf8");
@@ -164,7 +171,7 @@ export async function verify(
   dir: string,
   options: VerifyOptions = {},
 ): Promise<VerifyResult> {
-  const run = options.run ?? runTool;
+  const run = options.run ?? runRepoCode;
   const scriptNames = options.scripts ?? DEFAULT_SCRIPTS;
   const gateCheck = options.gate ?? defaultGateCheck;
 

@@ -160,6 +160,7 @@ export type { VerifyOptions, CommandRunner } from "./orchestrate/verify.js";
 export {
   runWriteAgent,
   BUILD_TOOLS,
+  DENIED_BUILD_TOOLS,
   type WriteAgentRunner,
   type WriteAgentSpec,
 } from "./orchestrate/write-agent.js";
