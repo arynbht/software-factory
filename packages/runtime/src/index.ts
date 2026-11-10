@@ -1,5 +1,6 @@
 export {
   type CheckOutcome,
+  changeChecks,
   parseAddedLines,
   parseNameStatus,
   runTier1,
@@ -37,12 +38,15 @@ export {
   render as renderLedger,
 } from "./task/ledger.js";
 export {
+  APPROVED,
+  assemblyPath,
   confirmTask,
   listTasks,
   loadTask,
   newTask,
   nextStep,
   nextTaskId,
+  sha256,
   type Task,
   TaskError,
   TASKS_DIR,
@@ -69,3 +73,25 @@ export {
   roundVerdict,
   type ReviewVerdict,
 } from "./judge/review.js";
+export {
+  type Assembly,
+  AssemblySchema,
+  hasWord,
+  MAX_TASK_SKILLS,
+  PROOF_TYPES,
+  type ProofType,
+  route,
+  type RouteInput,
+  type Routing,
+  SECTOR_THRESHOLD,
+  type SectorScore,
+  STOP_TRIGGERS,
+  validateAssembly,
+} from "./router/route.js";
+export {
+  approveRoute,
+  type RouteContext,
+  routeTask,
+  routingContext,
+} from "./router/task-route.js";
+export { SECTOR_SIGNALS, SENSITIVE_PATHS } from "./router/signals.js";

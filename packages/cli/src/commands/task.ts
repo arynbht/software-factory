@@ -2,7 +2,9 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { confirm, isCancel } from "@clack/prompts";
+import { RegistryError } from "@arynbht/factory-registry";
 import {
+  approveRoute,
   CardError,
   confirmTask,
   LedgerError,
@@ -11,6 +13,8 @@ import {
   newTask,
   nextStep,
   parseAcceptanceFlag,
+  routeTask,
+  sha256,
   type Task,
   TaskError,
   whoami,
@@ -37,7 +41,8 @@ async function guarded(action: () => Promise<number>): Promise<number> {
     if (
       err instanceof CardError ||
       err instanceof TaskError ||
-      err instanceof LedgerError
+      err instanceof LedgerError ||
+      err instanceof RegistryError
     ) {
       console.error(`factory task: ${err.message}`);
       return 1;
@@ -158,6 +163,86 @@ export function runTaskResume(
     }
     process.stdout.write(await readFile(task.ledger.mdPath, "utf8"));
     process.stdout.write(`\nnext: ${nextStep(task)}\n`);
+    return 0;
+  });
+}
+
+/**
+ * `factory task route <id>`: route the confirmed card and show the proposed
+ * assembly with the reasons behind it; nothing is approved yet.
+ */
+export function runTaskRoute(
+  id: string,
+  flags: { path?: string },
+): Promise<number> {
+  return guarded(async () => {
+    const repo = resolve(flags.path ?? ".");
+    const { routing } = await routeTask(repo, id, { by: await whoami(repo) });
+    const out: string[] = ["sectors:"];
+    for (const s of routing.scores) {
+      const mark = routing.assembly.sectors.includes(s.sector) ? "in" : "  ";
+      out.push(`  ${mark} ${s.sector} ${s.score}: ${s.reasons.join("; ")}`);
+    }
+    if (routing.borderline.length > 0)
+      out.push(
+        `under the threshold (add them to the assembly if they belong): ${routing.borderline.join(", ")}`,
+      );
+    for (const note of routing.notes) out.push(`note: ${note}`);
+    out.push("", stringify(routing.assembly).trimEnd(), "");
+    out.push(
+      `wrote .factory/tasks/${id}/assembly.yml; edit it if you disagree, then \`factory task approve ${id}\``,
+    );
+    process.stdout.write(`${out.join("\n")}\n`);
+    return 0;
+  });
+}
+
+/**
+ * `factory task approve <id>`: a person agrees the assembly — the last
+ * approval before the agent starts. As with confirm, `--yes` without a
+ * terminal, recorded as such.
+ */
+export function runTaskApprove(
+  id: string,
+  flags: { yes?: boolean; path?: string },
+): Promise<number> {
+  return guarded(async () => {
+    const repo = resolve(flags.path ?? ".");
+    const task = await loadTask(repo, id);
+    // Say what's wrong before asking anyone to approve anything.
+    if (task.approved) {
+      console.error(`factory task: ${id}'s route is already approved`);
+      return 1;
+    }
+    if (task.assemblyText === undefined) {
+      console.error(
+        `factory task: ${id} hasn't been routed: \`factory task route ${id}\``,
+      );
+      return 1;
+    }
+    const shown = sha256(task.assemblyText);
+    process.stdout.write(`${task.assemblyText}\n`);
+    if (!flags.yes) {
+      if (!process.stdin.isTTY) {
+        console.error(
+          "factory task approve: approving an assembly needs a person at the terminal (or --yes).",
+        );
+        return 1;
+      }
+      const ok = await confirm({
+        message: `Approve this assembly for ${id}?`,
+      });
+      if (isCancel(ok) || !ok) {
+        process.stdout.write("not approved\n");
+        return 1;
+      }
+    }
+    const by = await whoami(repo);
+    await approveRoute(repo, id, {
+      by: flags.yes ? `${by} (--yes)` : by,
+      shown,
+    });
+    process.stdout.write(`${id} route approved; next: isolate\n`);
     return 0;
   });
 }

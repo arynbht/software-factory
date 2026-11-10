@@ -9,9 +9,11 @@ import { type InitFlags, runInit } from "./commands/init.js";
 import { type JudgeFlags, runJudge } from "./commands/judge.js";
 import { type ReviewFlags, runReview } from "./commands/review.js";
 import {
+  runTaskApprove,
   runTaskConfirm,
   runTaskNew,
   runTaskResume,
+  runTaskRoute,
   runTaskStatus,
   type TaskNewFlags,
 } from "./commands/task.js";
@@ -145,6 +147,27 @@ export function buildProgram(): Command {
     .option("--path <path>", "path to the repo", ".")
     .action(async (id: string, flags: { yes?: boolean; path?: string }) => {
       process.exitCode = await runTaskConfirm(id, flags);
+    });
+  task
+    .command("route")
+    .description(
+      "Route a confirmed card: sectors, skills, checks, proof and budget, with reasons",
+    )
+    .argument("<id>", "task id")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { path?: string }) => {
+      process.exitCode = await runTaskRoute(id, flags);
+    });
+  task
+    .command("approve")
+    .description(
+      "Approve the routed assembly; the last approval before the agent starts",
+    )
+    .argument("<id>", "task id")
+    .option("--yes", "approve without the prompt (recorded as --yes)")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { yes?: boolean; path?: string }) => {
+      process.exitCode = await runTaskApprove(id, flags);
     });
   task
     .command("status")

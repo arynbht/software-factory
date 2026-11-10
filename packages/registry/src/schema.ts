@@ -19,6 +19,7 @@ export const SECTORS = [
   "workflow",
   "observability",
 ] as const;
+export type Sector = (typeof SECTORS)[number];
 
 export const SKILL_PHASES = [
   "intake",
@@ -28,6 +29,7 @@ export const SKILL_PHASES = [
   "prove",
   "review",
 ] as const;
+export type SkillPhase = (typeof SKILL_PHASES)[number];
 
 export const SKILL_TOOLS = ["none", "browser", "shell", "network"] as const;
 

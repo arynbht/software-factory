@@ -91,7 +91,7 @@ describe("intake", () => {
 
     const confirmed = await confirmTask(repo, "T-0001", by);
     expect(confirmed.confirmed).toBe(true);
-    expect(nextStep(confirmed)).toBe("route");
+    expect(nextStep(confirmed)).toMatch(/^route: `factory task route T-0001`/);
     await expect(confirmTask(repo, "T-0001", by)).rejects.toThrow(
       /already confirmed/,
     );
