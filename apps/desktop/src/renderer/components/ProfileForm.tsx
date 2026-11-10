@@ -1,12 +1,12 @@
 import type { Profile } from "@arynbht/factory-catalog";
-import { Check, Save } from "lucide-react";
+import { Check, Save, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/errors";
 
-import type { ProfileMeta } from "../../shared/ipc";
+import type { DetectedProfile, ProfileMeta } from "../../shared/ipc";
 
 function Toggle(props: {
   label: string;
@@ -53,6 +53,8 @@ export function ProfileForm({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  // What the deep-audit swarm detected about this repo, offered as a suggestion.
+  const [detected, setDetected] = useState<DetectedProfile | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -85,6 +87,19 @@ export function ProfileForm({
     };
   }, [repoPath, repoName]);
 
+  // Pull the floor plan's detected facts (if an audit has run), for the suggestion
+  // banner. A missing/failed floor plan just means no suggestion.
+  useEffect(() => {
+    let active = true;
+    window.factory.floorplan.get(repoPath).then(
+      (view) => active && setDetected(view.model?.detected ?? null),
+      () => {},
+    );
+    return () => {
+      active = false;
+    };
+  }, [repoPath]);
+
   if (error && !draft) {
     return (
       <p className="text-sm text-rose-400" role="alert">
@@ -100,6 +115,48 @@ export function ProfileForm({
     setDraft({ ...draft, ...changes });
     setSaved(false);
   };
+
+  // The true flags the swarm detected that are valid catalog flags — the subset we
+  // can actually offer to apply.
+  const detectedFlags =
+    detected && meta
+      ? Object.entries(detected.flags)
+          .filter(([k, v]) => v && meta.flags.includes(k))
+          .map(([k]) => k)
+      : [];
+  const canApplyDetected =
+    !!detected &&
+    !!meta &&
+    (!!detected.type ||
+      detected.stack.length > 0 ||
+      detectedFlags.length > 0 ||
+      !!detected.phase);
+
+  /** Fill the form from the detected facts — a suggestion the user then reviews
+   *  and Saves (never auto-written). */
+  function applyDetected(): void {
+    if (!detected || !draft || !meta) return;
+    const changes: Partial<Profile> = {};
+    if (detected.type && meta.types.includes(detected.type)) {
+      changes.type = detected.type as Profile["type"];
+    }
+    if (detected.phase && meta.phases.some((p) => p.key === detected.phase)) {
+      changes.phase = detected.phase as Profile["phase"];
+    }
+    if (detectedFlags.length > 0) {
+      const flags = { ...draft.flags };
+      for (const f of detectedFlags) flags[f as keyof Profile["flags"]] = true;
+      changes.flags = flags as Profile["flags"];
+    }
+    if (detected.stack.length > 0) {
+      const current = stackText
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      setStackText([...new Set([...current, ...detected.stack])].join(", "));
+    }
+    patch(changes);
+  }
 
   async function handleSave(): Promise<void> {
     if (!draft) return;
@@ -138,6 +195,46 @@ export function ProfileForm({
         <p className="text-sm text-rose-400" role="alert">
           {error}
         </p>
+      )}
+
+      {canApplyDetected && detected && (
+        <Card className="space-y-2 border-sky-500/40 bg-sky-500/5 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-sky-300">
+                <Sparkles className="h-4 w-4" />
+                Detected by audit
+                <span className="text-xs font-normal text-muted-foreground">
+                  ({Math.round(detected.confidence * 100)}% confidence)
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {[
+                  detected.type && `type: ${detected.type}`,
+                  detected.phase && `phase: ${detected.phase}`,
+                  detected.stack.length > 0 &&
+                    `stack: ${detected.stack.join(", ")}`,
+                  detectedFlags.length > 0 &&
+                    `flags: ${detectedFlags.join(", ")}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="shrink-0"
+              onClick={applyDetected}
+            >
+              Apply suggestions
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Fills the form below — review and Save to keep it (Claude drafts,
+            humans sign).
+          </p>
+        </Card>
       )}
 
       <Card className="space-y-4 p-4">

@@ -76,7 +76,14 @@ function ChangeRow({ change }: { change: FixChange }) {
   );
 }
 
-export function Fix({ repoPath }: { repoPath: string }) {
+export function Fix({
+  repoPath,
+  onChanged,
+}: {
+  repoPath: string;
+  /** Called after changes land locally or via PR, so the floor plan can refresh. */
+  onChanged?: () => void;
+}) {
   const [plan, setPlan] = useState<FixPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -125,6 +132,7 @@ export function Fix({ repoPath }: { repoPath: string }) {
       setNotice(
         `Applied ${applied} change${applied === 1 ? "" : "s"} locally.`,
       );
+      if (applied > 0) onChanged?.();
     });
   }
 

@@ -180,5 +180,65 @@ describe("task route and approve", () => {
     await expect(routingContext(repo)).rejects.toThrow(
       "skills have never been synced",
     );
+    // A sync of an older lock is just as stale.
+    await writeFile(
+      join(repo, ".factory/skills.state.json"),
+      JSON.stringify({
+        syncedAt: "2026-11-09T00:00:00Z",
+        lock: "0".repeat(64),
+        skills: [],
+        blocked: [],
+      }),
+    );
+    await expect(routingContext(repo)).rejects.toThrow(
+      "the skills lock changed since the last sync",
+    );
+  });
+
+  it("reads an unlocked repo as no skills, the profile's flags, and the judge's checks", async () => {
+    await mkdir(join(repo, ".factory"), { recursive: true });
+    await writeFile(
+      join(repo, ".factory/profile.yml"),
+      "version: 1\nname: demo\ntype: web-app\nflags:\n  public-facing: true\n",
+    );
+    const read = await routingContext(repo);
+    expect(read.available.size).toBe(0);
+    expect(read.flags?.["public-facing"]).toBe(true);
+    expect(read.files).toEqual([]); // not a git repo
+    expect(read.checks).toContain("quality.tests.pass");
+    expect(read.manifests.has("frontend-design")).toBe(true);
+  });
+
+  it("won't approve before routing, or an assembly that isn't YAML", async () => {
+    const id = await confirmedTask();
+    await expect(approveRoute(repo, id, { ...by, context })).rejects.toThrow(
+      "hasn't been routed",
+    );
+    await routeTask(repo, id, { ...by, context });
+    await writeFile(
+      join(repo, ".factory/tasks", id, "assembly.yml"),
+      "skills: [unclosed\n",
+    );
+    await expect(approveRoute(repo, id, { ...by, context })).rejects.toThrow(
+      "isn't valid YAML",
+    );
+  });
+
+  it("records borderline sectors for the approver", async () => {
+    const draft = await newTask(
+      repo,
+      {
+        title: "Speed up the export job",
+        type: "feature",
+        description: "The export is slow for large accounts.",
+        acceptance: [{ id: "A1", text: "Exports in under 5s", verify: "e2e" }],
+      },
+      by,
+    );
+    await confirmTask(repo, draft.card.id, by);
+    const { task } = await routeTask(repo, draft.card.id, { ...by, context });
+    expect(await readFile(task.ledger.mdPath, "utf8")).toContain(
+      "under the threshold, for the approver: perf",
+    );
   });
 });
