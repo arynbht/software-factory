@@ -40,12 +40,16 @@ export interface ReviewOptions {
   log?: ((line: string) => void) | undefined;
 }
 
-/** The verdict for a round: blocking findings past the round limit need a person. */
+/**
+ * The verdict for a round: blocking findings past the round limit need a
+ * person, and so does a change with files the reviewer wasn't shown.
+ */
 export function roundVerdict(
   result: Tier2Result,
   round: number,
 ): ReviewVerdict {
-  if (result.verdict === "approve") return "approve";
+  if (result.verdict === "approve")
+    return result.unreviewed.length > 0 ? "needs-human" : "approve";
   return round > MAX_ROUNDS ? "needs-human" : "request-changes";
 }
 

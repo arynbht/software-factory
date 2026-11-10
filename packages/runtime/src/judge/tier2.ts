@@ -111,6 +111,12 @@ export interface Tier2Result {
   blocking: Finding[];
   suggestions: Finding[];
   acceptance: z.infer<typeof ReviewSchema>["acceptance"];
+  /**
+   * Changed files the reviewer wasn't shown for a reason other than being
+   * generated (sensitive, secret-shaped, binary, over budget). A change with
+   * any can't be approved by the judge: a person looks at them.
+   */
+  unreviewed: string[];
   model: string;
   calls: number;
   packed: Omit<PackedChange, "diff">;
@@ -270,6 +276,8 @@ const GATE = `You are checking one code-review finding before it can block a mer
 
 Decide whether the finding is real and reproducible in THIS diff, and how. It is reproducible only if you can name concrete inputs, state or steps that trigger the problem given the code shown. Style, preference and speculative concerns are not reproducible.
 
+A contract finding must break a rule quoted from the contract given below; an acceptance finding must leave a criterion given below unmet. A rule or criterion that isn't in the text given doesn't exist.
+
 Reply with ONLY a JSON object: {"reproducible": true|false, "repro": "exact steps, or empty", "reason": "one line"}`;
 
 function reviewPrompt(packed: PackedChange, card?: Card): string {
@@ -295,6 +303,34 @@ function reviewPrompt(packed: PackedChange, card?: Card): string {
     );
   }
   parts.push(`## The diff\n${packed.diff || "(empty)"}`);
+  return parts.join("\n\n");
+}
+
+/** What the gate sees: the finding, the rules it cites, and its file's diff. */
+function gatePrompt(
+  finding: Finding,
+  fileDiff: string,
+  packed: PackedChange,
+  card?: Card,
+): string {
+  const parts = [
+    `## Finding (${finding.kind})\n${JSON.stringify(finding, null, 2)}`,
+  ];
+  if (finding.kind === "contract") {
+    parts.push(
+      `## AGENTS.md (the repo's contract)\n${packed.agents ?? "(none)"}`,
+      `## CONSTRAINTS.md\n${packed.constraints ?? "(none)"}`,
+    );
+  }
+  if (finding.kind === "acceptance") {
+    const criteria = card
+      ? card.acceptance
+          .map((a) => `- ${a.id} (${a.verify}): ${a.text}`)
+          .join("\n")
+      : "(no task card)";
+    parts.push(`## Acceptance criteria\n${criteria}`);
+  }
+  parts.push(`## The diff\n${fileDiff}`);
   return parts.join("\n\n");
 }
 
@@ -357,10 +393,35 @@ export async function runTier2(options: Tier2Options): Promise<Tier2Result> {
     ),
   );
 
+  // An unmet criterion blocks like any acceptance finding, even when the
+  // reviewer only marked it unmet.
+  const cited = new Set(
+    review.findings
+      .filter((f) => f.kind === "acceptance" && f.acceptance_id)
+      .map((f) => f.acceptance_id),
+  );
+  const unmet: Finding[] = review.acceptance
+    .filter(
+      (a) =>
+        a.status === "unmet" &&
+        !cited.has(a.id) &&
+        options.card?.acceptance.some((c) => c.id === a.id),
+    )
+    .map((a) => ({
+      kind: "acceptance",
+      file: "",
+      line: null,
+      acceptance_id: a.id,
+      title: `${a.id} is unmet`,
+      detail: a.note,
+      repro: a.note,
+      fix: "",
+    }));
+
   const blocking: Finding[] = [];
   const suggestions: Finding[] = [];
   let checked = 0;
-  for (const finding of review.findings) {
+  for (const finding of [...review.findings, ...unmet]) {
     if (finding.kind === "suggestion") {
       suggestions.push(finding);
       continue;
@@ -392,7 +453,7 @@ export async function runTier2(options: Tier2Options): Promise<Tier2Result> {
     // A failed call is an error, not a verdict: it must never turn into an approval.
     const reply = await complete(
       GATE,
-      `## Finding (${finding.kind})\n${JSON.stringify(finding, null, 2)}\n\n## The diff\n${fileDiff}`,
+      gatePrompt(finding, fileDiff, packed, options.card),
       "judge-fp-gate",
     );
     let gate: z.infer<typeof GateSchema>;
@@ -421,6 +482,9 @@ export async function runTier2(options: Tier2Options): Promise<Tier2Result> {
     blocking,
     suggestions,
     acceptance: review.acceptance,
+    unreviewed: packed.omitted
+      .filter((o) => o.why !== "generated")
+      .map((o) => o.path),
     model,
     calls,
     packed: {
@@ -451,7 +515,9 @@ export function renderReview(
   if (verdict === "needs-human") {
     lines.push(
       "",
-      "Two review rounds have run and blocking findings remain, so this goes to a person instead of another automated round.",
+      result.blocking.length > 0
+        ? "Two review rounds have run and blocking findings remain, so this goes to a person instead of another automated round."
+        : "Some changed files weren't shown to the reviewer (listed at the end), so a person has to look at them: the judge doesn't approve what it hasn't seen.",
     );
   }
   if (result.blocking.length > 0) {

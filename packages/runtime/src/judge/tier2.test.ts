@@ -337,6 +337,109 @@ describe("judge tier 2", () => {
     expect(result.packed.omitted.map((o) => o.path)).toContain("src/keys.js");
   });
 
+  it("won't approve a change with files the reviewer wasn't shown", async () => {
+    const r = await repoWithChange(BASE, {
+      ...CHANGE,
+      ".env": "PORT=3000\n",
+      "pnpm-lock.yaml": "lockfileVersion: 9\n",
+    });
+    const { ai } = scripted({ findings: [] }, () => ({}));
+    const result = await runTier2({
+      repoPath: r.dir,
+      base: r.base,
+      head: r.head,
+      ai,
+    });
+    expect(result.verdict).toBe("approve");
+    // Generated files don't count; the sensitive one does.
+    expect(result.unreviewed).toEqual([".env"]);
+    expect(roundVerdict(result, 1)).toBe("needs-human");
+    expect(renderReview(result, 1, "needs-human")).toContain(
+      "the judge doesn't approve what it hasn't seen",
+    );
+  });
+
+  it("shows the gate the contract a contract finding cites", async () => {
+    const r = await repoWithChange(BASE, CHANGE);
+    const gatePrompts: string[] = [];
+    const { ai } = scripted(
+      {
+        findings: [
+          {
+            kind: "contract",
+            file: "src/pay.js",
+            line: 2,
+            title: "Logs the request body",
+          },
+        ],
+      },
+      (prompt) => {
+        gatePrompts.push(prompt);
+        return {
+          reproducible: true,
+          repro: "charge(1) logs req.body, which AGENTS.md forbids",
+        };
+      },
+    );
+    const result = await runTier2({
+      repoPath: r.dir,
+      base: r.base,
+      head: r.head,
+      ai,
+    });
+    expect(gatePrompts[0]).toContain("Never log request bodies.");
+    expect(result.verdict).toBe("request-changes");
+  });
+
+  it("blocks on a criterion the reviewer marked unmet, through the gate", async () => {
+    const r = await repoWithChange(BASE, CHANGE);
+    const gatePrompts: string[] = [];
+    const { ai } = scripted(
+      {
+        findings: [],
+        acceptance: [
+          { id: "A1", status: "unmet", note: "charge(0) still divides by 0" },
+          { id: "A2", status: "met" },
+        ],
+      },
+      (prompt) => {
+        gatePrompts.push(prompt);
+        return {
+          reproducible: true,
+          repro: "call charge(1): it returns Infinity, not 1",
+        };
+      },
+    );
+    const result = await runTier2({
+      repoPath: r.dir,
+      base: r.base,
+      head: r.head,
+      ai,
+      card: {
+        id: "T-0001",
+        title: "Fix charge",
+        type: "fix",
+        source: "prompt",
+        description: "charge returns the amount",
+        acceptance: [
+          { id: "A1", text: "charge(n) returns n", verify: "unit" },
+          { id: "A2", text: "no logging", verify: "review" },
+        ],
+        out_of_scope: [],
+        touches: [],
+        constraints: [],
+        risk: "low",
+        owner: "t",
+        created: "2026-11-10",
+      },
+    });
+    expect(gatePrompts).toHaveLength(1);
+    expect(gatePrompts[0]).toContain("- A1 (unit): charge(n) returns n");
+    expect(result.blocking.map((f) => [f.kind, f.acceptance_id])).toEqual([
+      ["acceptance", "A1"],
+    ]);
+  });
+
   it("hands blocking findings to a person after two rounds", async () => {
     const r = await repoWithChange(BASE, CHANGE);
     const { ai } = scripted(
