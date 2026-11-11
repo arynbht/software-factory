@@ -109,7 +109,9 @@ describe("runInit (integration)", () => {
       "`npm run lint`, `npm run test` pass",
     );
 
-    // --force replaces it, and keeps the person's version as a backup.
+    // --force replaces it, and keeps the person's version as a backup, never
+    // over a backup that's already there.
+    await writeFile(join(dir, "AGENTS.md.bak"), "# my notes\n");
     expect(
       await runInit(
         dir,
@@ -119,8 +121,25 @@ describe("runInit (integration)", () => {
     ).toBe(0);
     expect(await readFile(join(dir, "AGENTS.md"), "utf8")).toBe(ours);
     expect(await readFile(join(dir, "AGENTS.md.bak"), "utf8")).toBe(
+      "# my notes\n",
+    );
+    expect(await readFile(join(dir, "AGENTS.md.bak.1"), "utf8")).toBe(
       "# Our own rules\n",
     );
+    // A second --force after the generated file changes keeps every version.
+    await writeFile(
+      join(dir, "package.json"),
+      JSON.stringify({ scripts: { lint: "eslint .", typecheck: "tsc" } }),
+    );
+    await runInit(
+      dir,
+      { type: "cli", yes: true, force: true },
+      { token: null },
+    );
+    expect(await readFile(join(dir, "AGENTS.md.bak.1"), "utf8")).toBe(
+      "# Our own rules\n",
+    );
+    expect(await readFile(join(dir, "AGENTS.md.bak.2"), "utf8")).toBe(ours);
   });
 
   it("refuses to overwrite an existing config without --force", async () => {

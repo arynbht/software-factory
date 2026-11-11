@@ -72,9 +72,9 @@ export async function doctorChecks(
   );
 
   const slug = isRepo ? await resolveRepoSlug(root) : null;
-  const token = options.token === undefined ? resolveToken() : options.token;
+  const auth = options.token === undefined ? resolveToken() : options.token;
   checks.push(
-    slug && token
+    slug && auth
       ? {
           name: "github",
           status: "ok",

@@ -124,7 +124,8 @@ async function writeIfAllowed(
  * Write a generated file without clobbering (§10): a missing file is written,
  * an identical one left alone, and a different one gets the factory's version
  * beside it as `name.factory.ext`. With --force it's replaced, and the old
- * one kept as `name.bak`. Returns a note when it did anything but write `rel`.
+ * one kept as `name.bak` (or `name.bak.1`, … — a backup is never overwritten).
+ * Returns a note when it did anything but write `rel`.
  */
 async function writeBeside(
   root: string,
@@ -136,12 +137,28 @@ async function writeBeside(
   const existing = await readFile(path, "utf8").catch(() => null);
   if (existing === content) return null;
   await mkdir(dirname(path), { recursive: true });
-  if (existing === null || force) {
-    if (existing !== null) await writeFile(`${path}.bak`, existing, "utf8");
+  if (existing === null) {
     await writeFile(path, content, "utf8");
-    return existing === null
-      ? null
-      : `${rel} replaced; the old one is ${rel}.bak`;
+    return null;
+  }
+  if (force) {
+    let bak = `${rel}.bak`;
+    for (let n = 1; ; n++) {
+      // "wx" fails if the file exists: the first free name wins, race-free.
+      const ok = await writeFile(resolve(root, bak), existing, {
+        encoding: "utf8",
+        flag: "wx",
+      })
+        .then(() => true)
+        .catch((err: NodeJS.ErrnoException) => {
+          if (err.code !== "EEXIST") throw err;
+          return false;
+        });
+      if (ok) break;
+      bak = `${rel}.bak.${n}`;
+    }
+    await writeFile(path, content, "utf8");
+    return `${rel} replaced; the old one is ${bak}`;
   }
   const ext = extname(rel);
   const besideRel = `${rel.slice(0, rel.length - ext.length)}.factory${ext}`;
