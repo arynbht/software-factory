@@ -39,8 +39,23 @@ export interface AgentCall {
   env: NodeJS.ProcessEnv;
 }
 
-/** Runs one agent call and resolves its final text. */
-export type AgentRunner = (call: AgentCall) => Promise<string>;
+/** An agent call's final text, with what it cost when the runner knows. */
+export interface AgentReply {
+  text: string;
+  tokens?: number | undefined;
+  costUsd?: number | undefined;
+}
+
+/** Runs one agent call and resolves its final text (or a reply with usage). */
+export type AgentRunner = (call: AgentCall) => Promise<string | AgentReply>;
+
+/** " · 12345 tokens · $0.42" for the ledger, or "" when unknown. */
+export function usageNote(reply: AgentReply): string {
+  return `${reply.tokens ? ` · ${reply.tokens} tokens` : ""}${reply.costUsd ? ` · $${reply.costUsd.toFixed(2)}` : ""}`;
+}
+
+const asReply = (r: string | AgentReply): AgentReply =>
+  typeof r === "string" ? { text: r } : r;
 
 export const claudeAgent: AgentRunner = async (call) => {
   const args = [
@@ -83,7 +98,25 @@ export const claudeAgent: AgentRunner = async (call) => {
     child.stdin.on("error", () => undefined);
     child.stdin.end(call.prompt);
   });
-  return parseClaudeJson(stdout, call.model ?? "").text;
+  const text = parseClaudeJson(stdout, call.model ?? "").text;
+  // The CLI's own totals: cache reads and writes included, cost as it reports it.
+  const data = JSON.parse(stdout) as {
+    total_cost_usd?: number;
+    usage?: Record<string, number | undefined>;
+  };
+  const u = data.usage ?? {};
+  const tokens = [
+    "input_tokens",
+    "output_tokens",
+    "cache_creation_input_tokens",
+    "cache_read_input_tokens",
+  ].reduce((sum, k) => sum + Number(u[k] ?? 0), 0);
+  return {
+    text,
+    tokens: tokens || undefined,
+    costUsd:
+      typeof data.total_cost_usd === "number" ? data.total_cost_usd : undefined,
+  };
 };
 
 const PLAN_SYSTEM =
@@ -144,21 +177,38 @@ function pendingAnswer(
   return pending;
 }
 
-/** What the last proof said, when it failed after the last build round. */
-function proofFailure(task: Task): string | undefined {
+/** Judge lines the agent acts on: failed checks, blocking findings, unmet criteria. */
+const JUDGE_FEEDBACK = /^(tier 1 fail|blocking|acceptance \S+: unmet)/;
+
+/**
+ * What the last proof or judge said, when it sent the change back after the
+ * last build round.
+ */
+function sentBack(task: Task): string | undefined {
   let roundEnd = -1;
   task.entries.forEach((e, i) => {
     if (e.section === "timeline" && ROUND_END.test(e.text)) roundEnd = i;
   });
   const after = task.entries.slice(roundEnd + 1);
-  const verdict = after.find(
-    (e) => e.beat === "prove" && e.section === "timeline",
-  );
-  if (!verdict?.text.startsWith("proof failed")) return undefined;
-  const lines = after
-    .filter((e) => e.beat === "prove" && e.section === "proof")
-    .map((e) => e.text);
-  return `the proof failed; fix the change so it passes — ${lines.join(" | ")}`;
+  const verdict = [...after]
+    .reverse()
+    .find(
+      (e) =>
+        (e.beat === "prove" || e.beat === "judge") && e.section === "timeline",
+    );
+  if (verdict?.text.startsWith("proof failed")) {
+    const lines = after
+      .filter((e) => e.beat === "prove" && e.section === "proof")
+      .map((e) => e.text);
+    return `the proof failed; fix the change so it passes — ${lines.join(" | ")}`;
+  }
+  if (verdict?.text.startsWith("judge failed")) {
+    const lines = after
+      .filter((e) => e.section === "judge" && JUDGE_FEEDBACK.test(e.text))
+      .map((e) => e.text);
+    return `the judge sent the change back; fix these and nothing else — ${lines.join(" | ")}`;
+  }
+  return undefined;
 }
 
 /** The latest plan: the plan entries after the last "build started". */
@@ -232,18 +282,20 @@ export async function buildTask(
         ? `your plan was over budget and was refused — ${answer.note || "plan fewer, larger steps"}`
         : undefined,
     });
-    const reply = await agent({
-      mode: "plan",
-      system: PLAN_SYSTEM,
-      prompt: planning.prompt,
-      cwd: isolation.worktree,
-      model: options.model,
-      env,
-    });
-    steps = PlanSchema.parse(extractJson(reply)).steps;
+    const reply = asReply(
+      await agent({
+        mode: "plan",
+        system: PLAN_SYSTEM,
+        prompt: planning.prompt,
+        cwd: isolation.worktree,
+        model: options.model,
+        env,
+      }),
+    );
+    steps = PlanSchema.parse(extractJson(reply.text)).steps;
     await log(
       "timeline",
-      `build started · skills ${planning.skills.join(", ") || "spine only"} · budget ${assembly.budget.steps} steps / ${assembly.budget.context_tokens / 1000}k ctx · ${planning.files.length} repo file(s) in context`,
+      `build started · skills ${planning.skills.join(", ") || "spine only"} · budget ${assembly.budget.steps} steps / ${assembly.budget.context_tokens / 1000}k ctx · ${planning.files.length} repo file(s) in context${usageNote(reply)}`,
     );
     for (const [i, step] of steps.entries())
       await log("plan", `${i + 1}. ${step}`);
@@ -266,16 +318,18 @@ export async function buildTask(
     answer:
       answer && !answer.allowed && !replan
         ? `denied — ${answer.note || "undo what you asked about"}`
-        : proofFailure(task),
+        : sentBack(task),
   });
-  const summary = await agent({
-    mode: "build",
-    system: building.system,
-    prompt: building.prompt,
-    cwd: isolation.worktree,
-    model: options.model,
-    env,
-  });
+  const reply = asReply(
+    await agent({
+      mode: "build",
+      system: building.system,
+      prompt: building.prompt,
+      cwd: isolation.worktree,
+      model: options.model,
+      env,
+    }),
+  );
 
   // The runtime commits, with hooks off (the worktree's hooksPath is empty).
   const wt = simpleGit(isolation.worktree);
@@ -297,8 +351,8 @@ export async function buildTask(
   await log(
     "timeline",
     stops.length > 0
-      ? `build paused: ${stops.length} thing(s) to ask about · commit ${head.slice(0, 12)}`
-      : `build done · commit ${head.slice(0, 12)} · ${staged ? staged.split("\n").length : 0} file(s) this round · ${summary.trim().split("\n")[0]?.slice(0, 200) ?? ""}`,
+      ? `build paused: ${stops.length} thing(s) to ask about · commit ${head.slice(0, 12)}${usageNote(reply)}`
+      : `build done · commit ${head.slice(0, 12)} · ${staged ? staged.split("\n").length : 0} file(s) this round${usageNote(reply)} · ${reply.text.trim().split("\n")[0]?.slice(0, 200) ?? ""}`,
   );
   return { task: await loadTask(repoPath, id), stops, commit: head };
 }
@@ -324,8 +378,12 @@ export async function answerStops(
   if (openStops(task).length === 0)
     throw new TaskError(`task ${id} has nothing waiting on an answer`);
   const note = options.note?.replace(/\s+/g, " ").trim();
+  // The answer belongs to the beat that asked: build, or the judge.
+  const asked = [...task.entries]
+    .reverse()
+    .find((e) => e.section === "stop" && e.text.startsWith("asked: "));
   await task.ledger.append({
-    beat: "build",
+    beat: asked?.beat === "judge" ? "judge" : "build",
     section: "stop",
     text: `answered: ${options.allow ? "allowed" : "denied"}${note ? ` — ${note}` : ""}`,
     by: options.by,

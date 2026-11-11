@@ -119,6 +119,8 @@ export interface Tier2Result {
   unreviewed: string[];
   model: string;
   calls: number;
+  /** Tokens and estimated cost across every call. */
+  usage: { tokens: number; costUsd: number };
   packed: Omit<PackedChange, "diff">;
 }
 
@@ -361,6 +363,7 @@ export async function runTier2(options: Tier2Options): Promise<Tier2Result> {
   const model = options.model ?? JUDGE_DEFAULT_MODEL;
   const packed = await packChange(options.repoPath, options.base, options.head);
   let calls = 0;
+  const usage = { tokens: 0, costUsd: 0 };
   const complete = async (system: string, prompt: string, task: string) => {
     calls++;
     const res = await options.ai.complete({
@@ -369,6 +372,8 @@ export async function runTier2(options: Tier2Options): Promise<Tier2Result> {
       model,
       maxTokens: 8000,
     });
+    usage.tokens += res.usage.inputTokens + res.usage.outputTokens;
+    usage.costUsd += estimateCost(res.model, res.usage);
     if (options.usageDate) {
       await appendUsage(options.repoPath, {
         date: options.usageDate,
@@ -487,6 +492,7 @@ export async function runTier2(options: Tier2Options): Promise<Tier2Result> {
       .map((o) => o.path),
     model,
     calls,
+    usage,
     packed: {
       files: packed.files,
       omitted: packed.omitted,

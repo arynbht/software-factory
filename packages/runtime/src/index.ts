@@ -34,13 +34,17 @@ export {
   Ledger,
   type LedgerEntry,
   LedgerError,
+  isSeal,
   ledgerKey,
   render as renderLedger,
+  SEAL_TEXT,
 } from "./task/ledger.js";
 export {
   APPROVED,
   assemblyPath,
   confirmTask,
+  JUDGE_VERDICT,
+  judgeVerdicts,
   listTasks,
   loadTask,
   newTask,
@@ -111,11 +115,13 @@ export {
 export { findStops, type Stop, type StopTrigger } from "./agent/stops.js";
 export {
   type AgentCall,
+  type AgentReply,
   type AgentRunner,
   answerStops,
   buildTask,
   type BuildOutcome,
   claudeAgent,
+  usageNote,
 } from "./agent/build.js";
 export {
   type ProofRecord,
@@ -141,3 +147,25 @@ export {
   shoot,
   type Shot,
 } from "./proof/shoot.js";
+export {
+  type JudgeRecord,
+  judgeTask,
+  type JudgeTaskOptions,
+  loadJudgeRecord,
+} from "./judge/task-judge.js";
+export {
+  PR_MARKER,
+  type PrBodyInput,
+  prTitle,
+  renderPrBody,
+  type ShipOptions,
+  shipTask,
+} from "./ship/ship.js";
+export {
+  type CloseOptions,
+  closeTask,
+  formatDuration,
+  type PrState,
+  type TaskHistoryRow,
+  usageTotals,
+} from "./ship/close.js";

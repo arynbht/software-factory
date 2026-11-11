@@ -59,7 +59,9 @@ export async function loadHistory(repoPath: string): Promise<HistoryEntry[]> {
   for (const line of raw.split("\n")) {
     if (!line.trim()) continue;
     try {
-      entries.push(JSON.parse(line) as HistoryEntry);
+      const entry = JSON.parse(line) as Partial<HistoryEntry>;
+      // Task rows (written when a task closes) share the file; they aren't snapshots.
+      if (entry.byLane) entries.push(entry as HistoryEntry);
     } catch {
       // Skip a corrupt line rather than failing the summary.
     }

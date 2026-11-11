@@ -8,7 +8,9 @@ import {
   approveRoute,
   buildTask,
   CardError,
+  closeTask,
   isolateTask,
+  judgeTask,
   confirmTask,
   LedgerError,
   listTasks,
@@ -19,6 +21,7 @@ import {
   proveTask,
   routeTask,
   sha256,
+  shipTask,
   type Task,
   TaskError,
   whoami,
@@ -260,7 +263,10 @@ export function runTaskIsolate(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    const others = (await listTasks(repo)).map((t) => t.card.id);
+    // A closed task's port is free again.
+    const others = (await listTasks(repo))
+      .filter((t) => nextStep(t) !== "done")
+      .map((t) => t.card.id);
     const { isolation } = await isolateTask(repo, id, {
       by: await whoami(repo),
       base: flags.base,
@@ -331,5 +337,71 @@ export function runTaskProve(
       `proof ${record.passed ? "passed" : "failed"}; next: ${nextStep(task)}\n`,
     );
     return record.passed ? 0 : 1;
+  });
+}
+
+/**
+ * `factory task judge <id>`: tier 1 and tier 2 on the task's branch. Exits 0
+ * when it passed, 1 when it went back to build, 2 when it needs a person.
+ */
+export function runTaskJudge(
+  id: string,
+  flags: { model?: string; path?: string },
+): Promise<number> {
+  return guarded(async () => {
+    const repo = resolve(flags.path ?? ".");
+    const { task, record } = await judgeTask(repo, id, {
+      by: await whoami(repo),
+      model: flags.model,
+      log: (line) => process.stderr.write(`· ${line}\n`),
+    });
+    if (record.review) process.stdout.write(`${record.review.body}\n\n`);
+    process.stdout.write(
+      `judge ${record.verdict} (round ${record.round}); next: ${nextStep(task)}\n`,
+    );
+    return record.verdict === "passed"
+      ? 0
+      : record.verdict === "failed"
+        ? 1
+        : 2;
+  });
+}
+
+/** `factory task ship <id>`: push the judged branch and open its draft PR. */
+export function runTaskShip(
+  id: string,
+  flags: { path?: string },
+): Promise<number> {
+  return guarded(async () => {
+    const repo = resolve(flags.path ?? ".");
+    const { task, pr } = await shipTask(repo, id, { by: await whoami(repo) });
+    process.stdout.write(
+      `${pr.reused ? "updated" : "opened"} draft PR #${pr.number}: ${pr.url}\nnext: ${nextStep(task)}\n`,
+    );
+    return 0;
+  });
+}
+
+/** `factory task close <id> [--abandon "<why>"]`: record the outcome and seal the ledger. */
+export function runTaskClose(
+  id: string,
+  flags: { abandon?: string | boolean; path?: string },
+): Promise<number> {
+  return guarded(async () => {
+    const repo = resolve(flags.path ?? ".");
+    const { row } = await closeTask(repo, id, {
+      by: await whoami(repo),
+      // `--abandon` alone gives no reason; that's allowed.
+      abandon:
+        typeof flags.abandon === "string"
+          ? flags.abandon
+          : flags.abandon
+            ? ""
+            : undefined,
+    });
+    process.stdout.write(
+      `${id} closed: ${row.outcome}${row.pr ? ` (PR #${row.pr})` : ""} · ${row.minutes} min · ${row.tokens} tokens · $${row.cost_usd.toFixed(2)}; ledger sealed\n`,
+    );
+    return 0;
   });
 }

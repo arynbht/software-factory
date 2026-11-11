@@ -13,12 +13,15 @@ import {
   runTaskAnswer,
   runTaskApprove,
   runTaskBuild,
+  runTaskClose,
   runTaskConfirm,
   runTaskIsolate,
+  runTaskJudge,
   runTaskNew,
   runTaskProve,
   runTaskResume,
   runTaskRoute,
+  runTaskShip,
   runTaskStatus,
   type TaskNewFlags,
 } from "./commands/task.js";
@@ -215,6 +218,43 @@ export function buildProgram(): Command {
     .action(async (id: string, flags: { path?: string }) => {
       process.exitCode = await runTaskProve(id, flags);
     });
+  task
+    .command("judge")
+    .description(
+      "Judge the task's branch on a clean clone: tier 1 checks, then the scoped review",
+    )
+    .argument("<id>", "task id")
+    .option("--model <model>", "judge model (default: profile ai.judge_model)")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { model?: string; path?: string }) => {
+      process.exitCode = await runTaskJudge(id, flags);
+    });
+  task
+    .command("ship")
+    .description(
+      "Push the judged branch and open a draft PR from the card and ledger",
+    )
+    .argument("<id>", "task id")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { path?: string }) => {
+      process.exitCode = await runTaskShip(id, flags);
+    });
+  task
+    .command("close")
+    .description(
+      "After the PR is merged or closed: record the outcome, remove the worktree, seal the ledger",
+    )
+    .argument("<id>", "task id")
+    .option("--abandon [why]", "close without a merged PR, saying why")
+    .option("--path <path>", "path to the repo", ".")
+    .action(
+      async (
+        id: string,
+        flags: { abandon?: string | boolean; path?: string },
+      ) => {
+        process.exitCode = await runTaskClose(id, flags);
+      },
+    );
   task
     .command("answer")
     .description("Answer a paused task's stop-and-ask questions")

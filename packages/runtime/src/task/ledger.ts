@@ -52,6 +52,11 @@ export interface LedgerEntry {
 
 const GENESIS = "genesis";
 
+/** The last entry a task's ledger takes (§3.8): nothing appends after it. */
+export const SEAL_TEXT = "ledger sealed";
+export const isSeal = (e: Pick<LedgerEntry, "beat" | "text">) =>
+  e.beat === "close" && e.text.startsWith(SEAL_TEXT);
+
 /** The per-machine ledger key, created on first use (outside every repo). */
 export async function ledgerKey(): Promise<Buffer> {
   const dir =
@@ -133,6 +138,8 @@ export class Ledger {
     }
     const all = await this.entries();
     const last = all[all.length - 1];
+    if (last && isSeal(last))
+      throw new LedgerError("the ledger is sealed: the task is closed");
     const base = {
       seq: (last?.seq ?? 0) + 1,
       at: (entry.at ?? new Date()).toISOString(),
