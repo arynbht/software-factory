@@ -206,7 +206,8 @@ async function uiProof(
     await simpleGit(repoPath)
       .raw(["worktree", "remove", "--force", before])
       .catch(() => "");
-    await rm(before, { recursive: true, force: true });
+    // Best-effort: Windows can hold a file open a moment after the server stops.
+    await rm(before, { recursive: true, force: true }).catch(() => undefined);
   }
   try {
     await side("after", isolation.worktree);
@@ -232,7 +233,10 @@ async function uiProof(
     const shot = shots.find((s) => s.file === p.file);
     if (shot) shot.url = p.url;
   }
-  const passed = violations.length === 0;
+  // A page the change serves as an error isn't a page (a new page can 404 on
+  // the base, so only the change's side counts).
+  const broken = shots.filter((s) => s.side === "after" && s.status >= 400);
+  const passed = violations.length === 0 && broken.length === 0;
   const lines = [
     `screenshots: ${pages.join(", ")} at sm/md/lg, before and after (${shots.length} images) ${
       published
@@ -243,6 +247,11 @@ async function uiProof(
       ? "axe: 0 serious or critical violations"
       : `axe: ${violations.length} serious or critical violation(s): ${violations.map((v) => `${v.id} on ${v.page} (${v.impact}, ${v.nodes})`).join("; ")}`,
     "visual diff: not automated yet; the before/after images are the comparison",
+    ...(broken.length > 0
+      ? [
+          `pages that answered with an error: ${[...new Set(broken.map((s) => `${s.page} (${s.status})`))].join(", ")}`,
+        ]
+      : []),
   ];
   return {
     task: task.card.id,

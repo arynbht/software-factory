@@ -17,6 +17,8 @@ export interface Shot {
   breakpoint: string;
   /** Absolute path of the PNG. */
   file: string;
+  /** The page's HTTP status (0 when there was no response). */
+  status: number;
 }
 
 export interface AxeViolation {
@@ -98,16 +100,27 @@ export async function shoot(options: {
     for (const [i, path] of options.pages.entries()) {
       const url = new URL(path.replace(/^\/+/, ""), root).toString();
       for (const bp of BREAKPOINTS) {
+        // bypassCSP: the axe script is injected inline, which an app's own
+        // Content-Security-Policy would (rightly, for users) block.
         const page = await browser.newPage({
+          bypassCSP: true,
           viewport: { width: bp.width, height: bp.height },
         });
-        await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+        const res = await page.goto(url, {
+          waitUntil: "networkidle",
+          timeout: 30_000,
+        });
         const file = join(
           options.outDir,
           `${options.prefix}-${i + 1}-${pageSlug(path)}-${bp.name}.png`,
         );
         await page.screenshot({ path: file, fullPage: true });
-        shots.push({ page: path, breakpoint: bp.name, file });
+        shots.push({
+          page: path,
+          breakpoint: bp.name,
+          file,
+          status: res?.status() ?? 0,
+        });
         if (options.axe && bp.name === "lg") {
           await page.addScriptTag({ content: source });
           const found = await page.evaluate(async () => {

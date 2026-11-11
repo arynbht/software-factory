@@ -323,6 +323,40 @@ describe.skipIf(!hasBrowser)("UI proof", { timeout: 180_000 }, () => {
     expect(nextStep(task)).toMatch(/^build: .*the proof failed/);
   });
 
+  it("runs axe on an app whose CSP blocks inline scripts", async () => {
+    const repo = await repoWith(BASE);
+    const strict = `require("http").createServer((q, s) => { s.setHeader("content-type", "text/html"); s.setHeader("content-security-policy", "script-src 'self'"); s.end(${JSON.stringify(page('<h1>Settings</h1><img src="/x.png">'))}); }).listen(process.env.PORT);\n`;
+    const id = await built(
+      repo,
+      { title: "Redesign the settings page", type: "feature" },
+      (cwd) => writeFile(join(cwd, "server.js"), strict),
+    );
+    const { record } = await proveTask(repo, id, {
+      ...by,
+      publish: async () => null,
+    });
+    // axe ran (and found the missing alt), rather than the CSP failing it.
+    expect(record.lines[1]).toMatch(/image-alt/);
+  });
+
+  it("a page the change serves as an error fails the proof", async () => {
+    const repo = await repoWith(BASE);
+    const failing = `require("http").createServer((q, s) => { s.statusCode = 500; s.setHeader("content-type", "text/html"); s.end(${JSON.stringify(page("<h1>Oops</h1>"))}); }).listen(process.env.PORT);\n`;
+    const id = await built(
+      repo,
+      { title: "Redesign the settings page", type: "feature" },
+      (cwd) => writeFile(join(cwd, "server.js"), failing),
+    );
+    const { record } = await proveTask(repo, id, {
+      ...by,
+      publish: async () => null,
+    });
+    expect(record.passed).toBe(false);
+    expect(record.lines).toContain(
+      "pages that answered with an error: / (500)",
+    );
+  });
+
   it("keeps pages that look alike in separate images", async () => {
     const repo = await repoWith(BASE);
     const id = await built(
