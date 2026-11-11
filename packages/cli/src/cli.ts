@@ -6,6 +6,8 @@ import { type BuildFlags, runBuildCommand } from "./commands/build.js";
 import { runCi } from "./commands/ci.js";
 import { type EvidenceFlags, runEvidenceAdd } from "./commands/evidence.js";
 import { type FixFlags, runFix } from "./commands/fix.js";
+import { runDoctor } from "./commands/doctor.js";
+import { runHookGuard, runHookSessionStart } from "./commands/hook.js";
 import { type InitFlags, runInit } from "./commands/init.js";
 import { type JudgeFlags, runJudge } from "./commands/judge.js";
 import { type ReviewFlags, runReview } from "./commands/review.js";
@@ -21,6 +23,7 @@ import {
   runTaskProve,
   runTaskResume,
   runTaskRoute,
+  runTaskRun,
   runTaskShip,
   runTaskStatus,
   type TaskNewFlags,
@@ -74,9 +77,38 @@ export function buildProgram(): Command {
       "where to report vulnerabilities (email or URL)",
     )
     .option("--yes", "non-interactive; use flags and defaults")
-    .option("--force", "overwrite existing .factory config")
+    .option("--force", "overwrite existing .factory config and generated files")
     .action(async (path: string, flags: InitFlags) => {
       process.exitCode = await runInit(path, flags);
+    });
+
+  program
+    .command("doctor")
+    .description(
+      "Check the machine and repo are ready for a task: profile, claude, GitHub, skills",
+    )
+    .argument("[path]", "path to the repo", ".")
+    .action(async (path: string) => {
+      process.exitCode = await runDoctor(path);
+    });
+
+  const hook = program
+    .command("hook")
+    .description("Claude Code hooks that `factory init` installs");
+  hook
+    .command("session-start")
+    .description("Print the contract in brief and the open tasks")
+    .argument("[path]", "path to the repo", ".")
+    .action(async (path: string) => {
+      process.exitCode = await runHookSessionStart(path);
+    });
+  hook
+    .command("guard")
+    .description(
+      "PreToolUse: refuse edits to .factory/** and to the primary checkout on the default branch",
+    )
+    .action(async () => {
+      process.exitCode = await runHookGuard();
     });
 
   program
@@ -218,6 +250,26 @@ export function buildProgram(): Command {
     .action(async (id: string, flags: { path?: string }) => {
       process.exitCode = await runTaskProve(id, flags);
     });
+  task
+    .command("run")
+    .description(
+      "After route approval: isolate, build, prove, judge and ship, stopping wherever a person is needed",
+    )
+    .argument("<id>", "task id")
+    .option("--model <model>", "the sector agent's model")
+    .option(
+      "--base <ref>",
+      "cut the worktree from this ref (default: origin's default branch)",
+    )
+    .option("--path <path>", "path to the repo", ".")
+    .action(
+      async (
+        id: string,
+        flags: { model?: string; base?: string; path?: string },
+      ) => {
+        process.exitCode = await runTaskRun(id, flags);
+      },
+    );
   task
     .command("judge")
     .description(

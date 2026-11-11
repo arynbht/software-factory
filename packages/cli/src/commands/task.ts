@@ -20,6 +20,7 @@ import {
   parseAcceptanceFlag,
   proveTask,
   routeTask,
+  runTask,
   sha256,
   shipTask,
   type Task,
@@ -403,5 +404,35 @@ export function runTaskClose(
       `${id} closed: ${row.outcome}${row.pr ? ` (PR #${row.pr})` : ""} · ${row.minutes} min · ${row.tokens} tokens · $${row.cost_usd.toFixed(2)}; ledger sealed\n`,
     );
     return 0;
+  });
+}
+
+/**
+ * `factory task run <id>`: isolate → build → prove → judge → ship, reporting
+ * each ledger entry, until a person is needed. Exits 0 when it shipped, 2 when
+ * it waits on a person, 1 on an error.
+ */
+export function runTaskRun(
+  id: string,
+  flags: { model?: string; base?: string; path?: string },
+): Promise<number> {
+  return guarded(async () => {
+    const repo = resolve(flags.path ?? ".");
+    const others = (await listTasks(repo))
+      .filter((t) => t.card.id !== id && nextStep(t) !== "done")
+      .map((t) => t.card.id);
+    const outcome = await runTask(repo, id, {
+      by: await whoami(repo),
+      model: flags.model,
+      base: flags.base,
+      otherTasks: others,
+      onEntry: (e) =>
+        process.stdout.write(
+          `${e.at.slice(11, 16)} ${e.beat}${e.section === "timeline" ? "" : ` (${e.section})`}: ${e.text}\n`,
+        ),
+      judge: { log: (line) => process.stderr.write(`· ${line}\n`) },
+    });
+    process.stdout.write(`next: ${outcome.next}\n`);
+    return outcome.ran.at(-1) === "ship" ? 0 : 2;
   });
 }
