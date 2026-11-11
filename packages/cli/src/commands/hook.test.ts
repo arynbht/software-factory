@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -68,6 +68,18 @@ describe("factory hook guard", () => {
     expect(await edit(repo, ".factory/tasks/T-0001/ledger.md")).toMatch(
       /factory's state/,
     );
+  });
+
+  it("still guards .factory/** when the checkout is reached through a symlink", async () => {
+    const { repo } = await factoryRepo();
+    git(repo, "checkout", "-b", "by-hand");
+    const link = join(await tmp("factory-link-"), "repo");
+    // A junction on Windows (no admin rights needed), a symlink elsewhere.
+    await symlink(repo, link, "junction");
+    expect(await edit(link, join(link, ".factory", "waivers.yml"))).toMatch(
+      /factory's state/,
+    );
+    expect(await edit(link, join(link, "README.md"))).toBeNull();
   });
 
   it("allows edits on another branch, and in repos without a factory profile", async () => {

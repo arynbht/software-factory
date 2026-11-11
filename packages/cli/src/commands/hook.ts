@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { runTool } from "@arynbht/factory-engine";
@@ -47,7 +47,12 @@ export async function guardReason(input: HookInput): Promise<string | null> {
   if (!top || !(await exists(join(top, ".factory", "profile.yml"))))
     return null;
 
-  const rel = relative(resolve(top), abs).split(sep).join("/");
+  // git reports the physical path; canonicalise the file's side the same way,
+  // or a symlinked checkout (macOS /var → /private/var) slips past the check.
+  const physical = join(await realpath(dir), relative(dir, abs));
+  const rel = relative(await realpath(top), physical)
+    .split(sep)
+    .join("/");
   if (rel === ".factory" || rel.startsWith(".factory/"))
     return `${rel} is the factory's state: the runtime writes it, and a person edits it by hand. Use the factory CLI (\`factory task …\`, \`factory waive\`, \`factory profile set\`) instead.`;
 
@@ -92,7 +97,7 @@ export async function runHookGuard(): Promise<number> {
 export async function sessionStartText(root: string): Promise<string> {
   const lines = [
     "This repo runs on the factory (see AGENTS.md).",
-    "Start every task with /factory. The work happens in .worktrees/<id>, never in this checkout on main.",
+    "Start every task with /factory. The work happens in .worktrees/<id>, never in this checkout on the default branch.",
     `Beats: sync → ${BEATS.join(" → ")}. A person confirms the card, approves the route, answers stop-and-ask questions, and merges; the factory never merges.`,
   ];
   const agents = await readFile(join(root, "AGENTS.md"), "utf8").catch(

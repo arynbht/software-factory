@@ -18,8 +18,9 @@ judges the change and opens the PR. You don't edit code for a factory task yours
 
 ## Rules
 
-- Never edit `.factory/**`, the ledger, or anything in `.worktrees/`. The runtime
-  writes them, and a hook will refuse.
+- Never edit `.factory/**` (the ledger included) or anything in `.worktrees/`.
+  The runtime and the sector agent own them. A hook refuses edits to
+  `.factory/**`, and to this checkout while it's on the default branch.
 - Every approval belongs to the person. Ask the question in the chat and wait for a
   clear yes. Only then run the command with `--yes`, which the ledger records as
   approved through you. Never pass `--yes` on your own judgment.

@@ -123,29 +123,30 @@ async function writeIfAllowed(
 /**
  * Write a generated file without clobbering (§10): a missing file is written,
  * an identical one left alone, and a different one gets the factory's version
- * beside it as `name.factory.ext` (or overwritten with --force). Returns the
- * path written, relative to the repo.
+ * beside it as `name.factory.ext`. With --force it's replaced, and the old
+ * one kept as `name.bak`. Returns a note when it did anything but write `rel`.
  */
 async function writeBeside(
   root: string,
   rel: string,
   content: string,
   force: boolean | undefined,
-): Promise<string> {
+): Promise<string | null> {
   const path = resolve(root, rel);
   const existing = await readFile(path, "utf8").catch(() => null);
-  if (existing === null || force || existing === content) {
-    if (existing !== content) {
-      await mkdir(dirname(path), { recursive: true });
-      await writeFile(path, content, "utf8");
-    }
-    return rel;
+  if (existing === content) return null;
+  await mkdir(dirname(path), { recursive: true });
+  if (existing === null || force) {
+    if (existing !== null) await writeFile(`${path}.bak`, existing, "utf8");
+    await writeFile(path, content, "utf8");
+    return existing === null
+      ? null
+      : `${rel} replaced; the old one is ${rel}.bak`;
   }
   const ext = extname(rel);
   const besideRel = `${rel.slice(0, rel.length - ext.length)}.factory${ext}`;
-  await mkdir(dirname(path), { recursive: true });
   await writeFile(resolve(root, besideRel), content, "utf8");
-  return besideRel;
+  return `${rel} exists; wrote ${besideRel}: merge it by hand`;
 }
 
 /** Add lines to .factory/.gitignore that aren't there yet. */
@@ -418,21 +419,29 @@ export async function runInit(
 
   // §10: the contract, the /factory skill, the hooks, the PR template.
   const facts = await repoFacts(root, draft);
+  // The skill ships with the CLI; a broken install shouldn't stop init.
+  const skill = await readFile(
+    join(bundledSkillDir(), "SKILL.md"),
+    "utf8",
+  ).catch(() => null);
   const files: [string, string][] = [
     ["AGENTS.md", renderAgentsMd(facts)],
     ["CLAUDE.md", CLAUDE_MD],
     ["CONSTRAINTS.md", renderConstraintsMd(facts)],
     [".github/PULL_REQUEST_TEMPLATE.md", PR_TEMPLATE],
     [".claude/settings.json", SETTINGS_JSON],
-    [
-      ".claude/skills/factory/SKILL.md",
-      await readFile(join(bundledSkillDir(), "SKILL.md"), "utf8"),
-    ],
+    ...(skill
+      ? [[".claude/skills/factory/SKILL.md", skill] as [string, string]]
+      : []),
   ];
-  const beside: string[] = [];
+  const beside: string[] = skill
+    ? []
+    : [
+        "the /factory skill couldn't be read from the CLI install; reinstall the CLI",
+      ];
   for (const [rel, content] of files) {
-    const written = await writeBeside(root, rel, content, flags.force);
-    if (written !== rel) beside.push(`${rel} exists; wrote ${written}`);
+    const note = await writeBeside(root, rel, content, flags.force);
+    if (note) beside.push(note);
   }
 
   // The spine skills, locked; `factory skills sync` installs them.
@@ -446,7 +455,7 @@ export async function runInit(
   }
 
   const wrote = `Wrote .factory/, AGENTS.md, CLAUDE.md, CONSTRAINTS.md, the /factory skill and hooks under .claude/, and .github/ (factory.yml, the PR template).${locked} Commit them to the default branch before the first task: the agent and the judge read the contract from there.`;
-  const notes = beside.map((b) => `  - ${b}: merge it by hand`).join("\n");
+  const notes = beside.map((b) => `  - ${b}`).join("\n");
   if (interactive) {
     outro(`${wrote}${notes ? `\n${notes}` : ""} Running first audit…`);
   } else {

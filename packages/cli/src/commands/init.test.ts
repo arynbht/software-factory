@@ -108,6 +108,19 @@ describe("runInit (integration)", () => {
     expect(await readFile(join(dir, "CONSTRAINTS.md"), "utf8")).toContain(
       "`npm run lint`, `npm run test` pass",
     );
+
+    // --force replaces it, and keeps the person's version as a backup.
+    expect(
+      await runInit(
+        dir,
+        { type: "cli", yes: true, force: true },
+        { token: null },
+      ),
+    ).toBe(0);
+    expect(await readFile(join(dir, "AGENTS.md"), "utf8")).toBe(ours);
+    expect(await readFile(join(dir, "AGENTS.md.bak"), "utf8")).toBe(
+      "# Our own rules\n",
+    );
   });
 
   it("refuses to overwrite an existing config without --force", async () => {

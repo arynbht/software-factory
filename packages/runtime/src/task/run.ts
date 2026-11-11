@@ -105,5 +105,10 @@ export async function runTask(
     } finally {
       await report();
     }
+    // A beat that ran without moving the task on would otherwise run forever.
+    if (beat !== "build" && nextStep(task) === next)
+      throw new TaskError(
+        `${beat} ran but ${id} is still at "${next}"; read the ledger (\`factory task resume ${id}\`)`,
+      );
   }
 }
