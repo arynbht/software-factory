@@ -31,6 +31,17 @@ export async function startServer(options: {
     String(options.port),
   );
   const timeoutMs = options.timeoutMs ?? 90_000;
+  // Something already answering would pass the readiness check for the app.
+  if (
+    await fetch(url, { signal: AbortSignal.timeout(1000) }).then(
+      () => true,
+      () => false,
+    )
+  ) {
+    throw new ServerError(
+      `${url} already answers before \`${options.command}\` started: port ${options.port} is in use`,
+    );
+  }
   const posix = process.platform !== "win32";
   const child = spawn(options.command, {
     cwd: options.cwd,
@@ -55,6 +66,10 @@ export async function startServer(options: {
   let exited: number | null | undefined;
   child.on("exit", (code) => {
     exited = code;
+  });
+  child.on("error", (err) => {
+    output = `${output}\n${err.message}`;
+    exited = null;
   });
 
   const stop = async (): Promise<void> => {

@@ -173,6 +173,26 @@ describe("server", { timeout: 60_000 }, () => {
       startServer({ command: "node missing.js", cwd: dir, port: 5392 }),
     ).rejects.toThrow(/exited/);
   });
+
+  it("refuses a port something else already answers on", async () => {
+    const dir = await tmp("server-");
+    await writeFile(
+      join(dir, "server.js"),
+      'require("http").createServer((q, s) => s.end("ok")).listen(process.env.PORT);\n',
+    );
+    const first = await startServer({
+      command: "node server.js",
+      cwd: dir,
+      port: 5393,
+    });
+    try {
+      await expect(
+        startServer({ command: "node server.js", cwd: dir, port: 5393 }),
+      ).rejects.toThrow("port 5393 is in use");
+    } finally {
+      await first.stop();
+    }
+  });
 });
 
 describe("test-run proof", { timeout: 120_000 }, () => {
@@ -285,6 +305,42 @@ describe.skipIf(!hasBrowser)("UI proof", { timeout: 180_000 }, () => {
     expect(nextStep(task)).toBe("judge");
     const ledger = await readFile(task.ledger.mdPath, "utf8");
     expect(ledger).toContain("## Proof");
+  });
+
+  it("a change that won't serve fails the proof and goes back to build", async () => {
+    const repo = await repoWith(BASE);
+    const id = await built(
+      repo,
+      { title: "Redesign the settings page", type: "feature" },
+      (cwd) => writeFile(join(cwd, "server.js"), 'throw new Error("boom");\n'),
+    );
+    const { task, record } = await proveTask(repo, id, {
+      ...by,
+      publish: async () => null,
+    });
+    expect(record.passed).toBe(false);
+    expect(record.lines[0]).toMatch(/^the change didn't serve: .*boom/);
+    expect(nextStep(task)).toMatch(/^build: .*the proof failed/);
+  });
+
+  it("keeps pages that look alike in separate images", async () => {
+    const repo = await repoWith(BASE);
+    const id = await built(
+      repo,
+      {
+        title: "Redesign the settings page",
+        type: "feature",
+        pages: ["/settings?tab=a", "/settings?tab=b"],
+      },
+      (cwd) => writeFile(join(cwd, "server.js"), server(page("<h1>New</h1>"))),
+    );
+    const { record } = await proveTask(repo, id, {
+      ...by,
+      publish: async () => null,
+    });
+    const files = record.shots?.map((s) => s.file) ?? [];
+    expect(files).toHaveLength(12);
+    expect(new Set(files).size).toBe(12);
   });
 
   it("an image without alt text fails the proof", async () => {

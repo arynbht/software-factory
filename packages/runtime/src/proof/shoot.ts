@@ -76,7 +76,7 @@ const axeSource = async (): Promise<string> =>
 
 /**
  * Shoot every page at every breakpoint into `outDir` as
- * `<prefix>-<page>-<breakpoint>.png`; with `axe`, also return the serious and
+ * `<prefix>-<n>-<page>-<breakpoint>.png` (n keeps similar pages apart); with `axe`, also return the serious and
  * critical violations on each page (at the largest breakpoint).
  */
 export async function shoot(options: {
@@ -91,8 +91,12 @@ export async function shoot(options: {
   const violations: AxeViolation[] = [];
   const source = options.axe ? await axeSource() : "";
   try {
-    for (const path of options.pages) {
-      const url = new URL(path, options.baseUrl).toString();
+    // Pages are paths under the app's URL, which may have a base path.
+    const root = options.baseUrl.endsWith("/")
+      ? options.baseUrl
+      : `${options.baseUrl}/`;
+    for (const [i, path] of options.pages.entries()) {
+      const url = new URL(path.replace(/^\/+/, ""), root).toString();
       for (const bp of BREAKPOINTS) {
         const page = await browser.newPage({
           viewport: { width: bp.width, height: bp.height },
@@ -100,7 +104,7 @@ export async function shoot(options: {
         await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
         const file = join(
           options.outDir,
-          `${options.prefix}-${pageSlug(path)}-${bp.name}.png`,
+          `${options.prefix}-${i + 1}-${pageSlug(path)}-${bp.name}.png`,
         );
         await page.screenshot({ path: file, fullPage: true });
         shots.push({ page: path, breakpoint: bp.name, file });

@@ -99,12 +99,23 @@ async function testRun(
     lines.push("tests: no test script to run (fails closed)");
     return { task: isolation.task, kind, passed: false, lines };
   }
-  await installDeps(dir);
+  // The change's install or test command failing is a failed proof, not a crash.
+  const install = await installDeps(dir);
+  if (install.ran && !install.passed) {
+    lines.push(`install failed: ${tail(install.output)}`);
+    return { task: isolation.task, kind, passed: false, lines };
+  }
   const pm = await packageManager(dir);
-  const res = await runTool(pm, ["run", "test"], dir, {
-    env: allowlistedEnv(),
-    timeoutMs: 600_000,
-  });
+  let res: Awaited<ReturnType<typeof runTool>>;
+  try {
+    res = await runTool(pm, ["run", "test"], dir, {
+      env: allowlistedEnv(),
+      timeoutMs: 600_000,
+    });
+  } catch (err) {
+    lines.push(`tests couldn't run: ${tail((err as Error).message)}`);
+    return { task: isolation.task, kind, passed: false, lines };
+  }
   const added = parseNameStatus(
     await simpleGit(dir).raw([
       "diff",
@@ -156,43 +167,67 @@ async function uiProof(
 
   const shots: NonNullable<ProofRecord["shots"]> = [];
   let violations: AxeViolation[] = [];
+  /** Serve one side and shoot it; the server is always stopped. */
+  const side = async (which: "before" | "after", dir: string) => {
+    const install = await installDeps(dir);
+    if (install.ran && !install.passed)
+      throw new Error(`install failed: ${tail(install.output, 300)}`);
+    const server = await startServer({
+      command: start,
+      cwd: dir,
+      port:
+        which === "before"
+          ? isolation.port + BEFORE_PORT_OFFSET
+          : isolation.port,
+      url: profile?.proof?.url,
+      timeoutMs,
+    });
+    try {
+      const result = await shoot({
+        baseUrl: server.url,
+        pages,
+        outDir,
+        prefix: which,
+        axe: which === "after",
+      });
+      shots.push(...result.shots.map((s) => ({ ...s, side: which })));
+      if (which === "after") violations = result.violations;
+    } finally {
+      await server.stop();
+    }
+  };
+
+  // The base failing to serve is the setup's problem: throw. The change
+  // failing to serve is the change's: a failed proof, sent back to build.
   const before = await baseCheckout(repoPath, isolation.base);
   try {
-    for (const side of ["before", "after"] as const) {
-      const dir = side === "before" ? before : isolation.worktree;
-      await installDeps(dir);
-      const server = await startServer({
-        command: start,
-        cwd: dir,
-        port:
-          side === "before"
-            ? isolation.port + BEFORE_PORT_OFFSET
-            : isolation.port,
-        url: profile?.proof?.url,
-        timeoutMs,
-      });
-      try {
-        const result = await shoot({
-          baseUrl: server.url,
-          pages,
-          outDir,
-          prefix: side,
-          axe: side === "after",
-        });
-        shots.push(...result.shots.map((s) => ({ ...s, side })));
-        if (side === "after") violations = result.violations;
-      } finally {
-        await server.stop();
-      }
-    }
+    await side("before", before);
   } finally {
     await simpleGit(repoPath)
       .raw(["worktree", "remove", "--force", before])
       .catch(() => "");
     await rm(before, { recursive: true, force: true });
   }
+  try {
+    await side("after", isolation.worktree);
+  } catch (err) {
+    return {
+      task: task.card.id,
+      kind: "ui-screenshots",
+      passed: false,
+      lines: [`the change didn't serve: ${tail((err as Error).message, 600)}`],
+      shots,
+    };
+  }
 
-  const published = await publish(shots.map((s) => s.file));
+  // Evidence that can't be uploaded is still evidence: keep it local, say so.
+  let published: Awaited<ReturnType<Publish>> = null;
+  let notPushed = "no GitHub token or origin remote";
+  try {
+    published = await publish(shots.map((s) => s.file));
+  } catch (err) {
+    notPushed = `upload failed: ${tail((err as Error).message, 200)}`;
+  }
   for (const p of published ?? []) {
     const shot = shots.find((s) => s.file === p.file);
     if (shot) shot.url = p.url;
@@ -202,7 +237,7 @@ async function uiProof(
     `screenshots: ${pages.join(", ")} at sm/md/lg, before and after (${shots.length} images) ${
       published
         ? `on the evidence branch: ${task.card.id}/`
-        : `in ${TASKS_DIR}/${task.card.id}/proof/ (not pushed: no GitHub token or origin remote)`
+        : `in ${TASKS_DIR}/${task.card.id}/proof/ (not pushed: ${notPushed})`
     }`,
     violations.length === 0
       ? "axe: 0 serious or critical violations"
