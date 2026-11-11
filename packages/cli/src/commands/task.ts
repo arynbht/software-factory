@@ -16,6 +16,7 @@ import {
   newTask,
   nextStep,
   parseAcceptanceFlag,
+  proveTask,
   routeTask,
   sha256,
   type Task,
@@ -30,6 +31,7 @@ export interface TaskNewFlags {
   accept?: string[];
   outOfScope?: string[];
   touches?: string[];
+  page?: string[];
   constraint?: string[];
   risk?: string;
   source?: string;
@@ -89,6 +91,7 @@ export function runTaskNew(
         : {}),
       ...(flags.outOfScope?.length ? { out_of_scope: flags.outOfScope } : {}),
       ...(flags.touches?.length ? { touches: flags.touches } : {}),
+      ...(flags.page?.length ? { pages: flags.page } : {}),
       ...(flags.constraint?.length ? { constraints: flags.constraint } : {}),
       ...(flags.risk ? { risk: flags.risk } : {}),
       ...(flags.source ? { source: flags.source } : {}),
@@ -310,5 +313,23 @@ export function runTaskAnswer(
     });
     process.stdout.write(`next: ${nextStep(task)}\n`);
     return 0;
+  });
+}
+
+/** `factory task prove <id>`: run the assembly's proof and record it. */
+export function runTaskProve(
+  id: string,
+  flags: { path?: string },
+): Promise<number> {
+  return guarded(async () => {
+    const repo = resolve(flags.path ?? ".");
+    const { task, record } = await proveTask(repo, id, {
+      by: await whoami(repo),
+    });
+    for (const line of record.lines) process.stdout.write(`${line}\n`);
+    process.stdout.write(
+      `proof ${record.passed ? "passed" : "failed"}; next: ${nextStep(task)}\n`,
+    );
+    return record.passed ? 0 : 1;
   });
 }

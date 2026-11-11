@@ -60,7 +60,7 @@ export async function assemblePrompt(options: {
   assembly: Assembly;
   isolation: Isolation;
   plan?: readonly string[] | undefined;
-  /** A person's answer to an earlier stop, to act on. */
+  /** What changed since the last round: a denial, or a failed proof. */
   answer?: string | undefined;
 }): Promise<AssembledPrompt> {
   const { card, assembly, isolation } = options;
@@ -121,7 +121,7 @@ export async function assemblePrompt(options: {
           ]
         : []),
       ...(options.answer
-        ? ["", `A person answered your last stop: ${options.answer}`]
+        ? ["", `Since your last round: ${options.answer}`]
         : []),
     ].join("\n"),
   );

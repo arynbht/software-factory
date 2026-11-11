@@ -117,3 +117,27 @@ export {
   type BuildOutcome,
   claudeAgent,
 } from "./agent/build.js";
+export {
+  type ProofRecord,
+  type ProveOptions,
+  proveTask,
+  type Publish,
+} from "./proof/prove.js";
+export {
+  EVIDENCE_BRANCH,
+  type EvidenceClient,
+  publishEvidence,
+} from "./proof/evidence.js";
+export {
+  type RunningServer,
+  ServerError,
+  startServer,
+} from "./proof/server.js";
+export {
+  type AxeViolation,
+  BREAKPOINTS,
+  browserAvailable,
+  pageSlug,
+  shoot,
+  type Shot,
+} from "./proof/shoot.js";

@@ -20,7 +20,9 @@
     "@arynbht/factory-catalog": "workspace:*",
     "@arynbht/factory-engine": "workspace:*",
     "@arynbht/factory-registry": "workspace:*",
+    "axe-core": "^4.14.0",
     "picomatch": "^4.0.7",
+    "playwright-core": "1.63.0",
     "simple-git": "^4.0.2",
     "yaml": "^2.9.1",
     "zod": "^4.6.7"

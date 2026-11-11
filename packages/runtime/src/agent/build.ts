@@ -144,6 +144,23 @@ function pendingAnswer(
   return pending;
 }
 
+/** What the last proof said, when it failed after the last build round. */
+function proofFailure(task: Task): string | undefined {
+  let roundEnd = -1;
+  task.entries.forEach((e, i) => {
+    if (e.section === "timeline" && ROUND_END.test(e.text)) roundEnd = i;
+  });
+  const after = task.entries.slice(roundEnd + 1);
+  const verdict = after.find(
+    (e) => e.beat === "prove" && e.section === "timeline",
+  );
+  if (!verdict?.text.startsWith("proof failed")) return undefined;
+  const lines = after
+    .filter((e) => e.beat === "prove" && e.section === "proof")
+    .map((e) => e.text);
+  return `the proof failed; fix the change so it passes — ${lines.join(" | ")}`;
+}
+
 /** The latest plan: the plan entries after the last "build started". */
 function plan(task: Task): string[] {
   let start = -1;
@@ -249,7 +266,7 @@ export async function buildTask(
     answer:
       answer && !answer.allowed && !replan
         ? `denied — ${answer.note || "undo what you asked about"}`
-        : undefined,
+        : proofFailure(task),
   });
   const summary = await agent({
     mode: "build",

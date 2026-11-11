@@ -229,7 +229,7 @@ describe("build", () => {
     const second = await buildTask(repo, id, { ...by, agent: undo.agent });
     expect(undo.calls.map((c) => c.mode)).toEqual(["build"]); // the plan stands
     expect(undo.calls[0]?.prompt).toContain(
-      "A person answered your last stop: denied — use Array.prototype.padStart",
+      "Since your last round: denied — use Array.prototype.padStart",
     );
     expect(second.stops).toEqual([]);
     task = await loadTask(repo, id);
@@ -313,7 +313,7 @@ describe("build", () => {
     // The build runs the new plan, and isn't told to undo anything.
     expect(short.calls[1]?.prompt).toContain("1. one");
     expect(short.calls[1]?.prompt).not.toContain("step 13");
-    expect(short.calls[1]?.prompt).not.toContain("A person answered");
+    expect(short.calls[1]?.prompt).not.toContain("Since your last round");
     expect(outcome.stops).toEqual([]);
   });
 
@@ -347,7 +347,7 @@ describe("build", () => {
     expect(undo.calls[0]?.prompt).toContain("denied — no ms");
     const later = scripted(async () => undefined);
     await buildTask(repo, id, { ...by, agent: later.agent });
-    expect(later.calls[0]?.prompt).not.toContain("A person answered");
+    expect(later.calls[0]?.prompt).not.toContain("Since your last round");
   });
 
   it("asks when a workspace package's scripts change", async () => {
