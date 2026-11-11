@@ -8,7 +8,13 @@ import { simpleGit } from "simple-git";
 import { parse, stringify } from "yaml";
 
 import { type Card, type CardInput, parseCard, TASK_ID } from "./card.js";
-import { type Beat, BEATS, Ledger, type LedgerEntry } from "./ledger.js";
+import {
+  type Beat,
+  BEATS,
+  isSeal,
+  Ledger,
+  type LedgerEntry,
+} from "./ledger.js";
 
 export const TASKS_DIR = ".factory/tasks";
 
@@ -210,11 +216,50 @@ export function openStops(task: Task): string[] {
     .map((e) => e.text.replace(ASKED, ""));
 }
 
+const answerStep = (id: string) =>
+  `stop-and-ask: \`factory task answer ${id} --allow\` or \`--deny "<why>"\``;
+
+/** A judge verdict on the timeline; the head is the commit it judged. */
+export const JUDGE_VERDICT =
+  /^judge (passed|failed|needs a human) · round (\d+) · head ([0-9a-f]{12})/;
+
+/** The judge's verdicts so far, oldest first. */
+export function judgeVerdicts(
+  task: Task,
+): { verdict: string; round: number; head: string }[] {
+  return task.entries.flatMap((e) => {
+    const m =
+      e.beat === "judge" && e.section === "timeline"
+        ? JUDGE_VERDICT.exec(e.text)
+        : null;
+    return m ? [{ verdict: m[1]!, round: Number(m[2]), head: m[3]! }] : [];
+  });
+}
+
+/** Where the judge beat stands: its latest verdict, or a person's answer to it. */
+function judgeStep(task: Task): string {
+  const id = task.card.id;
+  if (openStops(task).length > 0) return answerStep(id);
+  for (const e of [...task.entries].reverse()) {
+    if (e.beat !== "judge") continue;
+    const answer = e.section === "stop" ? ANSWERED.exec(e.text) : null;
+    if (answer)
+      return answer[1] === "allowed"
+        ? "ship"
+        : `build: \`factory task build ${id}\` (a person sent the change back)`;
+    const verdict =
+      e.section === "timeline" ? JUDGE_VERDICT.exec(e.text)?.[1] : undefined;
+    if (verdict === "passed") return "ship";
+    if (verdict === "failed")
+      return `build: \`factory task build ${id}\` (the judge sent the change back)`;
+  }
+  return "judge";
+}
+
 /** Where the build beat stands, from its ledger entries. */
 function buildStep(task: Task): string {
   const id = task.card.id;
-  if (openStops(task).length > 0)
-    return `stop-and-ask: \`factory task answer ${id} --allow\` or \`--deny "<why>"\``;
+  if (openStops(task).length > 0) return answerStep(id);
   const build = task.entries.filter((e) => e.beat === "build");
   const stage = [...build]
     .reverse()
@@ -240,7 +285,12 @@ export function nextStep(task: Task): string {
       : `route: review assembly.yml, then \`factory task approve ${task.card.id}\``;
   }
   const last = task.entries[task.entries.length - 1];
-  if (last?.beat === "close") return "done";
+  if (last && isSeal(last)) return "done";
+  if (task.beat === "close")
+    return `close: \`factory task close ${task.card.id}\` (it stopped part-way)`;
+  if (task.beat === "ship")
+    return `close: once the PR is merged or closed, \`factory task close ${task.card.id}\``;
+  if (task.beat === "judge") return judgeStep(task);
   if (task.beat === "build") return buildStep(task);
   if (task.beat === "prove") {
     const proved = [...task.entries]

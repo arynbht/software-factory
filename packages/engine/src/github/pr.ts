@@ -7,6 +7,8 @@ export interface OpenPrParams {
   base: string;
   title: string;
   body: string;
+  /** Open it as a draft (a reused PR keeps whatever state it has). */
+  draft?: boolean;
 }
 
 export interface PrResult {
@@ -25,7 +27,7 @@ export async function openOrReusePr(
   gh: GitHubClient,
   params: OpenPrParams,
 ): Promise<PrResult> {
-  const { head, base, title, body } = params;
+  const { head, base, title, body, draft } = params;
 
   const { data: open } = await gh.octokit.rest.pulls.list({
     owner: gh.owner,
@@ -54,6 +56,7 @@ export async function openOrReusePr(
     base,
     title,
     body,
+    ...(draft ? { draft: true } : {}),
   });
   return { number: created.number, url: created.html_url, reused: false };
 }
