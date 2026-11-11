@@ -242,6 +242,14 @@ export function nextStep(task: Task): string {
   const last = task.entries[task.entries.length - 1];
   if (last?.beat === "close") return "done";
   if (task.beat === "build") return buildStep(task);
+  if (task.beat === "prove") {
+    const proved = [...task.entries]
+      .reverse()
+      .find((e) => e.beat === "prove" && e.section === "timeline");
+    return proved?.text.startsWith("proof passed")
+      ? "judge"
+      : `build: \`factory task build ${task.card.id}\` (the proof failed)`;
+  }
   if (task.beat === "isolate")
     return `build: \`factory task build ${task.card.id}\``;
   if (task.beat === "route")

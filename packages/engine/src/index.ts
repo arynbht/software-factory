@@ -156,7 +156,11 @@ export { planFeature } from "./orchestrate/plan.js";
 export type { PlanOptions } from "./orchestrate/plan.js";
 export { runBuild, BuildError } from "./orchestrate/build.js";
 export type { BuildOptions, GitOps } from "./orchestrate/build.js";
-export { verify as verifyBuild } from "./orchestrate/verify.js";
+export {
+  installDeps,
+  packageManager,
+  verify as verifyBuild,
+} from "./orchestrate/verify.js";
 export type { VerifyOptions, CommandRunner } from "./orchestrate/verify.js";
 export {
   runWriteAgent,

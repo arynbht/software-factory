@@ -65,6 +65,17 @@ export const ProfileSchema = z.strictObject({
       judge_model: z.string().min(1).optional(),
     })
     .optional(),
+  /** How the proof runner serves the app for UI proof (FACTORY_V2 §9). */
+  proof: z
+    .strictObject({
+      /** The command that serves the app; it gets PORT in its environment. */
+      start: z.string().min(1).optional(),
+      /** Where it serves; `{port}` is replaced. Default http://localhost:{port}. */
+      url: z.string().min(1).optional(),
+      /** Seconds to wait for the URL to answer (default 90). */
+      ready_timeout: z.number().int().positive().optional(),
+    })
+    .optional(),
   quality: z
     .strictObject({
       /**

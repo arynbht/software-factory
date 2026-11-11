@@ -16,6 +16,7 @@ import {
   runTaskConfirm,
   runTaskIsolate,
   runTaskNew,
+  runTaskProve,
   runTaskResume,
   runTaskRoute,
   runTaskStatus,
@@ -131,6 +132,12 @@ export function buildProgram(): Command {
       [],
     )
     .option(
+      "--page <path>",
+      "a page the UI proof shoots, e.g. /settings (repeatable)",
+      collect,
+      [],
+    )
+    .option(
       "--constraint <text>",
       "e.g. no new dependencies (repeatable)",
       collect,
@@ -197,6 +204,16 @@ export function buildProgram(): Command {
     .option("--path <path>", "path to the repo", ".")
     .action(async (id: string, flags: { model?: string; path?: string }) => {
       process.exitCode = await runTaskBuild(id, flags);
+    });
+  task
+    .command("prove")
+    .description(
+      "Produce the assembly's proof: screenshots and axe for UI, else the test run",
+    )
+    .argument("<id>", "task id")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { path?: string }) => {
+      process.exitCode = await runTaskProve(id, flags);
     });
   task
     .command("answer")

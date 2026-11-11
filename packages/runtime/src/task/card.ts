@@ -42,6 +42,10 @@ export const CardSchema = z
       .min(1, "a card needs at least one acceptance criterion"),
     out_of_scope: z.array(z.string().min(1)).default([]),
     touches: z.array(z.string().min(1)).default([]),
+    /** Pages the UI proof shoots, as paths on the app's URL (default "/"). */
+    pages: z
+      .array(z.string().startsWith("/", "pages are paths that start with /"))
+      .default([]),
     constraints: z.array(z.string().min(1)).default([]),
     risk: z.enum(RISKS).default("medium"),
     owner: z.string().min(1),
