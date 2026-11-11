@@ -37,7 +37,7 @@ import {
   nextStep,
   TASKS_DIR,
 } from "../task/tasks.js";
-import { closeTask } from "./close.js";
+import { closeTask, usageTotals } from "./close.js";
 import { prTitle, shipTask } from "./ship.js";
 
 const made: string[] = [];
@@ -508,6 +508,102 @@ describe("judge, ship, close", { timeout: 180_000 }, () => {
     expect(md).toMatch(/worktree removed · branch fix\/t-0001 kept/);
     expect((await simpleGit(repo).branchLocal()).all).toContain("fix/t-0001");
     expect(nextStep(await loadTask(repo, id))).toBe("done");
+  });
+
+  it("an unmerged worktree with uncommitted edits is kept, not forced away", async () => {
+    const repo = await repoWith(BASE);
+    const id = await proved(repo);
+    const iso = (await loadIsolation(repo, id))!;
+    await writeFile(join(iso.worktree, "src/total.js"), "// half done\n");
+    const { task } = await closeTask(repo, id, { ...by, abandon: "" });
+    await access(iso.worktree);
+    expect(await readFile(join(iso.worktree, "src/total.js"), "utf8")).toBe(
+      "// half done\n",
+    );
+    expect(await readFile(task.ledger.mdPath, "utf8")).toContain(
+      "kept: it has uncommitted edits",
+    );
+  });
+
+  it("a draft card can be abandoned, and then reads as done", async () => {
+    const repo = await repoWith(BASE);
+    const draft = await newTask(
+      repo,
+      {
+        title: "Never mind",
+        type: "chore",
+        description: "Not needed after all.",
+        acceptance: [{ id: "A1", text: "n/a", verify: "manual" }],
+      },
+      by,
+    );
+    const { task } = await closeTask(repo, draft.card.id, {
+      ...by,
+      abandon: "not needed",
+    });
+    expect(nextStep(task)).toBe("done");
+  });
+
+  it("a close that stopped part-way finishes without recording twice", async () => {
+    const repo = await repoWith(BASE);
+    const id = await proved(repo);
+    const first = await loadTask(repo, id);
+    // As if close had written its outcome and then died.
+    await first.ledger.append({
+      beat: "close",
+      section: "outcome",
+      text: "PR #4 merged by alice · 1h00m · 1k tokens · $0.10",
+      by: "factory runtime",
+    });
+    expect(nextStep(await loadTask(repo, id))).toMatch(/stopped part-way/);
+    const { task, row } = await closeTask(repo, id, {
+      ...by,
+      prState: () => {
+        throw new Error("the outcome is decided; don't ask GitHub again");
+      },
+    });
+    expect(row.outcome).toBe("merged");
+    expect(task.entries.filter((e) => e.section === "outcome")).toHaveLength(1);
+    expect(nextStep(task)).toBe("done");
+    const rows = (
+      await readFile(join(repo, ".factory", "history.jsonl"), "utf8")
+    )
+      .trim()
+      .split("\n");
+    expect(rows).toHaveLength(1);
+  });
+});
+
+describe("usageTotals", () => {
+  const entry = (beat: string, section: string, text: string) =>
+    ({ beat, section, text }) as never;
+  it("counts the runtime's usage notes, never numbers in an agent's summary", () => {
+    const task = {
+      entries: [
+        entry(
+          "build",
+          "timeline",
+          "build started · skills spine only · budget 12 steps / 60k ctx · 3 repo file(s) in context · 1200 tokens",
+        ),
+        entry(
+          "build",
+          "timeline",
+          "build done · commit abcdef123456 · 2 file(s) this round · fixed it · 999999 tokens · $99.00",
+        ),
+        entry(
+          "build",
+          "timeline",
+          "build done · commit abcdef123456 · 1 file(s) this round · 500 tokens · $0.25 · also · 7 tokens · $7.00",
+        ),
+        entry(
+          "judge",
+          "judge",
+          "review round 1: approve; 0 blocking, 1 suggestion(s) (judge-model) · 8000 tokens · $0.12",
+        ),
+        entry("build", "plan", "1. log 5000 tokens · $5.00"),
+      ],
+    } as never;
+    expect(usageTotals(task)).toEqual({ tokens: 9700, costUsd: 0.37 });
   });
 });
 

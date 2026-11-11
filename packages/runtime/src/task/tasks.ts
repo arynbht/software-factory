@@ -278,14 +278,15 @@ function buildStep(task: Task): string {
 export function nextStep(task: Task): string {
   if (task.problems.length > 0)
     return "stop: the task record fails verification";
+  // A task can be closed (abandoned) at any beat, even before it was routed.
+  const last = task.entries[task.entries.length - 1];
+  if (last && isSeal(last)) return "done";
   if (!task.confirmed) return "intake: review the card and confirm it";
   if (!task.approved) {
     return task.assemblyText === undefined
       ? `route: \`factory task route ${task.card.id}\``
       : `route: review assembly.yml, then \`factory task approve ${task.card.id}\``;
   }
-  const last = task.entries[task.entries.length - 1];
-  if (last && isSeal(last)) return "done";
   if (task.beat === "close")
     return `close: \`factory task close ${task.card.id}\` (it stopped part-way)`;
   if (task.beat === "ship")

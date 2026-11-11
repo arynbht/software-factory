@@ -165,8 +165,12 @@ export async function judgeTask(
   );
   for (const c of tier1.checks.filter((c) => c.outcome === "fail"))
     await append("judge", `tier 1 fail: ${c.id} — ${oneLine(c.message)}`);
+  // A note explains a failure only when tier 1 failed; otherwise it's context.
   for (const note of tier1.notes)
-    await append("judge", `tier 1 fail: ${oneLine(note)}`);
+    await append(
+      "judge",
+      `tier 1 ${tier1.verdict === "fail" ? "fail" : "note"}: ${oneLine(note)}`,
+    );
   for (const p of tier1.protected)
     await append("judge", `protected: ${p.path} — ${p.detail}`);
 

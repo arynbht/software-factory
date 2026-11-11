@@ -2,7 +2,7 @@
 // up on the task), record the outcome with its duration, tokens and cost,
 // remove the worktree, append a row to `.factory/history.jsonl`, and seal the
 // ledger so nothing is written to it again.
-import { appendFile, mkdir } from "node:fs/promises";
+import { access, appendFile, mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { buildContext } from "@arynbht/factory-engine";
@@ -53,8 +53,23 @@ export interface TaskHistoryRow {
 }
 
 const SHIPPED = /^draft PR (?:opened|updated): #(\d+)/;
-const TOKENS = /· (\d+) tokens/;
-const COST = /· \$(\d+\.\d+)/;
+/**
+ * Where each entry carries its usage note, anchored on the runtime's own text
+ * so an agent's summary (quoted after the note) can't add to the totals.
+ */
+const USAGE = String.raw`((?: · \d+ tokens)?(?: · \$\d+\.\d+)?)`;
+const USAGE_AT = [
+  new RegExp(
+    String.raw`^build started · .* repo file\(s\) in context${USAGE}$`,
+  ),
+  new RegExp(
+    String.raw`^build paused: \d+ thing\(s\) to ask about · commit [0-9a-f]+${USAGE}$`,
+  ),
+  new RegExp(
+    String.raw`^build done · commit [0-9a-f]+ · \d+ file\(s\) this round${USAGE}`,
+  ),
+  new RegExp(String.raw`^review round \d+: [a-z-]+; .*\)${USAGE}$`),
+];
 
 /** Tokens and cost the ledger recorded for the agent and the judge. */
 export function usageTotals(task: Task): { tokens: number; costUsd: number } {
@@ -62,8 +77,10 @@ export function usageTotals(task: Task): { tokens: number; costUsd: number } {
   let costUsd = 0;
   for (const e of task.entries) {
     if (e.beat !== "build" && e.beat !== "judge") continue;
-    tokens += Number(TOKENS.exec(e.text)?.[1] ?? 0);
-    costUsd += Number(COST.exec(e.text)?.[1] ?? 0);
+    const note = USAGE_AT.map((r) => r.exec(e.text)?.[1]).find(Boolean);
+    if (!note) continue;
+    tokens += Number(/ (\d+) tokens/.exec(note)?.[1] ?? 0);
+    costUsd += Number(/\$(\d+\.\d+)/.exec(note)?.[1] ?? 0);
   }
   return { tokens, costUsd };
 }
@@ -124,10 +141,21 @@ export async function closeTask(
     .find((n) => n !== undefined);
   const pr = shipped ? Number(shipped) : null;
 
+  // A close that stopped part-way already decided the outcome: finish it
+  // without asking again or recording anything twice.
+  const decided = task.entries.find(
+    (e) => e.beat === "close" && e.section === "outcome",
+  );
   let outcome: TaskHistoryRow["outcome"];
-  let said: string;
+  let said = "";
   const abandon = options.abandon?.replace(/\s+/g, " ").trim();
-  if (abandon !== undefined) {
+  if (decided) {
+    outcome = decided.text.startsWith("abandoned")
+      ? "abandoned"
+      : /^PR #\d+ merged/.test(decided.text)
+        ? "merged"
+        : "closed";
+  } else if (abandon !== undefined) {
     outcome = "abandoned";
     said = `abandoned${abandon ? `: ${abandon}` : ""}${pr ? ` (PR #${pr} is left as it is)` : ""}`;
   } else {
@@ -149,22 +177,41 @@ export async function closeTask(
   }
 
   const started = new Date(task.entries[0]?.at ?? now);
-  const ms = now.getTime() - started.getTime();
+  const ms = new Date(decided?.at ?? now).getTime() - started.getTime();
   const usage = usageTotals(task);
-  await append(
-    "outcome",
-    `${said} · ${formatDuration(ms)} · ${kTokens(usage.tokens)} · $${usage.costUsd.toFixed(2)}`,
-  );
+  if (!decided)
+    await append(
+      "outcome",
+      `${said} · ${formatDuration(ms)} · ${kTokens(usage.tokens)} · $${usage.costUsd.toFixed(2)}`,
+    );
 
-  // The worktree goes; the branch goes only when its work is on the base.
+  // The worktree goes, unless its work isn't merged and a tracked file has
+  // uncommitted edits: the runtime commits everything the agent writes, so
+  // those are a person's, and they're kept. (Untracked files after the last
+  // round are install and proof output.) The branch goes only when merged.
   const isolation = await loadIsolation(repoPath, id).catch(() => null);
-  if (isolation) {
-    const git = simpleGit(repoPath);
-    const removed = await git
-      .raw(["worktree", "remove", "--force", isolation.worktree])
+  const present =
+    isolation !== null &&
+    (await access(isolation.worktree)
       .then(() => true)
-      .catch(() => false);
+      .catch(() => false));
+  if (isolation && present) {
+    const git = simpleGit(repoPath);
+    const edited =
+      outcome !== "merged" &&
+      (
+        await simpleGit(isolation.worktree)
+          .raw(["status", "--porcelain", "--untracked-files=no"])
+          .catch(() => "unknown")
+      ).trim() !== "";
+    const removed =
+      !edited &&
+      (await git
+        .raw(["worktree", "remove", "--force", isolation.worktree])
+        .then(() => true)
+        .catch(() => false));
     const deleted =
+      removed &&
       outcome === "merged" &&
       (await git
         .raw(["branch", "-D", isolation.branch])
@@ -172,7 +219,7 @@ export async function closeTask(
         .catch(() => false));
     await append(
       "timeline",
-      `${removed ? "worktree removed" : `worktree ${isolation.worktree} couldn't be removed; remove it by hand`} · branch ${isolation.branch} ${deleted ? "deleted" : "kept"}`,
+      `${removed ? "worktree removed" : `worktree ${isolation.worktree} kept: ${edited ? "it has uncommitted edits" : "it couldn't be removed"}; remove it by hand`} · branch ${isolation.branch} ${deleted ? "deleted" : "kept"}`,
     );
   }
 
@@ -199,12 +246,21 @@ export async function closeTask(
     ).length,
     judge_rounds: judgeVerdicts(task).length,
   };
-  await mkdir(join(repoPath, ".factory"), { recursive: true });
-  await appendFile(
-    join(repoPath, ".factory", "history.jsonl"),
-    `${JSON.stringify(row)}\n`,
-    "utf8",
-  );
+  const historyPath = join(repoPath, ".factory", "history.jsonl");
+  const written = (await readFile(historyPath, "utf8").catch(() => ""))
+    .split("\n")
+    .some((line) => {
+      try {
+        const r = JSON.parse(line) as Partial<TaskHistoryRow>;
+        return r.kind === "task" && r.task === id;
+      } catch {
+        return false;
+      }
+    });
+  if (!written) {
+    await mkdir(join(repoPath, ".factory"), { recursive: true });
+    await appendFile(historyPath, `${JSON.stringify(row)}\n`, "utf8");
+  }
   await append("timeline", `${SEAL_TEXT} · ${outcome}`);
   return { task: await loadTask(repoPath, id), row };
 }
