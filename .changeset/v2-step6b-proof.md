@@ -2,7 +2,7 @@
 "@arynbht/factory-runtime": minor
 "@arynbht/factory-catalog": minor
 "@arynbht/factory-engine": minor
-"@arynbht/factory-cli": minor
+"@arynbht/factory": minor
 ---
 
 Factory v2 step 6b: the proof runner. `factory task prove <id>` produces the

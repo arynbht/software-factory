@@ -1,7 +1,7 @@
 ---
 "@arynbht/factory-runtime": minor
 "@arynbht/factory-catalog": minor
-"@arynbht/factory-cli": minor
+"@arynbht/factory": minor
 ---
 
 Factory v2 step 7b: `/factory` as the single entry point.

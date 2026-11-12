@@ -1,6 +1,6 @@
 ---
 "@arynbht/factory-registry": minor
-"@arynbht/factory-cli": minor
+"@arynbht/factory": minor
 ---
 
 Factory v2 step 2: the skill registry. `factory skills init|sync|status|add|update|vendor`

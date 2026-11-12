@@ -2,7 +2,7 @@
 "@arynbht/factory-runtime": minor
 "@arynbht/factory-engine": minor
 "@arynbht/factory-catalog": minor
-"@arynbht/factory-cli": minor
+"@arynbht/factory": minor
 ---
 
 Factory v2 step 4: judge tier 2. `factory review` (local, or `--pr <n>` to post one PR
