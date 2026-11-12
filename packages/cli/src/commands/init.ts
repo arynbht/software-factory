@@ -209,7 +209,7 @@ async function writeSettings(root: string): Promise<string | null> {
     return null;
   const bak = await keepBackup(root, rel, existing);
   await writeFile(path, merged, "utf8");
-  return `merged the factory's hooks into ${rel}; the old one is ${bak}`;
+  return `merged the factory's hooks into ${rel}; the old one is ${bak} (delete it once you've checked the merge)`;
 }
 
 /** Add lines to .factory/.gitignore that aren't there yet. */

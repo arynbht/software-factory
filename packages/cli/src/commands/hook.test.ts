@@ -113,10 +113,32 @@ describe("parseShell", () => {
       {
         words: ["FOO=1", "sed", "-i", "s/a > b/c/", "my file.txt"],
         redirects: [],
+        then: "&&",
+        depth: 0,
       },
-      { words: ["echo", "hi"], redirects: ["out.txt"] },
-      { words: ["tee", "-a", "log.txt"], redirects: [] },
-      { words: ["cat"], redirects: ["app.log", "/dev/null"] },
+      { words: ["echo", "hi"], redirects: ["out.txt"], then: "|", depth: 0 },
+      { words: ["tee", "-a", "log.txt"], redirects: [], then: ";", depth: 0 },
+      {
+        words: ["cat"],
+        redirects: ["app.log", "/dev/null"],
+        then: "",
+        depth: 0,
+      },
+    ]);
+  });
+
+  it("knows which commands run in a subshell", () => {
+    expect(
+      parseShell("(cd /tmp && ls); echo $(pwd) `date`").map((c) => [
+        c.words[0],
+        c.depth,
+      ]),
+    ).toEqual([
+      ["cd", 1],
+      ["ls", 1],
+      ["echo", 0],
+      ["pwd", 1],
+      ["date", 1],
     ]);
   });
 
@@ -124,7 +146,7 @@ describe("parseShell", () => {
     expect(
       parseShell(
         "cat > notes.md <<'EOF'\nrm -rf .factory\nEOF\n# rm x\ngrep x <<< 'rm y' # rm z\nls",
-      ),
+      ).map(({ words, redirects }) => ({ words, redirects })),
     ).toEqual([
       { words: ["cat"], redirects: ["notes.md"] },
       { words: ["grep", "x"], redirects: [] },
@@ -171,6 +193,33 @@ describe("factory hook guard, for Bash", () => {
       /\.factory\/\*\* with it/,
     );
     expect(await bash(worktree, "rm -rf *")).toBeNull();
+  });
+
+  it("doesn't let a cd that may not have moved the shell hide a write", async () => {
+    const { repo, worktree } = await factoryRepo();
+    const elsewhere = posix(await tmp("elsewhere-"));
+    for (const command of [
+      `(cd ${elsewhere} && ls); rm -rf .factory`,
+      `cd /nonexistent; rm -rf .factory`,
+      `cd ${elsewhere} || true && rm -rf .factory`,
+      `cd ${elsewhere} | rm -rf .factory`,
+    ])
+      expect(await bash(worktree, command), command).toMatch(
+        /\.factory\/\*\* with it/,
+      );
+    // A cd that certainly moved does count: scratch work elsewhere is fine.
+    expect(await bash(repo, `cd ${elsewhere} && echo x > out.txt`)).toBeNull();
+  });
+
+  it("only sees sed -i and perl -i as in-place", async () => {
+    const { repo } = await factoryRepo();
+    expect(await bash(repo, "sed -Ei 's/a/b/' README.md")).toMatch(
+      /writes README\.md/,
+    );
+    expect(await bash(repo, "perl -pi -e 's/a/b/' README.md")).toMatch(
+      /writes README\.md/,
+    );
+    expect(await bash(repo, "perl -Mstrict -e 'print 1' README.md")).toBeNull();
   });
 
   it("checks command lines run through sh -c and eval", async () => {

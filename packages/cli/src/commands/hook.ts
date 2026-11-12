@@ -96,6 +96,10 @@ async function pathReason(abs: string): Promise<string | null> {
 export interface ShellCommand {
   words: string[];
   redirects: string[];
+  /** What ends it: `&&`, `||`, `;`, `|`, `&`, a newline, a bracket, or "". */
+  then: string;
+  /** How many subshells deep it runs: `(…)`, `$(…)`, backticks. */
+  depth: number;
 }
 
 /**
@@ -106,7 +110,15 @@ export interface ShellCommand {
  */
 export function parseShell(line: string): ShellCommand[] {
   const out: ShellCommand[] = [];
-  let cur: ShellCommand = { words: [], redirects: [] };
+  let depth = 0;
+  let inBackticks = false;
+  const fresh = (): ShellCommand => ({
+    words: [],
+    redirects: [],
+    then: "",
+    depth,
+  });
+  let cur = fresh();
   let word = "";
   let inWord = false;
   let quote: string | null = null;
@@ -124,11 +136,12 @@ export function parseShell(line: string): ShellCommand[] {
     word = "";
     inWord = false;
   };
-  const endCommand = () => {
+  const endCommand = (then: string) => {
     endWord();
     next = "word";
-    if (cur.words.length > 0 || cur.redirects.length > 0) out.push(cur);
-    cur = { words: [], redirects: [] };
+    if (cur.words.length > 0 || cur.redirects.length > 0)
+      out.push({ ...cur, then });
+    cur = fresh();
   };
 
   for (let i = 0; i < line.length; i++) {
@@ -160,7 +173,7 @@ export function parseShell(line: string): ShellCommand[] {
     } else if (c === "#" && !inWord) {
       while (i + 1 < line.length && line[i + 1] !== "\n") i++;
     } else if (c === "\n") {
-      endCommand();
+      endCommand("\n");
       // A heredoc's body is data, not commands: skip to its delimiter.
       for (const delim of heredocs.splice(0)) {
         while (i < line.length) {
@@ -206,14 +219,22 @@ export function parseShell(line: string): ShellCommand[] {
         }
       } else next = "skip";
     } else if (";|&()`".includes(c)) {
-      endCommand();
-      if ((c === "|" || c === "&") && line[i + 1] === c) i++;
+      const doubled = (c === "|" || c === "&") && line[i + 1] === c;
+      if (doubled) i++;
+      endCommand(doubled ? c + c : c);
+      if (c === "(") depth++;
+      else if (c === ")") depth = Math.max(0, depth - 1);
+      else if (c === "`") {
+        depth += inBackticks ? -1 : 1;
+        inBackticks = !inBackticks;
+      }
+      cur = fresh();
     } else {
       word += c;
       inWord = true;
     }
   }
-  endCommand();
+  endCommand("");
   return out;
 }
 
@@ -262,11 +283,12 @@ function writeTargets(name: string, args: string[]): string[] {
     }
     case "sed":
     case "perl": {
+      // `-i` alone or bundled with flags that take no value (`-Ei`, `-pi`):
+      // not any option that merely contains an i.
+      const bundled = name === "sed" ? /^-[nErsuz]*i/ : /^-[pnlaw0-9]*i/;
       const inPlace = args.some(
         (a) =>
-          /^-[a-zA-Z]*i/.test(a) ||
-          a === "--in-place" ||
-          a.startsWith("--in-place="),
+          bundled.test(a) || a === "--in-place" || a.startsWith("--in-place="),
       );
       if (!inPlace) return [];
       const scripted = args.some((a) =>
@@ -402,8 +424,16 @@ export async function bashReason(
   command: string,
   cwd: string,
 ): Promise<string | null> {
-  let dir = cwd;
-  for (const { words, redirects } of parseShell(command)) {
+  // A `cd` in a subshell or a pipeline, or one that fails, doesn't move the
+  // commands after it, and the words can't tell which kind it is. So a `cd`
+  // only adds a directory to check from: it can make the guard stricter,
+  // never looser.
+  let dirs = [cwd];
+  const commands = parseShell(command);
+  // `cd x && …` at the top level does move what follows (a failed cd stops
+  // the chain), unless an `||` somewhere runs a command after a failed one.
+  const certain = !commands.some((c) => c.then === "||");
+  for (const { words, redirects, then, depth } of commands) {
     // Skip `VAR=value` assignments and wrappers that run the real command
     // (with their own options: `sudo -u root`, `env -i FOO=1`).
     let k = 0;
@@ -421,47 +451,75 @@ export async function bashReason(
     const name = (words[k] ?? "").split("/").pop() ?? "";
     const args = words.slice(k + 1);
     if (name === "cd") {
-      const to = wordPath(args[0] ?? "~", dir);
-      if (to) dir = to;
+      const moved = dirs.flatMap(
+        (from) => wordPath(args[0] ?? "~", from) ?? [],
+      );
+      if (
+        certain &&
+        depth === 0 &&
+        then === "&&" &&
+        moved.length === dirs.length
+      )
+        dirs = [...new Set(moved)];
+      else
+        for (const to of moved)
+          if (!dirs.includes(to) && dirs.length < MAX_DIRS) dirs.push(to);
       continue;
     }
-    if (name === "git") {
-      const reason = await gitReason(args, dir);
+    for (const dir of dirs) {
+      const reason = await commandReason(name, args, redirects, dir);
       if (reason) return reason;
     }
-    // A command line run by another shell, or by eval: check that too.
-    const dashC = SHELLS.has(name)
-      ? args.findIndex((a) => /^-[a-z]*c[a-z]*$/.test(a))
-      : -1;
-    const script =
-      dashC !== -1
-        ? args[dashC + 1]
-        : name === "eval"
-          ? args.join(" ")
-          : undefined;
-    if (script) {
-      const reason = await bashReason(script, dir);
-      if (reason) return reason;
-    }
-    for (const target of [...redirects, ...writeTargets(name, args)]) {
-      const abs = wordPath(target, dir);
-      // A glob stands for what's in its directory, and only matches the
-      // dot-directory .factory when the globbed part starts with a dot.
-      const glob = target.search(/[*?[]/);
-      const dotted =
-        glob === -1 ||
-        target.slice(target.lastIndexOf("/", glob) + 1).startsWith(".");
-      if (
-        abs &&
-        dotted &&
-        REMOVES.has(name) &&
-        (await holdsFactoryState(abs, dir))
-      )
-        return `this command removes ${target}, and .factory/** with it: the factory's state is the runtime's to change. Use the factory CLI instead.`;
-      const reason = abs ? await pathReason(abs) : null;
-      if (reason)
-        return `this command writes ${target}, and ${reason.charAt(0).toLowerCase()}${reason.slice(1)}`;
-    }
+  }
+  return null;
+}
+
+/** Directories one command line is checked from, at most. */
+const MAX_DIRS = 16;
+
+/** Why one simple command, run in `dir`, must not run. */
+async function commandReason(
+  name: string,
+  args: string[],
+  redirects: string[],
+  dir: string,
+): Promise<string | null> {
+  if (name === "git") {
+    const reason = await gitReason(args, dir);
+    if (reason) return reason;
+  }
+  // A command line run by another shell, or by eval: check that too.
+  const dashC = SHELLS.has(name)
+    ? args.findIndex((a) => /^-[a-z]*c[a-z]*$/.test(a))
+    : -1;
+  const script =
+    dashC !== -1
+      ? args[dashC + 1]
+      : name === "eval"
+        ? args.join(" ")
+        : undefined;
+  if (script) {
+    const reason = await bashReason(script, dir);
+    if (reason) return reason;
+  }
+  for (const target of [...redirects, ...writeTargets(name, args)]) {
+    const abs = wordPath(target, dir);
+    // A glob stands for what's in its directory, and only matches the
+    // dot-directory .factory when the globbed part starts with a dot.
+    const glob = target.search(/[*?[]/);
+    const dotted =
+      glob === -1 ||
+      target.slice(target.lastIndexOf("/", glob) + 1).startsWith(".");
+    if (
+      abs &&
+      dotted &&
+      REMOVES.has(name) &&
+      (await holdsFactoryState(abs, dir))
+    )
+      return `this command removes ${target}, and .factory/** with it: the factory's state is the runtime's to change. Use the factory CLI instead.`;
+    const reason = abs ? await pathReason(abs) : null;
+    if (reason)
+      return `this command writes ${target}, and ${reason.charAt(0).toLowerCase()}${reason.slice(1)}`;
   }
   return null;
 }
