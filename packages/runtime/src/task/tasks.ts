@@ -33,7 +33,10 @@ export const assemblyPath = (repoPath: string, id: string) =>
 export const sha256 = (text: string) =>
   createHash("sha256").update(text, "utf8").digest("hex");
 
-/** Task records are per-machine working state: keep them out of git. */
+/**
+ * Keep task records out of the product branches: they live on the
+ * factory/tasks branch (store.ts), and this checkout's copy is a working one.
+ */
 async function ignoreTasks(repoPath: string): Promise<void> {
   const path = join(repoPath, ".factory", ".gitignore");
   let text = "";
@@ -148,10 +151,15 @@ export async function newTask(
   input: Omit<CardInput, "id" | "created" | "owner"> & {
     owner?: string | undefined;
   },
-  options: { by: string; now?: Date | undefined },
+  options: {
+    by: string;
+    now?: Date | undefined;
+    /** An id reserved on the tasks branch; the next local one otherwise. */
+    id?: string | undefined;
+  },
 ): Promise<Task> {
   const now = options.now ?? new Date();
-  const id = await nextTaskId(repoPath);
+  const id = options.id ?? (await nextTaskId(repoPath));
   const card = parseCard({
     ...input,
     id,

@@ -3,13 +3,15 @@
 //
 //   .factory/tasks/<id>/ledger.jsonl   the record: one entry per line, each
 //                                      chained to the last by an HMAC keyed
-//                                      with a per-machine secret
+//                                      with the ledger key (a team's shared
+//                                      key, or one per machine)
 //   .factory/tasks/<id>/ledger.md      a human view rendered from it
 //
 // It lives in the primary checkout (git-ignored, so never inside a task's
-// worktree), and the key lives outside every repo. An agent that edits an
-// entry can't recompute the chain without the key, so `verify` catches it; a
-// hand edit to ledger.md is caught by comparing it with a fresh render.
+// worktree) and on the factory/tasks branch (store.ts); the key lives outside
+// every repo. An agent that edits an entry can't recompute the chain without
+// the key, so `verify` catches it; a hand edit to ledger.md is caught by
+// comparing it with a fresh render.
 import { createHmac, randomBytes } from "node:crypto";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -57,8 +59,22 @@ export const SEAL_TEXT = "ledger sealed";
 export const isSeal = (e: Pick<LedgerEntry, "beat" | "text">) =>
   e.beat === "close" && e.text.startsWith(SEAL_TEXT);
 
-/** The per-machine ledger key, created on first use (outside every repo). */
+/**
+ * The ledger key. `FACTORY_LEDGER_KEY` (64 hex characters) is a team's shared
+ * key, so a task recorded on one machine verifies on another; the GitHub App
+ * holds it later (§8). The sector agent's environment is allowlisted, so it
+ * never sees it. Without it, a per-machine key is created on first use,
+ * outside every repo.
+ */
 export async function ledgerKey(): Promise<Buffer> {
+  const shared = process.env.FACTORY_LEDGER_KEY?.trim();
+  if (shared) {
+    if (!/^[0-9a-fA-F]{64}$/.test(shared))
+      throw new LedgerError(
+        "FACTORY_LEDGER_KEY must be 64 hex characters (32 random bytes)",
+      );
+    return Buffer.from(shared, "hex");
+  }
   const dir =
     process.env.FACTORY_CONFIG_DIR ??
     join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "factory");

@@ -58,6 +58,20 @@ export {
   whoami,
 } from "./task/tasks.js";
 export {
+  commitTask,
+  type CommitOptions,
+  holderName,
+  type Lease,
+  LEASE_MS,
+  LeaseError,
+  localLease,
+  pullTasks,
+  reserveTaskId,
+  StoreError,
+  taskLease,
+  TASKS_BRANCH,
+} from "./task/store.js";
+export {
   BLOCKING_KINDS,
   extractJson,
   type Finding,
