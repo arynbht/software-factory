@@ -155,8 +155,33 @@ describe("factory hook guard, for Bash", () => {
       "echo x \\\n  > .factory/waivers.yml",
     ])
       expect(await bash(repo, command), command).toMatch(
-        /this command writes .*(factory's state|primary checkout on main)/,
+        /this command (writes|removes) .*(factory's state|primary checkout on main)/,
       );
+  });
+
+  it("refuses wiping the checkout, whichever way it's spelled", async () => {
+    const { repo, worktree } = await factoryRepo();
+    for (const command of ["rm -rf *", "rm -rf .", `rm -rf "$PWD"`])
+      expect(await bash(repo, command), command).toMatch(
+        /this command (writes|removes)/,
+      );
+    // In a worktree: `.` holds .factory/**; `*` doesn't match dotfiles.
+    expect(await bash(worktree, "rm -rf .")).toMatch(/\.factory\/\*\* with it/);
+    expect(await bash(worktree, "cd .. && rm -rf T-0001")).toMatch(
+      /\.factory\/\*\* with it/,
+    );
+    expect(await bash(worktree, "rm -rf *")).toBeNull();
+  });
+
+  it("checks command lines run through sh -c and eval", async () => {
+    const { repo } = await factoryRepo();
+    for (const command of [
+      `bash -lc "echo x > .factory/waivers.yml"`,
+      `sh -c 'git push --force'`,
+      "eval rm .factory/profile.yml",
+    ])
+      expect(await bash(repo, command), command).not.toBeNull();
+    expect(await bash(repo, `bash -c "git status"`)).toBeNull();
   });
 
   it("refuses Bash writes to .factory/** from a task's worktree too", async () => {
@@ -165,9 +190,10 @@ describe("factory hook guard, for Bash", () => {
       "rm -rf .factory",
       "rm -rf .factory/*",
       "echo x > .factory/waivers.yml",
+      "echo x > ${PWD}/.factory/waivers.yml",
     ])
       expect(await bash(worktree, command), command).toMatch(
-        /this command writes .*factory's state/,
+        /this command (writes|removes) .*factory's state/,
       );
   });
 

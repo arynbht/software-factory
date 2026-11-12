@@ -496,7 +496,14 @@ export async function runInit(
   );
   if (workflow) beside.push(workflow);
 
-  await ignoreInFactory(root, ["tasks/", "ai-usage.log", "cache/"]);
+  // Backups init leaves under .factory/ are for the person to look at, not commit.
+  await ignoreInFactory(root, [
+    "tasks/",
+    "ai-usage.log",
+    "cache/",
+    "*.bak",
+    "*.bak.*",
+  ]);
 
   // §10: the contract, the /factory skill, the hooks, the PR template.
   const facts = await repoFacts(root, draft);

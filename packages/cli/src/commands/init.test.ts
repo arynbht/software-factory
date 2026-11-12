@@ -87,7 +87,7 @@ describe("runInit (integration)", { timeout: 30_000 }, () => {
       GUARD_COMMAND,
     );
     expect(await read(".factory", ".gitignore")).toBe(
-      "tasks/\nai-usage.log\ncache/\n",
+      "tasks/\nai-usage.log\ncache/\n*.bak\n*.bak.*\n",
     );
     // The spine skills are locked; task-scope skills aren't.
     const lock = await read(".factory", "skills.lock");

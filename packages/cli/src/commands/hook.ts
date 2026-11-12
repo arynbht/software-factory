@@ -1,4 +1,4 @@
-import { access, readFile, realpath } from "node:fs/promises";
+import { access, readFile, realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
@@ -14,6 +14,10 @@ import { GUARD_COMMAND, GUARD_MATCHER, isFactoryHook } from "./init-files.js";
 const exists = (path: string) =>
   access(path)
     .then(() => true)
+    .catch(() => false);
+const isDirectory = (path: string) =>
+  stat(path)
+    .then((s) => s.isDirectory())
     .catch(() => false);
 
 async function git(args: string[], cwd: string): Promise<string | null> {
@@ -47,8 +51,9 @@ async function factoryTop(dir: string): Promise<string | null> {
  * Only in repos with a factory profile.
  */
 async function pathReason(abs: string): Promise<string | null> {
-  // The file may be new: ask git about the nearest directory that exists.
-  let dir = dirname(abs);
+  // The file may be new: ask git about the nearest directory that exists. A
+  // directory is asked about itself: its parent may be outside the repo.
+  let dir = (await isDirectory(abs)) ? abs : dirname(abs);
   while (!(await exists(dir))) {
     const up = dirname(dir);
     if (up === dir) return null;
@@ -279,9 +284,15 @@ function writeTargets(name: string, args: string[]): string[] {
 
 /** A word as a path from `cwd`, or null when it names something only a shell knows. */
 function wordPath(word: string, cwd: string): string | null {
-  if (/[$`]/.test(word) || word === "/dev/null" || /^nul$/i.test(word))
+  // $HOME and $PWD are known here; any other variable only to the shell.
+  const known = word.replace(
+    /\$(?:\{(HOME|PWD)\}|(HOME|PWD)(?![A-Za-z0-9_]))/g,
+    (_, braced?: string, bare?: string) =>
+      (braced ?? bare) === "HOME" ? homedir() : cwd,
+  );
+  if (/[$`]/.test(known) || known === "/dev/null" || /^nul$/i.test(known))
     return null;
-  let path = word.startsWith("~") ? homedir() + word.slice(1) : word;
+  let path = known.startsWith("~") ? homedir() + known.slice(1) : known;
   // A glob writes inside the directory it starts in: check that directory.
   const glob = path.search(/[*?[]/);
   if (glob !== -1) path = path.slice(0, path.lastIndexOf("/", glob) + 1) || ".";
@@ -355,6 +366,31 @@ const WRAPPERS: Record<string, string[]> = {
   exec: ["-a"],
 };
 
+/** Shells whose `-c` argument is another command line. */
+const SHELLS = new Set(["sh", "bash", "zsh", "dash"]);
+
+/** Commands that delete what they name (`mv` removes its sources). */
+const REMOVES = new Set(["rm", "rmdir", "unlink", "mv"]);
+
+/**
+ * Is `abs` a factory's state directory, or a directory that holds one: the
+ * state of the repo the command runs in, or of a checkout `abs` is in (a
+ * task's worktree has its own `.factory/`)?
+ */
+async function holdsFactoryState(abs: string, cwd: string): Promise<boolean> {
+  const target = await realpath(abs).catch(() => abs);
+  const tops = [
+    await factoryTop(cwd),
+    (await isDirectory(target)) ? await factoryTop(target) : null,
+  ];
+  for (const top of tops) {
+    if (!top) continue;
+    const rel = relative(target, join(await realpath(top), ".factory"));
+    if (rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))) return true;
+  }
+  return false;
+}
+
 /**
  * Why a Bash command must not run, or null: a write (redirect, `tee`, `cp`,
  * `mv`, `rm`, `sed -i`, …) to anything the edit guard protects, or a git
@@ -393,8 +429,35 @@ export async function bashReason(
       const reason = await gitReason(args, dir);
       if (reason) return reason;
     }
+    // A command line run by another shell, or by eval: check that too.
+    const dashC = SHELLS.has(name)
+      ? args.findIndex((a) => /^-[a-z]*c[a-z]*$/.test(a))
+      : -1;
+    const script =
+      dashC !== -1
+        ? args[dashC + 1]
+        : name === "eval"
+          ? args.join(" ")
+          : undefined;
+    if (script) {
+      const reason = await bashReason(script, dir);
+      if (reason) return reason;
+    }
     for (const target of [...redirects, ...writeTargets(name, args)]) {
       const abs = wordPath(target, dir);
+      // A glob stands for what's in its directory, and only matches the
+      // dot-directory .factory when the globbed part starts with a dot.
+      const glob = target.search(/[*?[]/);
+      const dotted =
+        glob === -1 ||
+        target.slice(target.lastIndexOf("/", glob) + 1).startsWith(".");
+      if (
+        abs &&
+        dotted &&
+        REMOVES.has(name) &&
+        (await holdsFactoryState(abs, dir))
+      )
+        return `this command removes ${target}, and .factory/** with it: the factory's state is the runtime's to change. Use the factory CLI instead.`;
       const reason = abs ? await pathReason(abs) : null;
       if (reason)
         return `this command writes ${target}, and ${reason.charAt(0).toLowerCase()}${reason.slice(1)}`;
