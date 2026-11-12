@@ -1,7 +1,7 @@
 ---
 "@arynbht/factory-catalog": minor
 "@arynbht/factory-engine": minor
-"@arynbht/factory-cli": minor
+"@arynbht/factory": minor
 ---
 
 Make remediation safe on repos the factory did not scaffold (Factory v2 §3.1):

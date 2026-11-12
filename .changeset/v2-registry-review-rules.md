@@ -2,7 +2,7 @@
 "@arynbht/factory-registry": minor
 "@arynbht/factory-engine": minor
 "@arynbht/factory-runtime": minor
-"@arynbht/factory-cli": patch
+"@arynbht/factory": patch
 ---
 
 Registry review rules: `scan_allow` binds to one exact line (sha256) with a named

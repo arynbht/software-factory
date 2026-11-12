@@ -9,6 +9,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { evaluateControls } from "../audit.js";
 import { buildContext } from "../context.js";
+import { applyChanges } from "../generators/apply.js";
+import { mergeYamlGenerator } from "../generators/merge-yaml.js";
+import { renderTemplate, templateVars } from "../generators/template.js";
 import { runDetector } from "./run.js";
 
 const made: string[] = [];
@@ -163,6 +166,80 @@ describe("reviewed detector", () => {
     };
     expect((await check(files, "brief")).status).toBe("fail");
     expect((await check(files, "adr")).status).toBe("pass");
+  });
+});
+
+describe("the Node CI the factory writes", () => {
+  const IN_CI = /^(dev\.linter|test\.runner)\.in-ci$/;
+  const node = (scripts: Record<string, string>) =>
+    JSON.stringify({ name: "demo", scripts });
+
+  it("passes the CI controls when the repo has the scripts, and only runs those", async () => {
+    const scripts = { lint: "eslint .", typecheck: "tsc", test: "vitest run" };
+    const [ci] = await renderTemplate(
+      "ci-workflow",
+      templateVars(null, 2026, {
+        stack: ["node"],
+        scripts: Object.keys(scripts),
+      }),
+      "ci.workflow.present",
+    );
+    const contents = ci?.type === "file" ? ci.contents : "";
+    expect(contents).not.toContain("--if-present");
+    expect(contents).toContain("run: npm run typecheck");
+    const dir = await repoWith({
+      "package.json": node(scripts),
+      ".github/workflows/ci.yml": contents,
+    });
+    expect(await statuses(dir, IN_CI)).toEqual({
+      "dev.linter.in-ci": "pass",
+      "test.runner.in-ci": "pass",
+    });
+
+    // No scripts: no check steps, so the controls say so instead of passing.
+    const [bare] = await renderTemplate(
+      "ci-workflow",
+      templateVars(null, 2026, { stack: ["node"], scripts: [] }),
+      "ci.workflow.present",
+    );
+    const bareContents = bare?.type === "file" ? bare.contents : "";
+    expect(bareContents).not.toMatch(/name: (Lint|Typecheck|Test)/);
+    const empty = await repoWith({
+      "package.json": node({}),
+      ".github/workflows/ci.yml": bareContents,
+    });
+    expect(Object.values(await statuses(empty, IN_CI))).toEqual([
+      "fail",
+      "fail",
+    ]);
+  });
+
+  it("adds real steps beside ones that can't fail, so one fix run passes", async () => {
+    const dir = await repoWith({
+      "package.json": node({ lint: "eslint .", test: "vitest run" }),
+      ".github/workflows/ci.yml": `name: CI
+on: [pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Lint
+        run: npm run lint --if-present
+      - name: Test
+        run: npm test --if-present
+`,
+    });
+    expect(Object.values(await statuses(dir, IN_CI))).toEqual(["fail", "fail"]);
+    const { controls } = await loadBundledCatalog();
+    for (const control of controls.filter((c) => IN_CI.test(c.id))) {
+      const changes = await mergeYamlGenerator(buildContext(dir), control);
+      await applyChanges(dir, changes, { mode: "write" });
+    }
+    expect(await statuses(dir, IN_CI)).toEqual({
+      "dev.linter.in-ci": "pass",
+      "test.runner.in-ci": "pass",
+    });
   });
 });
 

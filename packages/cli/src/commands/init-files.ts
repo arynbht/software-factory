@@ -133,25 +133,68 @@ Start every task with \`/factory\`. The contract above applies to Claude Code to
 `;
 
 /** Claude Code hooks (§10): the beats at session start, and the edit guard. */
-export const SETTINGS_JSON = `${JSON.stringify(
-  {
-    hooks: {
-      SessionStart: [
-        {
-          hooks: [{ type: "command", command: "factory hook session-start" }],
-        },
-      ],
-      PreToolUse: [
-        {
-          matcher: "Edit|Write|MultiEdit|NotebookEdit",
-          hooks: [{ type: "command", command: "factory hook guard" }],
-        },
-      ],
+// The hooks fail closed (§5.3). A hook that can't run exits non-blocking, so
+// the guard's command turns any failure, `factory` missing from PATH included,
+// into exit 2, which blocks the call. The session-start one says why on the
+// first line of the session instead of leaving every edit blocked unexplained.
+// Both parse the same in sh and cmd.
+export const GUARD_COMMAND = "factory hook guard || exit 2";
+export const GUARD_MATCHER = "Edit|Write|MultiEdit|NotebookEdit|Bash";
+export const SESSION_START_COMMAND =
+  "factory hook session-start || echo factory: the session-start hook could not run, so the factory CLI is probably not on PATH. Until it is, the guard blocks every edit and command. Install it in a terminal, then run factory doctor.";
+
+/** A hook command `factory init` installed, this version's or an earlier one's. */
+export const isFactoryHook = (command: unknown): boolean =>
+  typeof command === "string" &&
+  /^factory hook (guard|session-start)\b/.test(command);
+
+const FACTORY_HOOKS = {
+  SessionStart: [
+    { hooks: [{ type: "command", command: SESSION_START_COMMAND }] },
+  ],
+  PreToolUse: [
+    {
+      matcher: GUARD_MATCHER,
+      hooks: [{ type: "command", command: GUARD_COMMAND }],
     },
-  },
-  null,
-  2,
-)}\n`;
+  ],
+};
+
+export const SETTINGS_JSON = `${JSON.stringify({ hooks: FACTORY_HOOKS }, null, 2)}\n`;
+
+interface HookGroup {
+  matcher?: string;
+  hooks?: { command?: unknown }[];
+}
+
+/**
+ * `settings` with the factory's hooks in it (§12): every other setting and hook
+ * kept as it is, and any factory hook an earlier `init` wrote replaced by this
+ * version's, so a re-run converges. Throws when `settings` isn't an object
+ * with an object of hook arrays.
+ */
+export function mergeFactoryHooks(settings: unknown): Record<string, unknown> {
+  const isObject = (v: unknown): v is Record<string, unknown> =>
+    typeof v === "object" && v !== null && !Array.isArray(v);
+  if (!isObject(settings)) throw new Error("not a JSON object");
+  const hooks = settings.hooks ?? {};
+  if (!isObject(hooks)) throw new Error("`hooks` is not an object");
+  const merged: Record<string, unknown> = { ...hooks };
+  for (const [event, ours] of Object.entries(FACTORY_HOOKS)) {
+    const theirs = merged[event] ?? [];
+    if (!Array.isArray(theirs))
+      throw new Error(`\`hooks.${event}\` is not an array`);
+    const kept = (theirs as HookGroup[]).flatMap((group) => {
+      if (!Array.isArray(group?.hooks)) return [group];
+      const rest = group.hooks.filter((h) => !isFactoryHook(h?.command));
+      if (rest.length === group.hooks.length) return [group];
+      // A group that held only factory hooks goes; ours replaces it.
+      return rest.length > 0 ? [{ ...group, hooks: rest }] : [];
+    });
+    merged[event] = [...kept, ...ours];
+  }
+  return { ...settings, hooks: merged };
+}
 
 export const PR_TEMPLATE = `## Summary
 

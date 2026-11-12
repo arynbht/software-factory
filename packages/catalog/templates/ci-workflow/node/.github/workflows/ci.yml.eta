@@ -12,9 +12,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Every step is guarded so this workflow passes on its first run, before the
-# project has a package.json, a lockfile, or any scripts; each check starts
-# running as soon as the thing it needs exists.
+# Setup steps are guarded so this workflow passes before the project has a
+# package.json or a lockfile. The checks run the repo's own scripts, and only
+# the ones it has: a step that skips a missing script would pass with no
+# script at all. Add a lint, typecheck or test script, then `factory fix` adds
+# its step.
 jobs:
   ci:
     name: ci
@@ -53,12 +55,18 @@ jobs:
 <% } else { %>
         run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
 <% } %>
-      - name: Lint
-        if: hashFiles('package.json') != ''
-        run: npm run lint --if-present
-      - name: Typecheck
-        if: hashFiles('package.json') != ''
-        run: npm run typecheck --if-present
-      - name: Test
-        if: hashFiles('package.json') != ''
-        run: npm run test --if-present
+<%
+  const run = it.packageManager === "yarn" ? "yarn" : `${it.packageManager} run`;
+  const checks = [
+    ["Lint", ["lint"]],
+    ["Typecheck", ["typecheck", "type-check", "tsc"]],
+    ["Test", ["test"]],
+  ];
+  // Built as one string: Eta trims the newline after an output tag.
+  const steps = checks
+    .map(([label, names]) => [label, names.find((n) => it.scripts.includes(n))])
+    .filter(([, script]) => script)
+    .map(([label, script]) => `      - name: ${label}\n        run: ${run} ${script}\n`)
+    .join("");
+%>
+<%= steps %>
