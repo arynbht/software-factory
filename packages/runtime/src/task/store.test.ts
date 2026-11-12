@@ -86,7 +86,7 @@ describe("the task store", { timeout: 30_000 }, () => {
     ]);
     expect(git(origin, "rev-list", "--count", TASKS_BRANCH)).toBe("1");
 
-    await pullTasks(b, { holder: "bob on b", now: NOW });
+    await pullTasks(b);
     expect(await read(b, "T-0001", "ledger.jsonl")).toBe('{"seq":1}\n');
     expect(await read(b, "T-0001", "judge", "round-1.json")).toBe("{}\n");
   });
@@ -100,7 +100,7 @@ describe("the task store", { timeout: 30_000 }, () => {
       now: NOW,
     });
 
-    await pullTasks(b, { holder: "bob on b", now: NOW });
+    await pullTasks(b);
     await writeTask(b, "T-0001", '{"seq":1}\n{"seq":2}\n');
     await expect(
       commitTask(b, "T-0001", { holder: "bob on b", message: "m", now: NOW }),
@@ -117,7 +117,7 @@ describe("the task store", { timeout: 30_000 }, () => {
       commitTask(a, "T-0001", { holder: "ann on a", message: "m", now: LATER }),
     ).rejects.toThrow(/held by bob on b/);
     // Ann pulls Bob's entries rather than keeping her stale copy.
-    await pullTasks(a, { holder: "ann on a", now: LATER });
+    await pullTasks(a);
     expect(await read(a, "T-0001", "ledger.jsonl")).toBe(
       '{"seq":1}\n{"seq":2}\n',
     );
@@ -145,10 +145,51 @@ describe("the task store", { timeout: 30_000 }, () => {
       now: NOW,
     });
     await writeTask(a, "T-0001", '{"seq":1}\n{"seq":2}\n'); // not pushed yet
-    await pullTasks(a, { holder: "ann on a", now: NOW });
+    await pullTasks(a);
     expect(await read(a, "T-0001", "ledger.jsonl")).toBe(
       '{"seq":1}\n{"seq":2}\n',
     );
+  });
+
+  it("never deletes a record no push has carried, even after its lease expired", async () => {
+    const { origin, a } = await twoMachines();
+    await writeTask(a, "T-0001", '{"seq":1}\n');
+    await commitTask(a, "T-0001", {
+      holder: "ann on a",
+      message: "m",
+      now: NOW,
+    });
+    // A beat writes more, and its push fails (origin unreachable).
+    await writeTask(a, "T-0001", '{"seq":1}\n{"seq":2}\n');
+    git(a, "remote", "set-url", "origin", join(origin, "gone"));
+    await expect(
+      commitTask(a, "T-0001", { holder: "ann on a", message: "m", now: NOW }),
+    ).rejects.toThrow(StoreError);
+    git(a, "remote", "set-url", "origin", origin);
+
+    // Past the lease, a pull keeps the unpushed copy and says so…
+    expect(await pullTasks(a)).toEqual({ kept: ["T-0001"] });
+    expect(await read(a, "T-0001", "ledger.jsonl")).toBe(
+      '{"seq":1}\n{"seq":2}\n',
+    );
+    // …and the next write carries it.
+    await commitTask(a, "T-0001", {
+      holder: "ann on a",
+      message: "m",
+      now: LATER,
+    });
+    expect(git(origin, "show", `${TASKS_BRANCH}:T-0001/ledger.jsonl`)).toBe(
+      '{"seq":1}\n{"seq":2}',
+    );
+    expect(await pullTasks(a)).toEqual({ kept: [] });
+  });
+
+  it("only puts tasks that exist on the branch", async () => {
+    const { a } = await twoMachines();
+    await expect(
+      commitTask(a, "T-0099", { holder: "ann on a", message: "m" }),
+    ).rejects.toThrow(/no task T-0099/);
+    expect(git(a, "branch", "--list", TASKS_BRANCH)).toBe("");
   });
 
   it("gives two machines different ids, and refuses to reuse one", async () => {

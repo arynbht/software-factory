@@ -227,26 +227,78 @@ async function walk(dir: string): Promise<string[]> {
   return out;
 }
 
+/** A task's files as path → blob id; `lease.json` aside (every write changes it). */
+type Files = Map<string, string>;
+const sameFiles = (a: Files, b: Files) =>
+  a.size === b.size && [...a].every(([path, sha]) => b.get(path) === sha);
+
+async function localFiles(repo: string, dir: string): Promise<Files> {
+  const files = (await walk(dir)).filter((f) => f !== join(dir, "lease.json"));
+  if (files.length === 0) return new Map();
+  const shas = (
+    await gitOk(repo, ["hash-object", "--no-filters", "--", ...files])
+  )
+    .trim()
+    .split(/\r?\n/);
+  return new Map(
+    files.map((f, i) => [
+      relative(dir, f).split(sep).join("/"),
+      shas[i] as string,
+    ]),
+  );
+}
+
+async function branchFiles(
+  repo: string,
+  commit: string,
+  id: string,
+): Promise<Files> {
+  const out = await gitOk(repo, ["ls-tree", "-r", "-z", commit, "--", id]);
+  const files: Files = new Map();
+  for (const line of out.split("\0").filter(Boolean)) {
+    // "<mode> blob <sha>\t<id>/<path>"
+    const [meta = "", path = ""] = line.split("\t");
+    const rel = path.slice(id.length + 1);
+    if (rel !== "lease.json") files.set(rel, meta.split(" ")[2] ?? "");
+  }
+  return files;
+}
+
+/**
+ * Is this machine's copy of a task a state the branch already has (or is
+ * there no copy)? If not, it holds work no push has carried yet.
+ */
+async function pushedBefore(
+  repo: string,
+  tip: string,
+  id: string,
+): Promise<boolean> {
+  const local = await localFiles(repo, join(repo, TASKS_DIR, id));
+  if (local.size === 0) return true;
+  const commits = (await gitOk(repo, ["log", "--format=%H", tip, "--", id]))
+    .split(/\s+/)
+    .filter(Boolean);
+  for (const commit of commits)
+    if (sameFiles(local, await branchFiles(repo, commit, id))) return true;
+  return false;
+}
+
 /**
  * Bring `.factory/tasks/` up to the branch: every task on it is written out,
- * except the ones `holder` holds a live lease on (this machine's copy of
- * those is the newest). Tasks only on this machine are left alone.
+ * unless this machine's copy holds work the branch has never had (a beat
+ * whose push failed). That copy is kept, and its id returned, so nothing
+ * unpushed is ever deleted: the next beat on the task pushes it. Tasks only
+ * on this machine are left alone.
  */
-export async function pullTasks(
-  repo: string,
-  options: { holder?: string; now?: Date } = {},
-): Promise<void> {
+export async function pullTasks(repo: string): Promise<{ kept: string[] }> {
+  const kept: string[] = [];
   const tip = await fetchTip(repo);
-  if (!tip) return;
-  const now = options.now ?? new Date();
+  if (!tip) return { kept };
   for (const id of await branchIds(repo, tip)) {
-    const lease = await readLease(repo, tip, id);
-    if (
-      options.holder &&
-      lease?.holder === options.holder &&
-      Date.parse(lease.expires) > now.getTime()
-    )
+    if (!(await pushedBefore(repo, tip, id))) {
+      kept.push(id);
       continue;
+    }
     const dir = join(repo, TASKS_DIR, id);
     await rm(dir, { recursive: true, force: true });
     for (const rel of await treeFiles(repo, tip, id)) {
@@ -255,6 +307,7 @@ export async function pullTasks(
       await writeFile(path, (await readBlob(repo, tip, `${id}/${rel}`)) ?? "");
     }
   }
+  return { kept };
 }
 
 export interface CommitOptions {
@@ -284,17 +337,21 @@ export async function commitTask(
 ): Promise<void> {
   const now = options.now ?? new Date();
   const dir = join(repo, TASKS_DIR, id);
+  // Only a task that exists goes on the branch; `create` is the one exception.
+  if (
+    !options.create &&
+    !(await readFile(join(dir, "card.yml")).then(
+      () => true,
+      () => false,
+    ))
+  )
+    throw new StoreError(`no task ${id} here (no ${TASKS_DIR}/${id}/card.yml)`);
   const lease: Lease = {
     holder: options.holder,
     expires: new Date(
       now.getTime() + (options.release ? 0 : LEASE_MS),
     ).toISOString(),
   };
-  await mkdir(dir, { recursive: true });
-  await writeFile(
-    join(dir, "lease.json"),
-    `${JSON.stringify(lease, null, 2)}\n`,
-  );
 
   const origin = await hasOrigin(repo);
   const scratch = await mkdtemp(join(tmpdir(), "factory-store-"));
@@ -311,6 +368,12 @@ export async function commitTask(
         Date.parse(held.expires) > now.getTime()
       )
         throw new LeaseError(id, held);
+      // The lease is ours (or free): take or renew it.
+      await mkdir(dir, { recursive: true });
+      await writeFile(
+        join(dir, "lease.json"),
+        `${JSON.stringify(lease, null, 2)}\n`,
+      );
 
       await rm(env.GIT_INDEX_FILE, { force: true });
       await gitOk(repo, tip ? ["read-tree", tip] : ["read-tree", "--empty"], {
@@ -385,8 +448,16 @@ export async function commitTask(
           },
         )
       ).trim();
-      // Compare-and-swap: only moves the branch if nobody else did meanwhile.
-      await gitOk(repo, ["update-ref", LOCAL, commit, tip ?? ""]);
+      // Compare-and-swap: only moves the branch if nobody else did meanwhile
+      // (another factory process on this machine); if somebody did, redo it.
+      const swapped = await git(repo, ["update-ref", LOCAL, commit, tip ?? ""]);
+      if (swapped.code !== 0) {
+        if (attempt >= PUSH_ATTEMPTS)
+          throw new StoreError(
+            `couldn't move ${TASKS_BRANCH}: ${swapped.stderr.trim()}`,
+          );
+        continue;
+      }
       if (!origin) return;
       const push = await git(repo, [
         "push",

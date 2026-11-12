@@ -15,6 +15,7 @@ import {
   isolateTask,
   judgeTask,
   confirmTask,
+  LEASE_MS,
   LedgerError,
   listTasks,
   loadTask,
@@ -70,10 +71,35 @@ async function guarded(action: () => Promise<number>): Promise<number> {
 }
 
 /**
+ * Bring this checkout's task records up to the factory/tasks branch, saying
+ * which ones it kept because they hold work no push has carried yet. A
+ * read-only command carries on with the local copy when the branch can't be
+ * reached; a beat can't, since it has to take the task's lease.
+ */
+async function pull(
+  repo: string,
+  options: { readOnly?: boolean } = {},
+): Promise<void> {
+  try {
+    const { kept } = await pullTasks(repo);
+    for (const id of kept)
+      process.stderr.write(
+        `factory task: kept this machine's record of ${id}: it has work the branch doesn't, which its next beat pushes\n`,
+      );
+  } catch (err) {
+    if (!options.readOnly || !(err instanceof StoreError)) throw err;
+    process.stderr.write(
+      `factory task: ${err.message}; showing this machine's copy\n`,
+    );
+  }
+}
+
+/**
  * Run one beat of task `id` against the tasks branch (§8): pull the record,
  * take or renew this machine's lease (refused, before anything runs, while
  * someone else holds it), run, and push what the beat wrote, even when it
- * failed part-way, so the record never only lives here.
+ * failed part-way, so the record never only lives here. A long beat renews
+ * its lease as it goes, so it isn't taken over mid-run.
  */
 async function onTask<T>(
   repo: string,
@@ -84,12 +110,24 @@ async function onTask<T>(
 ): Promise<T> {
   const by = await whoami(repo);
   const holder = holderName(by);
-  await pullTasks(repo, { holder });
+  await pull(repo);
   await commitTask(repo, id, { holder, message: `${id}: ${beat}` });
+  // One write at a time: the heartbeat and the final push never overlap.
+  let writes: Promise<unknown> = Promise.resolve();
+  const heartbeat = setInterval(() => {
+    writes = writes
+      .then(() =>
+        commitTask(repo, id, { holder, message: `${id}: ${beat} running` }),
+      )
+      .catch(() => undefined);
+  }, LEASE_MS / 4);
+  heartbeat.unref();
   let result: T;
   try {
     result = await action(by);
   } catch (err) {
+    clearInterval(heartbeat);
+    await writes;
     // Push what it got through; the beat's own error is the one to report.
     await commitTask(repo, id, {
       holder,
@@ -97,12 +135,22 @@ async function onTask<T>(
     }).catch(() => undefined);
     throw err;
   }
+  clearInterval(heartbeat);
+  await writes;
   await commitTask(repo, id, {
     holder,
     message: `${id}: ${beat} done`,
     ...finish(result),
   });
   return result;
+}
+
+/** Other open tasks, after the pull, so isolate picks a port none of them holds. */
+async function openTaskIds(repo: string, id: string): Promise<string[]> {
+  // A closed task's port is free again.
+  return (await listTasks(repo))
+    .filter((t) => t.card.id !== id && nextStep(t) !== "done")
+    .map((t) => t.card.id);
 }
 
 function describe(task: Task): string {
@@ -170,7 +218,7 @@ export function runTaskConfirm(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    await pullTasks(repo, { holder: holderName(await whoami(repo)) });
+    await pull(repo);
     const task = await loadTask(repo, id);
     process.stdout.write(`${stringify(task.card)}\n`);
     if (!flags.yes) {
@@ -200,7 +248,7 @@ export function runTaskConfirm(
 export function runTaskStatus(flags: { path?: string }): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    await pullTasks(repo, { holder: holderName(await whoami(repo)) });
+    await pull(repo, { readOnly: true });
     const tasks = await listTasks(repo);
     if (tasks.length === 0) {
       process.stdout.write('no tasks yet: `factory task new "<title>"`\n');
@@ -222,7 +270,7 @@ export function runTaskResume(
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
     const holder = holderName(await whoami(repo));
-    await pullTasks(repo, { holder });
+    await pull(repo, { readOnly: true });
     const task = await loadTask(repo, id);
     const lease = await localLease(repo, id);
     const held =
@@ -257,7 +305,7 @@ export function runTaskRelease(
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
     const holder = holderName(await whoami(repo));
-    await pullTasks(repo, { holder });
+    await pull(repo);
     await commitTask(repo, id, {
       holder,
       message: `${id}: released`,
@@ -313,7 +361,7 @@ export function runTaskApprove(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    await pullTasks(repo, { holder: holderName(await whoami(repo)) });
+    await pull(repo);
     const task = await loadTask(repo, id);
     // Say what's wrong before asking anyone to approve anything.
     if (task.approved) {
@@ -358,12 +406,12 @@ export function runTaskIsolate(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    // A closed task's port is free again.
-    const others = (await listTasks(repo))
-      .filter((t) => nextStep(t) !== "done")
-      .map((t) => t.card.id);
-    const { isolation } = await onTask(repo, id, "isolate", (by) =>
-      isolateTask(repo, id, { by, base: flags.base, otherTasks: others }),
+    const { isolation } = await onTask(repo, id, "isolate", async (by) =>
+      isolateTask(repo, id, {
+        by,
+        base: flags.base,
+        otherTasks: await openTaskIds(repo, id),
+      }),
     );
     process.stdout.write(
       `${id}: worktree ${isolation.worktree} on ${isolation.branch} from ${isolation.baseRef} · port ${isolation.port} · db ${isolation.database}\nnext: \`factory task build ${id}\`\n`,
@@ -519,15 +567,12 @@ export function runTaskRun(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    const others = (await listTasks(repo))
-      .filter((t) => t.card.id !== id && nextStep(t) !== "done")
-      .map((t) => t.card.id);
-    const outcome = await onTask(repo, id, "run", (by) =>
+    const outcome = await onTask(repo, id, "run", async (by) =>
       runTask(repo, id, {
         by,
         model: flags.model,
         base: flags.base,
-        otherTasks: others,
+        otherTasks: await openTaskIds(repo, id),
         onEntry: (e) =>
           process.stdout.write(
             `${e.at.slice(11, 16)} ${e.beat}${e.section === "timeline" ? "" : ` (${e.section})`}: ${e.text}\n`,
