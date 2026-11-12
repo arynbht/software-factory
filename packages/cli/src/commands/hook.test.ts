@@ -146,6 +146,13 @@ describe("factory hook guard, for Bash", () => {
       "rm -rf .factory/*",
       "printf x | tee README.md",
       "mv README.md docs.md",
+      // `-t` names the destination: the source is only read.
+      "cp -t .factory /tmp/x",
+      "install --target-directory=.factory /tmp/x",
+      "echo x >& .factory/waivers.yml",
+      "sudo -u root rm .factory/profile.yml",
+      "env -i FOO=1 rm .factory/profile.yml",
+      "echo x \\\n  > .factory/waivers.yml",
     ])
       expect(await bash(repo, command), command).toMatch(
         /this command writes .*(factory's state|primary checkout on main)/,

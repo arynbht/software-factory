@@ -144,8 +144,12 @@ export function parseShell(line: string): ShellCommand[] {
       quote = c;
       inWord = true;
     } else if (c === "\\") {
-      if (i + 1 < line.length) word += line[++i];
-      inWord = true;
+      // Backslash-newline continues the line; it isn't part of a word.
+      if (line[i + 1] === "\n") i++;
+      else {
+        if (i + 1 < line.length) word += line[++i];
+        inWord = true;
+      }
     } else if (c === " " || c === "\t") {
       endWord();
     } else if (c === "#" && !inWord) {
@@ -174,8 +178,14 @@ export function parseShell(line: string): ShellCommand[] {
       if (line[i + 1] === ">" || line[i + 1] === "|") i++;
       if (line[i + 1] === "&") {
         i++;
-        while (/[0-9-]/.test(line[i + 1] ?? "")) i++;
-        continue;
+        // `>&2` / `>&-` duplicate or close an fd; `>& file` writes the file.
+        let j = i + 1;
+        while (line[j] === " " || line[j] === "\t") j++;
+        const fd = /^(\d+|-)(?=[\s;|&)]|$)/.exec(line.slice(j));
+        if (fd) {
+          i = j + fd[0].length - 1;
+          continue;
+        }
       }
       next = "redirect";
     } else if (c === "<") {
@@ -230,8 +240,21 @@ function writeTargets(name: string, args: string[]): string[] {
       return operands(args, ["-s", "-r"]);
     case "cp":
     case "ln":
-    case "install":
-      return operands(args, ["-t", "-S"]).slice(-1);
+    case "install": {
+      // `-t DIR` names the destination; otherwise it's the last operand.
+      const to = args.flatMap((a, i) =>
+        a === "-t" || a === "--target-directory"
+          ? [args[i + 1] ?? ""]
+          : a.startsWith("--target-directory=")
+            ? [a.slice("--target-directory=".length)]
+            : /^-t./.test(a)
+              ? [a.slice(2)]
+              : [],
+      );
+      return to.length > 0
+        ? to.filter(Boolean)
+        : operands(args, ["-S", "--suffix"]).slice(-1);
+    }
     case "sed":
     case "perl": {
       const inPlace = args.some(
@@ -321,6 +344,17 @@ async function gitReason(args: string[], cwd: string): Promise<string | null> {
   return `${what}. In a factory repo Claude doesn't run it; if you mean it, run it yourself in a terminal.`;
 }
 
+/** Commands that run another command, and their options that take a value. */
+const WRAPPERS: Record<string, string[]> = {
+  sudo: ["-u", "-g", "-C", "-h", "-p", "-U", "-r", "-t"],
+  env: ["-u", "-C", "-S"],
+  nice: ["-n"],
+  nohup: [],
+  time: [],
+  command: [],
+  exec: ["-a"],
+};
+
 /**
  * Why a Bash command must not run, or null: a write (redirect, `tee`, `cp`,
  * `mv`, `rm`, `sed -i`, …) to anything the edit guard protects, or a git
@@ -334,19 +368,20 @@ export async function bashReason(
 ): Promise<string | null> {
   let dir = cwd;
   for (const { words, redirects } of parseShell(command)) {
-    // Leading `VAR=value` assignments, and wrappers that run the real command.
+    // Skip `VAR=value` assignments and wrappers that run the real command
+    // (with their own options: `sudo -u root`, `env -i FOO=1`).
     let k = 0;
-    while (
-      k < words.length &&
-      /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[k] as string)
-    )
+    const assignments = () => {
+      while (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[k] ?? "")) k++;
+    };
+    assignments();
+    while (Object.hasOwn(WRAPPERS, words[k] ?? "")) {
+      const takesValue = WRAPPERS[words[k] as string] ?? [];
       k++;
-    while (
-      ["sudo", "command", "exec", "time", "nohup", "env"].includes(
-        words[k] ?? "",
-      )
-    )
-      k++;
+      while ((words[k] ?? "").startsWith("-"))
+        k += takesValue.includes(words[k] as string) ? 2 : 1;
+      assignments();
+    }
     const name = (words[k] ?? "").split("/").pop() ?? "";
     const args = words.slice(k + 1);
     if (name === "cd") {

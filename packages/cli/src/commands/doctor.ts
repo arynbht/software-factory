@@ -39,6 +39,8 @@ function guardRunsInShell(root: string): Promise<boolean> {
     let stderr = "";
     child.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
     child.on("error", () => done(false));
+    // A shell that exits before reading its input mustn't crash doctor.
+    child.stdin.on("error", () => undefined);
     child.on("close", (code) =>
       done(code === 2 && stderr.startsWith("factory: ")),
     );

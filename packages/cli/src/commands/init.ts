@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join, resolve } from "node:path";
 
 import {
@@ -464,18 +464,20 @@ export async function runInit(
   const oldProfile = profileExists
     ? await readFile(resolve(root, profileRel), "utf8")
     : null;
+  // Backed up before it's overwritten, so a failed save can't lose it; a
+  // backup of a profile that came out identical is removed again.
+  const bak =
+    oldProfile === null ? null : await keepBackup(root, profileRel, oldProfile);
   try {
     await saveProfile(root, draft);
   } catch (err) {
     console.error(err instanceof ProfileError ? err.message : String(err));
     return 1;
   }
-  if (oldProfile !== null) {
-    const now = await readFile(resolve(root, profileRel), "utf8");
-    if (now !== oldProfile)
-      beside.push(
-        `${profileRel} replaced; the old one is ${await keepBackup(root, profileRel, oldProfile)}`,
-      );
+  if (bak) {
+    if ((await readFile(resolve(root, profileRel), "utf8")) === oldProfile)
+      await rm(resolve(root, bak));
+    else beside.push(`${profileRel} replaced; the old one is ${bak}`);
   }
 
   // Waivers and evidence are a person's decisions: written when missing, and
