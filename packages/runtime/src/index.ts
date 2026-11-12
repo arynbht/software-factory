@@ -169,3 +169,9 @@ export {
   type TaskHistoryRow,
   usageTotals,
 } from "./ship/close.js";
+export {
+  MAX_BUILDS_PER_RUN,
+  type RunOutcome,
+  runTask,
+  type RunTaskOptions,
+} from "./task/run.js";

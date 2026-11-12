@@ -1,5 +1,5 @@
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
 
 import {
   bundledSkillDir,
@@ -9,10 +9,14 @@ import {
   SEVERITIES,
 } from "@arynbht/factory-catalog";
 import {
+  buildContext,
+  detectStacks,
+  packageManager,
   ProfileError,
   resolveRepoSlug,
   saveProfile,
 } from "@arynbht/factory-engine";
+import { initLock } from "@arynbht/factory-registry";
 import {
   cancel,
   intro,
@@ -24,6 +28,14 @@ import {
 } from "@clack/prompts";
 
 import { runAudit, type RunAuditOptions } from "./audit.js";
+import {
+  CLAUDE_MD,
+  PR_TEMPLATE,
+  renderAgentsMd,
+  renderConstraintsMd,
+  type RepoFacts,
+  SETTINGS_JSON,
+} from "./init-files.js";
 
 export interface InitFlags {
   type?: string;
@@ -106,6 +118,101 @@ async function writeIfAllowed(
   }
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, content, "utf8");
+}
+
+/**
+ * Write a generated file without clobbering (§10): a missing file is written,
+ * an identical one left alone, and a different one gets the factory's version
+ * beside it as `name.factory.ext`. With --force it's replaced, and the old
+ * one kept as `name.bak` (or `name.bak.1`, … — a backup is never overwritten).
+ * Returns a note when it did anything but write `rel`.
+ */
+async function writeBeside(
+  root: string,
+  rel: string,
+  content: string,
+  force: boolean | undefined,
+): Promise<string | null> {
+  const path = resolve(root, rel);
+  const existing = await readFile(path, "utf8").catch(() => null);
+  if (existing === content) return null;
+  await mkdir(dirname(path), { recursive: true });
+  if (existing === null) {
+    await writeFile(path, content, "utf8");
+    return null;
+  }
+  if (force) {
+    let bak = `${rel}.bak`;
+    for (let n = 1; ; n++) {
+      // "wx" fails if the file exists: the first free name wins, race-free.
+      const ok = await writeFile(resolve(root, bak), existing, {
+        encoding: "utf8",
+        flag: "wx",
+      })
+        .then(() => true)
+        .catch((err: NodeJS.ErrnoException) => {
+          if (err.code !== "EEXIST") throw err;
+          return false;
+        });
+      if (ok) break;
+      bak = `${rel}.bak.${n}`;
+    }
+    await writeFile(path, content, "utf8");
+    return `${rel} replaced; the old one is ${bak}`;
+  }
+  const ext = extname(rel);
+  const besideRel = `${rel.slice(0, rel.length - ext.length)}.factory${ext}`;
+  await writeFile(resolve(root, besideRel), content, "utf8");
+  return `${rel} exists; wrote ${besideRel}: merge it by hand`;
+}
+
+/** Add lines to .factory/.gitignore that aren't there yet. */
+async function ignoreInFactory(root: string, lines: string[]): Promise<void> {
+  const path = resolve(root, ".factory", ".gitignore");
+  const text = await readFile(path, "utf8").catch(() => "");
+  const have = new Set(text.split(/\r?\n/));
+  const add = lines.filter((l) => !have.has(l));
+  if (add.length === 0) return;
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(
+    path,
+    `${text}${text && !text.endsWith("\n") ? "\n" : ""}${add.join("\n")}\n`,
+    "utf8",
+  );
+}
+
+/** What AGENTS.md and CONSTRAINTS.md say about the repo: stacks and its own commands. */
+async function repoFacts(
+  root: string,
+  draft: ProfileDraft,
+): Promise<RepoFacts> {
+  const stacks = await detectStacks(buildContext(root)).catch(() => []);
+  const commands: RepoFacts["commands"] = {};
+  const pkg = await readFile(resolve(root, "package.json"), "utf8")
+    .then((t) => JSON.parse(t) as { scripts?: Record<string, string> })
+    .catch(() => null);
+  if (pkg) {
+    const pm = await packageManager(root).catch(() => "npm");
+    commands.install = `${pm} install`;
+    const scripts = pkg.scripts ?? {};
+    for (const [key, names] of [
+      ["lint", ["lint"]],
+      ["typecheck", ["typecheck", "type-check", "tsc"]],
+      ["test", ["test"]],
+    ] as const) {
+      const name = names.find((n) => scripts[n]);
+      if (name) commands[key] = `${pm} run ${name}`;
+    }
+  }
+  return {
+    name: draft.name,
+    type: draft.type,
+    phase: draft.phase,
+    stack: draft.stack,
+    flags: Object.keys(draft.flags).filter((f) => draft.flags[f]),
+    stacks,
+    commands,
+  };
 }
 
 interface ProfileDraft {
@@ -263,7 +370,11 @@ async function draftInteractive(root: string): Promise<ProfileDraft | null> {
   return draft;
 }
 
-/** `factory init` — scaffold .factory config + a workflow, then run the first audit. */
+/**
+ * `factory init`: the profile, the factory workflow, and the §10 files (the
+ * AGENTS.md contract, the /factory skill and its hooks, the PR template), then
+ * the first audit.
+ */
 export async function runInit(
   path: string,
   flags: InitFlags,
@@ -321,24 +432,53 @@ export async function runInit(
     flags.force,
   );
 
-  // Install the Claude Code skill so an agent in this repo knows to run the audit.
-  try {
-    const skill = await readFile(join(bundledSkillDir(), "SKILL.md"), "utf8");
-    await writeIfAllowed(
-      resolve(root, ".claude", "skills", "factory", "SKILL.md"),
-      skill,
-      flags.force,
-    );
-  } catch {
-    // The skill is a convenience; don't fail init if it can't be read.
+  await ignoreInFactory(root, ["tasks/", "ai-usage.log", "cache/"]);
+
+  // §10: the contract, the /factory skill, the hooks, the PR template.
+  const facts = await repoFacts(root, draft);
+  // The skill ships with the CLI; a broken install shouldn't stop init.
+  const skill = await readFile(
+    join(bundledSkillDir(), "SKILL.md"),
+    "utf8",
+  ).catch(() => null);
+  const files: [string, string][] = [
+    ["AGENTS.md", renderAgentsMd(facts)],
+    ["CLAUDE.md", CLAUDE_MD],
+    ["CONSTRAINTS.md", renderConstraintsMd(facts)],
+    [".github/PULL_REQUEST_TEMPLATE.md", PR_TEMPLATE],
+    [".claude/settings.json", SETTINGS_JSON],
+    ...(skill
+      ? [[".claude/skills/factory/SKILL.md", skill] as [string, string]]
+      : []),
+  ];
+  const beside: string[] = skill
+    ? []
+    : [
+        "the /factory skill couldn't be read from the CLI install; reinstall the CLI",
+      ];
+  for (const [rel, content] of files) {
+    const note = await writeBeside(root, rel, content, flags.force);
+    if (note) beside.push(note);
   }
 
-  const wrote =
-    "Wrote .factory/, .github/workflows/factory.yml, and .claude/skills/factory/.";
+  // The spine skills, locked; `factory skills sync` installs them.
+  let locked = "";
+  try {
+    const added = await initLock(root, { spineOnly: true });
+    if (added.length > 0)
+      locked = ` Locked the spine skills (${added.map((e) => e.name).join(", ")}); run \`factory skills sync\`.`;
+  } catch (err) {
+    locked = ` Couldn't lock the spine skills: ${(err as Error).message}`;
+  }
+
+  const wrote = `Wrote .factory/, AGENTS.md, CLAUDE.md, CONSTRAINTS.md, the /factory skill and hooks under .claude/, and .github/ (factory.yml, the PR template).${locked} Commit them to the default branch before the first task: the agent and the judge read the contract from there.`;
+  const notes = beside.map((b) => `  - ${b}`).join("\n");
   if (interactive) {
-    outro(`${wrote} Running first audit…`);
+    outro(`${wrote}${notes ? `\n${notes}` : ""} Running first audit…`);
   } else {
-    process.stdout.write(`${wrote} Running first audit…\n\n`);
+    process.stdout.write(
+      `${wrote}\n${notes ? `${notes}\n` : ""}Running first audit…\n\n`,
+    );
   }
 
   return runAudit(root, {}, options);

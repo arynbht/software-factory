@@ -1,74 +1,98 @@
 ---
 name: factory
 description: >-
-  Assess and improve a repository's engineering quality using the Software Factory
-  CLI. Use when the user asks "what's left to do here?", "is this repo
-  production-ready?", "what's missing?", or asks to harden, scaffold, or audit a
-  project. Runs `factory audit` to get a real gap report instead of guessing, then
-  fixes gaps with `factory fix` or drafts missing artifacts with `factory ai`.
+  Run a change through the software factory: intake → route → isolate → build →
+  prove → judge → ship → close, with a person confirming the card, approving the
+  route, answering stop-and-ask questions and merging. Use for any task in this
+  repo ("/factory add dark mode", "/factory #42"), and for "/factory status" and
+  "/factory resume T-0003". Also use when asked what's left to do in the repo
+  (`factory audit`).
 ---
 
-# Factory skill
+# /factory
 
-The `factory` CLI audits a repository against a catalog of engineering controls
-(hygiene, CI/CD, security, testing, docs) and can remediate the gaps. Prefer it over
-guessing: it gives a concrete, current picture of what passes and what's missing.
+This repo runs on the software factory (AGENTS.md is the contract). You drive the
+`factory` CLI and talk to the person. The CLI does the work: it writes the task
+card and the ledger, makes the worktree, runs the sector agent, produces the proof,
+judges the change and opens the PR. You don't edit code for a factory task yourself.
 
-## When to use
+## Rules
 
-- The user asks what is missing, incomplete, or not production-ready in a repo.
-- The user asks to scaffold, harden, or set up CI/security/testing.
-- Before claiming a repo is "done" — verify with an audit rather than asserting.
+- Never edit `.factory/**` (the ledger included) or anything in `.worktrees/`.
+  The runtime and the sector agent own them. A hook refuses edits to
+  `.factory/**`, and to this checkout while it's on the default branch.
+- Every approval belongs to the person. Ask the question in the chat and wait for a
+  clear yes. Only then run the command with `--yes`, which the ledger records as
+  approved through you. Never pass `--yes` on your own judgment.
+- Report what the CLI prints. Don't summarise a failure as a success or invent a
+  next step: every command ends with `next: …`, and that is the next step.
+- The factory never merges. Neither do you.
 
-## Workflow
+## /factory status
 
-1. **Audit first — never guess.** Run the audit as JSON and read the gaps:
+Run `factory task status` and show each open task with its next step.
+
+## /factory resume <id>
+
+Run `factory task resume <id>`. It verifies the ledger and prints it with the next
+step. Carry on from that step in the flow below. If verification fails, stop and
+show the problems: a ledger that fails verification has been tampered with.
+
+## /factory <task text or #issue>
+
+1. **Sync.** Run `factory doctor`. On a ✗, do what it says (usually
+   `factory skills sync`) and run it again. Don't start a task on a failing doctor.
+
+2. **Intake.** Work out the card with the person:
+   - title, type (`feature | fix | chore | refactor | spike`), and a description of
+     what and why. For an issue, read it with `gh issue view <n>` and use
+     `--source issue#<n>`.
+   - acceptance criteria. Each one is a concrete, checkable sentence with a verify
+     kind: `e2e | unit | manual | screenshot | contract | review`. If the task is
+     vague, interview the person one question at a time until every criterion is
+     concrete. Don't guess criteria.
+   - optional: `--touches <glob>` for the paths it will change, `--page /path` for
+     the pages a UI proof should shoot, `--out-of-scope`, `--constraint`,
+     `--risk low|medium|high`.
+
+   Then draft it:
 
    ```bash
-   factory audit --format json
+   factory task new "<title>" --type fix --description "<what and why>" \
+     --accept "<criterion>::unit" --accept "<criterion>::e2e" --touches "src/x/**"
    ```
 
-   Each control has a `status` (`pass` / `fail` / `needs-evidence` / `skip` /
-   `waived` / `n/a`), a `lane`, and a `severity`. Focus on `fail` and
-   `needs-evidence`, highest severity first. To check a phase gate:
+   Show the card (`.factory/tasks/<id>/card.yml`, which `factory task confirm` prints
+   too) and ask: "Confirm this card?" On a clear yes, run
+   `factory task confirm <id> --yes`. To change an unconfirmed card, either the
+   person edits `card.yml` themselves, or you draft a corrected card with
+   `factory task new` and drop the old one with
+   `factory task close <old id> --abandon "redrafted as <new id>"`.
 
-   ```bash
-   factory audit --gate build   # or scaffold / harden; exits non-zero if red
-   ```
+3. **Route.** Run `factory task route <id>`. Show the sectors with their reasons,
+   the skills, the checks, the proof and the budget. Mention any sectors that fell
+   under the threshold. Ask: "Approve this assembly?" On a clear yes, run
+   `factory task approve <id> --yes`. If the person wants changes, they edit
+   `.factory/tasks/<id>/assembly.yml` themselves before approving. You don't edit it.
 
-2. **Fix deterministic gaps** (missing config, CI steps, scaffolding). Preview
-   first, then apply:
+4. **Run.** Run `factory task run <id>`. It isolates, builds, proves, judges and
+   ships, printing each ledger entry as it lands. It stops when a person is
+   needed, and its last line says why:
+   - **stop-and-ask** (exit 2): show the question (a new dependency, a schema
+     change, a protected path, the budget, or the judge needing a person) and ask
+     the person. Then run `factory task answer <id> --allow "<their note>"` or
+     `--deny "<what to do instead>"`, and run `factory task run <id>` again.
+   - **shipped** (exit 0): show the draft PR link. The person reviews it, marks it
+     ready and merges it. You don't.
+   - **an error** (exit 1): show it and stop. Don't work around it by doing the
+     beat's work yourself.
 
-   ```bash
-   factory fix --gate build          # dry-run preview of what it would change
-   factory fix --gate build --write  # apply locally
-   factory fix --pr                  # or open a pull request with the changes
-   ```
+5. **Close.** After the person says the PR is merged (or closed), run
+   `factory task close <id>`. To drop a task at any point, run
+   `factory task close <id> --abandon "<why>"`. Close seals the ledger.
 
-   `fix` never clobbers a human-edited file; it only creates missing files or
-   merges into ones it manages.
+## What's left in this repo?
 
-3. **Draft the artifacts nobody writes by hand** (threat model, ADRs, user
-   stories, runbooks, C4 diagrams, a gap narrative). Use `factory ai`:
-
-   ```bash
-   factory ai explain-gaps           # a prioritized narrative of what's missing
-   factory ai threat-model --pr      # a STRIDE threat model as a PR
-   factory ai adr                     # an architecture decision record
-   ```
-
-   `factory ai <task>` needs `ANTHROPIC_API_KEY`. Output is always a draft for a
-   human to review — generated files carry a `reviewed-by:` header that stays empty
-   until someone signs off, and control evidence still requires a human entry.
-
-4. **Report back** with the prioritized gaps, what you fixed, and what still needs
-   a human (manual controls, settings that need a token, judgment calls).
-
-## Principles
-
-- **Claude drafts, humans sign.** A generated threat model or ADR does not pass the
-  gate until a person reviews it.
-- Run `factory audit` again after changes to confirm the gap actually closed.
-- If a control is `skip` because a tool or token is missing, say so rather than
-  treating it as passing.
-- Don't invent findings — rely on the audit output.
+When asked about the repo's state rather than a task, run
+`factory audit --format json`. Report the `fail` and `needs-evidence` controls,
+highest severity first, and suggest starting the fixes as `/factory` tasks.
