@@ -2,7 +2,7 @@
 "@arynbht/factory-runtime": minor
 "@arynbht/factory-engine": minor
 "@arynbht/factory-registry": minor
-"@arynbht/factory-cli": minor
+"@arynbht/factory": minor
 ---
 
 Factory v2 step 6a: isolation and the sector agent. `factory task isolate <id>` gives an

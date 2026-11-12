@@ -1,7 +1,7 @@
 ---
 "@arynbht/factory-catalog": minor
 "@arynbht/factory-engine": minor
-"@arynbht/factory-cli": patch
+"@arynbht/factory": patch
 "@arynbht/factory-runtime": minor
 ---
 
