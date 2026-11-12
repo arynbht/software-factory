@@ -30,6 +30,7 @@ import {
 import { runAudit, type RunAuditOptions } from "./audit.js";
 import {
   CLAUDE_MD,
+  mergeFactoryHooks,
   PR_TEMPLATE,
   renderAgentsMd,
   renderConstraintsMd,
@@ -104,28 +105,57 @@ jobs:
 `;
 }
 
-/** Write a file unless it already exists (so init never clobbers without --force). */
-async function writeIfAllowed(
-  path: string,
+/**
+ * Keep `existing` as `rel.bak` (or `rel.bak.1`, …): a backup is never
+ * overwritten. Returns the backup's path relative to `root`.
+ */
+async function keepBackup(
+  root: string,
+  rel: string,
+  existing: string,
+): Promise<string> {
+  let bak = `${rel}.bak`;
+  for (let n = 1; ; n++) {
+    // "wx" fails if the file exists: the first free name wins, race-free.
+    const ok = await writeFile(resolve(root, bak), existing, {
+      encoding: "utf8",
+      flag: "wx",
+    })
+      .then(() => true)
+      .catch((err: NodeJS.ErrnoException) => {
+        if (err.code !== "EEXIST") throw err;
+        return false;
+      });
+    if (ok) return bak;
+    bak = `${rel}.bak.${n}`;
+  }
+}
+
+/**
+ * Write a file the factory owns (`factory.yml`): a missing one is written, and
+ * with --force a different one is replaced, the old one kept as a backup.
+ * Returns a note when it replaced one.
+ */
+async function writeReplacing(
+  root: string,
+  rel: string,
   content: string,
   force: boolean | undefined,
-): Promise<void> {
-  if (!force) {
-    const exists = await access(path)
-      .then(() => true)
-      .catch(() => false);
-    if (exists) return;
-  }
+): Promise<string | null> {
+  const path = resolve(root, rel);
+  const existing = await readFile(path, "utf8").catch(() => null);
+  if (existing === content || (existing !== null && !force)) return null;
   await mkdir(dirname(path), { recursive: true });
+  const bak = existing === null ? null : await keepBackup(root, rel, existing);
   await writeFile(path, content, "utf8");
+  return bak ? `${rel} replaced; the old one is ${bak}` : null;
 }
 
 /**
  * Write a generated file without clobbering (§10): a missing file is written,
  * an identical one left alone, and a different one gets the factory's version
  * beside it as `name.factory.ext`. With --force it's replaced, and the old
- * one kept as `name.bak` (or `name.bak.1`, … — a backup is never overwritten).
- * Returns a note when it did anything but write `rel`.
+ * one kept as a backup. Returns a note when it did anything but write `rel`.
  */
 async function writeBeside(
   root: string,
@@ -133,6 +163,7 @@ async function writeBeside(
   content: string,
   force: boolean | undefined,
 ): Promise<string | null> {
+  if (force) return writeReplacing(root, rel, content, force);
   const path = resolve(root, rel);
   const existing = await readFile(path, "utf8").catch(() => null);
   if (existing === content) return null;
@@ -141,29 +172,44 @@ async function writeBeside(
     await writeFile(path, content, "utf8");
     return null;
   }
-  if (force) {
-    let bak = `${rel}.bak`;
-    for (let n = 1; ; n++) {
-      // "wx" fails if the file exists: the first free name wins, race-free.
-      const ok = await writeFile(resolve(root, bak), existing, {
-        encoding: "utf8",
-        flag: "wx",
-      })
-        .then(() => true)
-        .catch((err: NodeJS.ErrnoException) => {
-          if (err.code !== "EEXIST") throw err;
-          return false;
-        });
-      if (ok) break;
-      bak = `${rel}.bak.${n}`;
-    }
-    await writeFile(path, content, "utf8");
-    return `${rel} replaced; the old one is ${bak}`;
-  }
   const ext = extname(rel);
   const besideRel = `${rel.slice(0, rel.length - ext.length)}.factory${ext}`;
   await writeFile(resolve(root, besideRel), content, "utf8");
   return `${rel} exists; wrote ${besideRel}: merge it by hand`;
+}
+
+/**
+ * Put the factory's hooks into `.claude/settings.json` (§12). A sibling file
+ * would be safe but dead, since Claude Code never reads it, so an existing
+ * file is merged: its other settings kept, the old one backed up. Only a file
+ * that won't parse gets the sibling, and `factory doctor` stays red until the
+ * hooks are in. Returns a note when it did anything but write a new file.
+ */
+async function writeSettings(root: string): Promise<string | null> {
+  const rel = ".claude/settings.json";
+  const path = resolve(root, rel);
+  const existing = await readFile(path, "utf8").catch(() => null);
+  await mkdir(dirname(path), { recursive: true });
+  if (existing === null) {
+    await writeFile(path, SETTINGS_JSON, "utf8");
+    return null;
+  }
+  let merged: string;
+  try {
+    merged = `${JSON.stringify(mergeFactoryHooks(JSON.parse(existing)), null, 2)}\n`;
+  } catch (err) {
+    const beside = ".claude/settings.factory.json";
+    await writeFile(resolve(root, beside), SETTINGS_JSON, "utf8");
+    return `couldn't merge the hooks into ${rel} (${(err as Error).message}); they're in ${beside}. Merge them by hand: until then the guard is off and \`factory doctor\` fails`;
+  }
+  // Already merged (formatting aside): nothing to back up or rewrite.
+  if (
+    JSON.stringify(JSON.parse(merged)) === JSON.stringify(JSON.parse(existing))
+  )
+    return null;
+  const bak = await keepBackup(root, rel, existing);
+  await writeFile(path, merged, "utf8");
+  return `merged the factory's hooks into ${rel}; the old one is ${bak}`;
 }
 
 /** Add lines to .factory/.gitignore that aren't there yet. */
@@ -412,25 +458,41 @@ export async function runInit(
     }
   }
 
+  // §5.4: --force never deletes. The profile it replaces is backed up first.
+  const beside: string[] = [];
+  const profileRel = ".factory/profile.yml";
+  const oldProfile = profileExists
+    ? await readFile(resolve(root, profileRel), "utf8")
+    : null;
   try {
     await saveProfile(root, draft);
   } catch (err) {
     console.error(err instanceof ProfileError ? err.message : String(err));
     return 1;
   }
+  if (oldProfile !== null) {
+    const now = await readFile(resolve(root, profileRel), "utf8");
+    if (now !== oldProfile)
+      beside.push(
+        `${profileRel} replaced; the old one is ${await keepBackup(root, profileRel, oldProfile)}`,
+      );
+  }
 
-  const factoryDir = resolve(root, ".factory");
-  await writeIfAllowed(resolve(factoryDir, "waivers.yml"), "[]\n", flags.force);
-  await writeIfAllowed(
-    resolve(factoryDir, "evidence.yml"),
-    "[]\n",
-    flags.force,
-  );
-  await writeIfAllowed(
-    resolve(root, ".github", "workflows", "factory.yml"),
+  // Waivers and evidence are a person's decisions: written when missing, and
+  // never reset, --force or not.
+  for (const rel of [".factory/waivers.yml", ".factory/evidence.yml"])
+    await writeFile(resolve(root, rel), "[]\n", { flag: "wx" }).catch(
+      (err: NodeJS.ErrnoException) => {
+        if (err.code !== "EEXIST") throw err;
+      },
+    );
+  const workflow = await writeReplacing(
+    root,
+    ".github/workflows/factory.yml",
     buildWorkflow(draft.phase ?? "build"),
     flags.force,
   );
+  if (workflow) beside.push(workflow);
 
   await ignoreInFactory(root, ["tasks/", "ai-usage.log", "cache/"]);
 
@@ -446,20 +508,20 @@ export async function runInit(
     ["CLAUDE.md", CLAUDE_MD],
     ["CONSTRAINTS.md", renderConstraintsMd(facts)],
     [".github/PULL_REQUEST_TEMPLATE.md", PR_TEMPLATE],
-    [".claude/settings.json", SETTINGS_JSON],
     ...(skill
       ? [[".claude/skills/factory/SKILL.md", skill] as [string, string]]
       : []),
   ];
-  const beside: string[] = skill
-    ? []
-    : [
-        "the /factory skill couldn't be read from the CLI install; reinstall the CLI",
-      ];
+  if (!skill)
+    beside.push(
+      "the /factory skill couldn't be read from the CLI install; reinstall the CLI",
+    );
   for (const [rel, content] of files) {
     const note = await writeBeside(root, rel, content, flags.force);
     if (note) beside.push(note);
   }
+  const settings = await writeSettings(root);
+  if (settings) beside.push(settings);
 
   // The spine skills, locked; `factory skills sync` installs them.
   let locked = "";

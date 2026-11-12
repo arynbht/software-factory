@@ -1,12 +1,21 @@
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { runInit } from "./init.js";
+import { GUARD_COMMAND, SESSION_START_COMMAND } from "./init-files.js";
 
-describe("runInit (integration)", () => {
+// Each init runs a full audit, and some run it more than once: slower on Windows CI.
+describe("runInit (integration)", { timeout: 30_000 }, () => {
   const made: string[] = [];
   afterEach(async () => {
     for (const d of made) await rm(d, { recursive: true, force: true });
@@ -72,10 +81,10 @@ describe("runInit (integration)", () => {
       hooks: Record<string, { hooks: { command: string }[] }[]>;
     };
     expect(settings.hooks.SessionStart?.[0]?.hooks[0]?.command).toBe(
-      "factory hook session-start",
+      SESSION_START_COMMAND,
     );
     expect(settings.hooks.PreToolUse?.[0]?.hooks[0]?.command).toBe(
-      "factory hook guard",
+      GUARD_COMMAND,
     );
     expect(await read(".factory", ".gitignore")).toBe(
       "tasks/\nai-usage.log\ncache/\n",
@@ -140,6 +149,113 @@ describe("runInit (integration)", () => {
       "# Our own rules\n",
     );
     expect(await readFile(join(dir, "AGENTS.md.bak.2"), "utf8")).toBe(ours);
+  });
+
+  it("merges its hooks into an existing settings.json, keeping everything else", async () => {
+    const dir = await tmp();
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    const theirs = {
+      permissions: { allow: ["Bash(npm test)"] },
+      hooks: {
+        PreToolUse: [
+          // Theirs, kept as it is.
+          {
+            matcher: "Bash",
+            hooks: [{ type: "command", command: "./audit.sh" }],
+          },
+          // An earlier init's guard: replaced, not duplicated.
+          {
+            matcher: "Edit|Write|MultiEdit|NotebookEdit",
+            hooks: [{ type: "command", command: "factory hook guard" }],
+          },
+        ],
+      },
+    };
+    const original = `${JSON.stringify(theirs, null, 2)}\n`;
+    await mkdir(join(dir, ".claude"));
+    await writeFile(join(dir, ".claude", "settings.json"), original);
+    expect(
+      await runInit(dir, { type: "cli", yes: true }, { token: null }),
+    ).toBe(0);
+
+    const read = (...p: string[]) => readFile(join(dir, ...p), "utf8");
+    const merged = JSON.parse(await read(".claude", "settings.json")) as {
+      permissions: unknown;
+      hooks: Record<
+        string,
+        { matcher?: string; hooks: { command: string }[] }[]
+      >;
+    };
+    expect(merged.permissions).toEqual(theirs.permissions);
+    expect(
+      merged.hooks.PreToolUse?.map((g) => [g.matcher, g.hooks[0]?.command]),
+    ).toEqual([
+      ["Bash", "./audit.sh"],
+      ["Edit|Write|MultiEdit|NotebookEdit|Bash", GUARD_COMMAND],
+    ]);
+    expect(merged.hooks.SessionStart?.[0]?.hooks[0]?.command).toBe(
+      SESSION_START_COMMAND,
+    );
+    expect(await read(".claude", "settings.json.bak")).toBe(original);
+    await expect(
+      access(join(dir, ".claude", "settings.factory.json")),
+    ).rejects.toThrow();
+
+    // A re-run converges: nothing to merge, so no second backup.
+    await runInit(
+      dir,
+      { type: "cli", yes: true, force: true },
+      { token: null },
+    );
+    await expect(
+      access(join(dir, ".claude", "settings.json.bak.1")),
+    ).rejects.toThrow();
+  });
+
+  it("puts its hooks beside a settings.json it can't parse, and says the guard is off", async () => {
+    const dir = await tmp();
+    const out = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+    await mkdir(join(dir, ".claude"));
+    await writeFile(join(dir, ".claude", "settings.json"), "{ // comments\n}");
+    await runInit(dir, { type: "cli", yes: true }, { token: null });
+    expect(await readFile(join(dir, ".claude", "settings.json"), "utf8")).toBe(
+      "{ // comments\n}",
+    );
+    await expect(
+      access(join(dir, ".claude", "settings.factory.json")),
+    ).resolves.toBeUndefined();
+    expect(out.mock.calls.join("")).toMatch(/the guard is off/);
+  });
+
+  it("--force backs up what it replaces, and never resets waivers or evidence", async () => {
+    const dir = await tmp();
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    await runInit(dir, { type: "cli", yes: true }, { token: null });
+    const read = (...p: string[]) => readFile(join(dir, ...p), "utf8");
+    const waiver =
+      "- control: docs.runbooks-dir\n  reason: not yet\n  expires: 2027-01-01\n  owner: '@me'\n";
+    await writeFile(join(dir, ".factory", "waivers.yml"), waiver);
+    await writeFile(join(dir, ".factory", "evidence.yml"), "- note: kept\n");
+    const profile = await read(".factory", "profile.yml");
+    const workflow = await read(".github", "workflows", "factory.yml");
+
+    await runInit(
+      dir,
+      { type: "library", phase: "build", yes: true, force: true },
+      { token: null },
+    );
+    expect(await read(".factory", "waivers.yml")).toBe(waiver);
+    expect(await read(".factory", "evidence.yml")).toBe("- note: kept\n");
+    expect(await read(".factory", "profile.yml")).toContain("type: library");
+    expect(await read(".factory", "profile.yml.bak")).toBe(profile);
+    expect(await read(".github", "workflows", "factory.yml")).toContain(
+      "gate: build",
+    );
+    expect(await read(".github", "workflows", "factory.yml.bak")).toBe(
+      workflow,
+    );
   });
 
   it("refuses to overwrite an existing config without --force", async () => {

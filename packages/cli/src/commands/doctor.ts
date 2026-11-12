@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { access } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
@@ -7,6 +8,8 @@ import {
   runTool,
 } from "@arynbht/factory-engine";
 import { skillsStatus } from "@arynbht/factory-registry";
+
+import { guardSelfTest } from "./hook.js";
 
 export interface DoctorCheck {
   name: string;
@@ -21,13 +24,46 @@ const exists = (path: string) =>
     .catch(() => false);
 
 /**
+ * Run the guard the way Claude Code does, through a shell, on a `.factory/**`
+ * edit: true when it ran and refused it. `factory` missing from that shell's
+ * PATH is the case this catches.
+ */
+function guardRunsInShell(root: string): Promise<boolean> {
+  return new Promise((done) => {
+    const child = spawn("factory hook guard", {
+      cwd: root,
+      shell: true,
+      stdio: ["pipe", "ignore", "pipe"],
+      timeout: 30_000,
+    });
+    let stderr = "";
+    child.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
+    child.on("error", () => done(false));
+    child.on("close", (code) =>
+      done(code === 2 && stderr.startsWith("factory: ")),
+    );
+    child.stdin.end(
+      JSON.stringify({
+        cwd: root,
+        tool_input: { file_path: join(root, ".factory", "profile.yml") },
+      }),
+    );
+  });
+}
+
+/**
  * The machine and the repo, checked before a task starts (§3.0): a git repo
- * with a factory profile, the Claude CLI the agent runs on, a way to reach
- * GitHub for ship and close, and skills that match their lock.
+ * with a factory profile, its guard hook live, the Claude CLI the agent runs
+ * on, a way to reach GitHub for ship and close, and skills that match their
+ * lock.
  */
 export async function doctorChecks(
   root: string,
-  options: { token?: string | null; claude?: () => Promise<string> } = {},
+  options: {
+    token?: string | null;
+    claude?: () => Promise<string>;
+    guardInShell?: (root: string) => Promise<boolean>;
+  } = {},
 ): Promise<DoctorCheck[]> {
   const checks: DoctorCheck[] = [];
   const isRepo = await runTool("git", ["rev-parse", "--git-dir"], root)
@@ -49,6 +85,23 @@ export async function doctorChecks(
           detail: "no .factory/profile.yml: run `factory init`",
         },
   );
+
+  if (profile) {
+    const guard = await guardSelfTest(root);
+    const live =
+      guard.ok && (await (options.guardInShell ?? guardRunsInShell)(root));
+    checks.push(
+      live
+        ? { name: "hooks", status: "ok", detail: guard.detail }
+        : {
+            name: "hooks",
+            status: "fail",
+            detail: guard.ok
+              ? "`factory hook guard` can't run from a shell here (is the factory CLI on PATH?), so the guard blocks every edit and command"
+              : guard.detail,
+          },
+    );
+  }
 
   const version = await (
     options.claude ??

@@ -90,17 +90,26 @@ export async function reviewPullRequest(
   });
 
   const git = simpleGit(options.repoPath);
+  const ref = `refs/factory/pr-${options.pr}`;
   await git.raw([
     "fetch",
     "--quiet",
     "origin",
-    `+pull/${options.pr}/head:refs/factory/pr-${options.pr}`,
+    `+pull/${options.pr}/head:${ref}`,
   ]);
-  await git.raw(["fetch", "--quiet", "origin", pr.base.ref]);
-  const head = (await git.revparse([`refs/factory/pr-${options.pr}`])).trim();
-  const base = (
-    await git.raw(["merge-base", `origin/${pr.base.ref}`, head])
-  ).trim();
+  let head: string;
+  let result: Awaited<ReturnType<typeof runTier2>>;
+  try {
+    await git.raw(["fetch", "--quiet", "origin", pr.base.ref]);
+    head = (await git.revparse([ref])).trim();
+    const base = (
+      await git.raw(["merge-base", `origin/${pr.base.ref}`, head])
+    ).trim();
+    result = await runTier2({ ...options, base, head });
+  } finally {
+    // The ref only kept the PR's commits reachable while they were reviewed.
+    await git.raw(["update-ref", "-d", ref]).catch(() => undefined);
+  }
 
   const reviews = await octokit.paginate(octokit.rest.pulls.listReviews, {
     owner,
@@ -109,8 +118,6 @@ export async function reviewPullRequest(
   });
   const round =
     reviews.filter((r) => r.body?.includes(REVIEW_MARKER)).length + 1;
-
-  const result = await runTier2({ ...options, base, head });
   const verdict = roundVerdict(result, round);
   const body = renderReview(result, round, verdict);
   const outcome: ReviewOutcome = { verdict, round, result, body };
