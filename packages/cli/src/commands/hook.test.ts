@@ -159,6 +159,18 @@ describe("factory hook guard, for Bash", () => {
       );
   });
 
+  it("refuses Bash writes to .factory/** from a task's worktree too", async () => {
+    const { worktree } = await factoryRepo();
+    for (const command of [
+      "rm -rf .factory",
+      "rm -rf .factory/*",
+      "echo x > .factory/waivers.yml",
+    ])
+      expect(await bash(worktree, command), command).toMatch(
+        /this command writes .*factory's state/,
+      );
+  });
+
   it("lets reads, scratch writes and a task's worktree through", async () => {
     const { repo, worktree } = await factoryRepo();
     for (const command of [

@@ -102,6 +102,19 @@ export async function reviewPullRequest(
   try {
     await git.raw(["fetch", "--quiet", "origin", pr.base.ref]);
     head = (await git.revparse([ref])).trim();
+    // GitHub moves pull/<n>/head a moment after a push: right after one, the
+    // ref can still be the old head. Review the commit the API says is the
+    // PR's head, never a stale one.
+    if (head !== pr.head.sha) {
+      await git
+        .raw(["fetch", "--quiet", "origin", `+${pr.head.sha}:${ref}`])
+        .catch(() => undefined);
+      head = (await git.revparse([ref])).trim();
+      if (head !== pr.head.sha)
+        throw new Error(
+          `couldn't fetch PR #${options.pr}'s head ${pr.head.sha.slice(0, 12)} (got ${head.slice(0, 12)}); try again in a moment`,
+        );
+    }
     const base = (
       await git.raw(["merge-base", `origin/${pr.base.ref}`, head])
     ).trim();
