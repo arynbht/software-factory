@@ -1,8 +1,11 @@
-import { access, readFile, realpath } from "node:fs/promises";
+import { access, readFile, realpath, stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { runTool } from "@arynbht/factory-engine";
 import { BEATS, listTasks, nextStep } from "@arynbht/factory-runtime";
+
+import { GUARD_COMMAND, GUARD_MATCHER, isFactoryHook } from "./init-files.js";
 
 // Claude Code hooks that `factory init` installs in `.claude/settings.json`
 // (§10). They run in the person's interactive session, not the sector agent's
@@ -11,6 +14,10 @@ import { BEATS, listTasks, nextStep } from "@arynbht/factory-runtime";
 const exists = (path: string) =>
   access(path)
     .then(() => true)
+    .catch(() => false);
+const isDirectory = (path: string) =>
+  stat(path)
+    .then((s) => s.isDirectory())
     .catch(() => false);
 
 async function git(args: string[], cwd: string): Promise<string | null> {
@@ -21,31 +28,39 @@ async function git(args: string[], cwd: string): Promise<string | null> {
 /** The PreToolUse input fields the guard reads. */
 export interface HookInput {
   cwd?: string;
-  tool_input?: { file_path?: string; notebook_path?: string };
+  tool_input?: {
+    file_path?: string;
+    notebook_path?: string;
+    /** Bash's command line. */
+    command?: string;
+  };
+}
+
+/** The top of the factory repo `dir` is in, or null outside one. */
+async function factoryTop(dir: string): Promise<string | null> {
+  const top = await git(["rev-parse", "--show-toplevel"], dir);
+  return top && (await exists(join(top, ".factory", "profile.yml")))
+    ? top
+    : null;
 }
 
 /**
- * Why an edit must not happen, or null when it may: anything under
+ * Why writing `abs` must not happen, or null when it may: anything under
  * `.factory/**` (the runtime's state), and anything in the primary checkout
  * while it's on the default branch (work happens in a task's worktree).
  * Only in repos with a factory profile.
  */
-export async function guardReason(input: HookInput): Promise<string | null> {
-  const target = input.tool_input?.file_path ?? input.tool_input?.notebook_path;
-  if (!target) return null;
-  const abs = isAbsolute(target)
-    ? target
-    : resolve(input.cwd ?? process.cwd(), target);
-  // The file may be new: ask git about the nearest directory that exists.
-  let dir = dirname(abs);
+async function pathReason(abs: string): Promise<string | null> {
+  // The file may be new: ask git about the nearest directory that exists. A
+  // directory is asked about itself: its parent may be outside the repo.
+  let dir = (await isDirectory(abs)) ? abs : dirname(abs);
   while (!(await exists(dir))) {
     const up = dirname(dir);
     if (up === dir) return null;
     dir = up;
   }
-  const top = await git(["rev-parse", "--show-toplevel"], dir);
-  if (!top || !(await exists(join(top, ".factory", "profile.yml"))))
-    return null;
+  const top = await factoryTop(dir);
+  if (!top) return null;
 
   // git reports the physical path; canonicalise the file's side the same way,
   // or a symlinked checkout (macOS /var → /private/var) slips past the check.
@@ -77,7 +92,449 @@ export async function guardReason(input: HookInput): Promise<string | null> {
   return null;
 }
 
-/** `factory hook guard`: a PreToolUse hook; exit 2 blocks the edit and tells Claude why. */
+/** One simple command of a shell line: its words, and where `>` sends output. */
+export interface ShellCommand {
+  words: string[];
+  redirects: string[];
+  /** What ends it: `&&`, `||`, `;`, `|`, `&`, a newline, a bracket, or "". */
+  then: string;
+  /** How many subshells deep it runs: `(…)`, `$(…)`, backticks. */
+  depth: number;
+}
+
+/**
+ * Split a shell line into simple commands, well enough to see what they
+ * write: quotes and escapes, `;` `&&` `||` `|` `&` and newlines, subshells,
+ * `>`/`>>`/`&>` targets (fd duplication like `2>&1` isn't a target), input
+ * redirects, comments and heredoc bodies. A heuristic, not a shell (§5.2).
+ */
+export function parseShell(line: string): ShellCommand[] {
+  const out: ShellCommand[] = [];
+  let depth = 0;
+  let inBackticks = false;
+  const fresh = (): ShellCommand => ({
+    words: [],
+    redirects: [],
+    then: "",
+    depth,
+  });
+  let cur = fresh();
+  let word = "";
+  let inWord = false;
+  let quote: string | null = null;
+  let next: "word" | "redirect" | "skip" = "word";
+  const heredocs: string[] = [];
+  let heredocNext = false;
+
+  const endWord = () => {
+    if (!inWord) return;
+    if (heredocNext) heredocs.push(word);
+    else if (next === "redirect") cur.redirects.push(word);
+    else if (next === "word") cur.words.push(word);
+    heredocNext = false;
+    next = "word";
+    word = "";
+    inWord = false;
+  };
+  const endCommand = (then: string) => {
+    endWord();
+    next = "word";
+    if (cur.words.length > 0 || cur.redirects.length > 0)
+      out.push({ ...cur, then });
+    cur = fresh();
+  };
+
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i] as string;
+    if (quote) {
+      if (c === quote) quote = null;
+      // In double quotes a backslash escapes only these; elsewhere it's literal.
+      else if (
+        c === "\\" &&
+        quote === '"' &&
+        '$`"\\\n'.includes(line[i + 1] ?? "x")
+      )
+        word += line[++i];
+      else word += c;
+      continue;
+    }
+    if (c === "'" || c === '"') {
+      quote = c;
+      inWord = true;
+    } else if (c === "\\") {
+      // Backslash-newline continues the line; it isn't part of a word.
+      if (line[i + 1] === "\n") i++;
+      else {
+        if (i + 1 < line.length) word += line[++i];
+        inWord = true;
+      }
+    } else if (c === " " || c === "\t") {
+      endWord();
+    } else if (c === "#" && !inWord) {
+      while (i + 1 < line.length && line[i + 1] !== "\n") i++;
+    } else if (c === "\n") {
+      endCommand("\n");
+      // A heredoc's body is data, not commands: skip to its delimiter.
+      for (const delim of heredocs.splice(0)) {
+        while (i < line.length) {
+          const end = line.indexOf("\n", i + 1);
+          const body = line.slice(i + 1, end === -1 ? line.length : end);
+          i = end === -1 ? line.length : end;
+          if (body.trim() === delim) break;
+        }
+      }
+    } else if (c === "&" && line[i + 1] === ">") {
+      endWord();
+      i += line[i + 2] === ">" ? 2 : 1;
+      next = "redirect";
+    } else if (c === ">") {
+      // `2>file`: the digits are the fd, not a word.
+      if (inWord && /^\d+$/.test(word)) {
+        word = "";
+        inWord = false;
+      } else endWord();
+      if (line[i + 1] === ">" || line[i + 1] === "|") i++;
+      if (line[i + 1] === "&") {
+        i++;
+        // `>&2` / `>&-` duplicate or close an fd; `>& file` writes the file.
+        let j = i + 1;
+        while (line[j] === " " || line[j] === "\t") j++;
+        const fd = /^(\d+|-)(?=[\s;|&)]|$)/.exec(line.slice(j));
+        if (fd) {
+          i = j + fd[0].length - 1;
+          continue;
+        }
+      }
+      next = "redirect";
+    } else if (c === "<") {
+      endWord();
+      if (line[i + 1] === "<") {
+        i++;
+        if (line[i + 1] === "<") {
+          i++; // a here-string: its word is data
+          next = "skip";
+        } else {
+          if (line[i + 1] === "-") i++;
+          heredocNext = true;
+        }
+      } else next = "skip";
+    } else if (";|&()`".includes(c)) {
+      const doubled = (c === "|" || c === "&") && line[i + 1] === c;
+      if (doubled) i++;
+      endCommand(doubled ? c + c : c);
+      if (c === "(") depth++;
+      else if (c === ")") depth = Math.max(0, depth - 1);
+      else if (c === "`") {
+        depth += inBackticks ? -1 : 1;
+        inBackticks = !inBackticks;
+      }
+      cur = fresh();
+    } else {
+      word += c;
+      inWord = true;
+    }
+  }
+  endCommand("");
+  return out;
+}
+
+/** Arguments that aren't options, `--` ending the options. */
+function operands(args: string[], takesValue: string[] = []): string[] {
+  const out: string[] = [];
+  let options = true;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i] as string;
+    if (options && a === "--") options = false;
+    else if (options && takesValue.includes(a)) i++;
+    else if (!options || !a.startsWith("-") || a === "-") out.push(a);
+  }
+  return out;
+}
+
+/** The paths a command writes, removes or moves, as far as its words show. */
+function writeTargets(name: string, args: string[]): string[] {
+  switch (name) {
+    case "rm":
+    case "rmdir":
+    case "unlink":
+    case "touch":
+    case "tee":
+    case "mkdir":
+    case "mv":
+      return operands(args);
+    case "truncate":
+      return operands(args, ["-s", "-r"]);
+    case "cp":
+    case "ln":
+    case "install": {
+      // `-t DIR` names the destination; otherwise it's the last operand.
+      const to = args.flatMap((a, i) =>
+        a === "-t" || a === "--target-directory"
+          ? [args[i + 1] ?? ""]
+          : a.startsWith("--target-directory=")
+            ? [a.slice("--target-directory=".length)]
+            : /^-t./.test(a)
+              ? [a.slice(2)]
+              : [],
+      );
+      return to.length > 0
+        ? to.filter(Boolean)
+        : operands(args, ["-S", "--suffix"]).slice(-1);
+    }
+    case "sed":
+    case "perl": {
+      // `-i` alone or bundled with flags that take no value (`-Ei`, `-pi`):
+      // not any option that merely contains an i.
+      const bundled = name === "sed" ? /^-[nErsuz]*i/ : /^-[pnlaw0-9]*i/;
+      const inPlace = args.some(
+        (a) =>
+          bundled.test(a) || a === "--in-place" || a.startsWith("--in-place="),
+      );
+      if (!inPlace) return [];
+      const scripted = args.some((a) =>
+        ["-e", "-f", "--expression", "--file"].includes(a),
+      );
+      const files = operands(args, ["-e", "-f", "--expression", "--file"]);
+      return scripted ? files : files.slice(1);
+    }
+    case "dd":
+      return args.filter((a) => a.startsWith("of=")).map((a) => a.slice(3));
+    default:
+      return [];
+  }
+}
+
+/** A word as a path from `cwd`, or null when it names something only a shell knows. */
+function wordPath(word: string, cwd: string): string | null {
+  // $HOME and $PWD are known here; any other variable only to the shell.
+  const known = word.replace(
+    /\$(?:\{(HOME|PWD)\}|(HOME|PWD)(?![A-Za-z0-9_]))/g,
+    (_, braced?: string, bare?: string) =>
+      (braced ?? bare) === "HOME" ? homedir() : cwd,
+  );
+  if (/[$`]/.test(known) || known === "/dev/null" || /^nul$/i.test(known))
+    return null;
+  let path = known.startsWith("~") ? homedir() + known.slice(1) : known;
+  // A glob writes inside the directory it starts in: check that directory.
+  const glob = path.search(/[*?[]/);
+  if (glob !== -1) path = path.slice(0, path.lastIndexOf("/", glob) + 1) || ".";
+  // Git Bash on Windows spells C:\x as /c/x.
+  if (process.platform === "win32")
+    path = path.replace(/^\/([a-zA-Z])(?=\/|$)/, "$1:");
+  return isAbsolute(path) ? path : resolve(cwd, path);
+}
+
+/**
+ * Why a git command must not run here, or null: the ones that destroy work
+ * or history (force push, remote delete, hard reset, clean, force-deleting a
+ * branch), in a factory repo. A person runs those themselves (§5.2).
+ */
+async function gitReason(args: string[], cwd: string): Promise<string | null> {
+  let dir = cwd;
+  let i = 0;
+  for (; i < args.length; i++) {
+    const a = args[i] as string;
+    if (a === "-C") dir = resolve(dir, args[++i] ?? ".");
+    else if (a === "-c") i++;
+    else if (!a.startsWith("-")) break;
+  }
+  const sub = args[i];
+  const rest = args.slice(i + 1);
+  const has = (...flags: string[]) => rest.some((a) => flags.includes(a));
+  const short = (letter: string) =>
+    rest.some((a) => new RegExp(`^-[a-zA-Z]*${letter}`).test(a));
+  let what: string | null = null;
+  if (sub === "push") {
+    if (
+      short("f") ||
+      has("--force", "--mirror", "--delete", "--prune") ||
+      rest.some(
+        (a) =>
+          a.startsWith("--force-with-lease") ||
+          a.startsWith("+") ||
+          a.startsWith(":"),
+      ) ||
+      short("d")
+    )
+      what =
+        "a force push or a remote delete rewrites history other people, PRs and the ledger point at";
+  } else if (sub === "reset" && has("--hard")) {
+    what = "`git reset --hard` throws away uncommitted work";
+  } else if (
+    sub === "clean" &&
+    (short("f") || has("--force")) &&
+    !(short("n") || has("--dry-run"))
+  ) {
+    what = "`git clean` deletes untracked files for good";
+  } else if (
+    sub === "branch" &&
+    (short("D") ||
+      ((short("d") || has("--delete")) && (short("f") || has("--force"))))
+  ) {
+    what = "force-deleting a branch can lose commits nothing else points at";
+  }
+  if (!what || !(await factoryTop(dir))) return null;
+  return `${what}. In a factory repo Claude doesn't run it; if you mean it, run it yourself in a terminal.`;
+}
+
+/** Commands that run another command, and their options that take a value. */
+const WRAPPERS: Record<string, string[]> = {
+  sudo: ["-u", "-g", "-C", "-h", "-p", "-U", "-r", "-t"],
+  env: ["-u", "-C", "-S"],
+  nice: ["-n"],
+  nohup: [],
+  time: [],
+  command: [],
+  exec: ["-a"],
+};
+
+/** Shells whose `-c` argument is another command line. */
+const SHELLS = new Set(["sh", "bash", "zsh", "dash"]);
+
+/** Commands that delete what they name (`mv` removes its sources). */
+const REMOVES = new Set(["rm", "rmdir", "unlink", "mv"]);
+
+/**
+ * Is `abs` a factory's state directory, or a directory that holds one: the
+ * state of the repo the command runs in, or of a checkout `abs` is in (a
+ * task's worktree has its own `.factory/`)?
+ */
+async function holdsFactoryState(abs: string, cwd: string): Promise<boolean> {
+  const target = await realpath(abs).catch(() => abs);
+  const tops = [
+    await factoryTop(cwd),
+    (await isDirectory(target)) ? await factoryTop(target) : null,
+  ];
+  for (const top of tops) {
+    if (!top) continue;
+    const rel = relative(target, join(await realpath(top), ".factory"));
+    if (rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))) return true;
+  }
+  return false;
+}
+
+/**
+ * Why a Bash command must not run, or null: a write (redirect, `tee`, `cp`,
+ * `mv`, `rm`, `sed -i`, …) to anything the edit guard protects, or a git
+ * command that destroys work. Heuristic (§5.2): it reads the words, so a
+ * script that writes by itself isn't seen. The judge's protected-path check
+ * is the backstop.
+ */
+export async function bashReason(
+  command: string,
+  cwd: string,
+): Promise<string | null> {
+  // A `cd` in a subshell or a pipeline, or one that fails, doesn't move the
+  // commands after it, and the words can't tell which kind it is. So a `cd`
+  // only adds a directory to check from: it can make the guard stricter,
+  // never looser.
+  let dirs = [cwd];
+  const commands = parseShell(command);
+  // `cd x && …` at the top level does move what follows (a failed cd stops
+  // the chain), unless an `||` somewhere runs a command after a failed one.
+  const certain = !commands.some((c) => c.then === "||");
+  for (const { words, redirects, then, depth } of commands) {
+    // Skip `VAR=value` assignments and wrappers that run the real command
+    // (with their own options: `sudo -u root`, `env -i FOO=1`).
+    let k = 0;
+    const assignments = () => {
+      while (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[k] ?? "")) k++;
+    };
+    assignments();
+    while (Object.hasOwn(WRAPPERS, words[k] ?? "")) {
+      const takesValue = WRAPPERS[words[k] as string] ?? [];
+      k++;
+      while ((words[k] ?? "").startsWith("-"))
+        k += takesValue.includes(words[k] as string) ? 2 : 1;
+      assignments();
+    }
+    const name = (words[k] ?? "").split("/").pop() ?? "";
+    const args = words.slice(k + 1);
+    if (name === "cd") {
+      const moved = dirs.flatMap(
+        (from) => wordPath(args[0] ?? "~", from) ?? [],
+      );
+      if (
+        certain &&
+        depth === 0 &&
+        then === "&&" &&
+        moved.length === dirs.length
+      )
+        dirs = [...new Set(moved)];
+      else
+        for (const to of moved)
+          if (!dirs.includes(to) && dirs.length < MAX_DIRS) dirs.push(to);
+      continue;
+    }
+    for (const dir of dirs) {
+      const reason = await commandReason(name, args, redirects, dir);
+      if (reason) return reason;
+    }
+  }
+  return null;
+}
+
+/** Directories one command line is checked from, at most. */
+const MAX_DIRS = 16;
+
+/** Why one simple command, run in `dir`, must not run. */
+async function commandReason(
+  name: string,
+  args: string[],
+  redirects: string[],
+  dir: string,
+): Promise<string | null> {
+  if (name === "git") {
+    const reason = await gitReason(args, dir);
+    if (reason) return reason;
+  }
+  // A command line run by another shell, or by eval: check that too.
+  const dashC = SHELLS.has(name)
+    ? args.findIndex((a) => /^-[a-z]*c[a-z]*$/.test(a))
+    : -1;
+  const script =
+    dashC !== -1
+      ? args[dashC + 1]
+      : name === "eval"
+        ? args.join(" ")
+        : undefined;
+  if (script) {
+    const reason = await bashReason(script, dir);
+    if (reason) return reason;
+  }
+  for (const target of [...redirects, ...writeTargets(name, args)]) {
+    const abs = wordPath(target, dir);
+    // A glob stands for what's in its directory, and only matches the
+    // dot-directory .factory when the globbed part starts with a dot.
+    const glob = target.search(/[*?[]/);
+    const dotted =
+      glob === -1 ||
+      target.slice(target.lastIndexOf("/", glob) + 1).startsWith(".");
+    if (
+      abs &&
+      dotted &&
+      REMOVES.has(name) &&
+      (await holdsFactoryState(abs, dir))
+    )
+      return `this command removes ${target}, and .factory/** with it: the factory's state is the runtime's to change. Use the factory CLI instead.`;
+    const reason = abs ? await pathReason(abs) : null;
+    if (reason)
+      return `this command writes ${target}, and ${reason.charAt(0).toLowerCase()}${reason.slice(1)}`;
+  }
+  return null;
+}
+
+/** Why a tool call must not happen, or null when it may. */
+export async function guardReason(input: HookInput): Promise<string | null> {
+  const cwd = input.cwd ?? process.cwd();
+  const command = input.tool_input?.command;
+  if (typeof command === "string") return bashReason(command, cwd);
+  const target = input.tool_input?.file_path ?? input.tool_input?.notebook_path;
+  if (!target) return null;
+  return pathReason(isAbsolute(target) ? target : resolve(cwd, target));
+}
+
+/** `factory hook guard`: a PreToolUse hook; exit 2 blocks the call and tells Claude why. */
 export async function runHookGuard(): Promise<number> {
   let input: HookInput = {};
   try {
@@ -93,9 +550,76 @@ export async function runHookGuard(): Promise<number> {
   return 2;
 }
 
-/** What a session in this repo starts with: the contract in brief, and open tasks. */
+/**
+ * Is the guard live in `root` (§12)? The current guard hook must be in
+ * `.claude/settings.json` (Claude Code reads no other file of ours) with a
+ * matcher covering edits and Bash, and it must refuse a `.factory/**` edit.
+ * Run in-process: whether `factory` is on PATH is `factory doctor`'s check.
+ */
+export async function guardSelfTest(
+  root: string,
+): Promise<{ ok: boolean; detail: string }> {
+  const text = await readFile(
+    join(root, ".claude", "settings.json"),
+    "utf8",
+  ).catch(() => null);
+  let groups: { matcher?: unknown; hooks?: { command?: unknown }[] }[] = [];
+  try {
+    const settings = JSON.parse(text ?? "{}") as {
+      hooks?: { PreToolUse?: typeof groups };
+    };
+    groups = Array.isArray(settings.hooks?.PreToolUse)
+      ? settings.hooks.PreToolUse
+      : [];
+  } catch {
+    return {
+      ok: false,
+      detail: ".claude/settings.json doesn't parse, so no hook runs",
+    };
+  }
+  const ours = groups.filter((g) =>
+    (Array.isArray(g?.hooks) ? g.hooks : []).some((h) =>
+      isFactoryHook(h?.command),
+    ),
+  );
+  if (ours.length === 0)
+    return {
+      ok: false,
+      detail: text
+        ? ".claude/settings.json has no factory guard hook: run `factory init` to merge it in"
+        : "no .claude/settings.json: run `factory init`",
+    };
+  const current = ours.some(
+    (g) =>
+      g.matcher === GUARD_MATCHER &&
+      g.hooks?.some((h) => h?.command === GUARD_COMMAND),
+  );
+  if (!current)
+    return {
+      ok: false,
+      detail:
+        "the guard hook is from an older factory (it misses Bash, or fails open): run `factory init` to update it",
+    };
+  const blocks = await guardReason({
+    cwd: root,
+    tool_input: { file_path: join(root, ".factory", "profile.yml") },
+  });
+  return blocks
+    ? {
+        ok: true,
+        detail: "the guard hook is installed and refuses a .factory/** edit",
+      }
+    : { ok: false, detail: "the guard let a .factory/** edit through" };
+}
+
+/** What a session in this repo starts with: the guard's state, the contract in brief, and open tasks. */
 export async function sessionStartText(root: string): Promise<string> {
+  const guard = await guardSelfTest(root);
   const lines = [
+    // First line, so a dead guard can't go unnoticed (§12).
+    guard.ok
+      ? "factory guard: on."
+      : `factory guard: OFF. ${guard.detail}. Until it's fixed, nothing stops edits to .factory/** or to this checkout on the default branch.`,
     "This repo runs on the factory (see AGENTS.md).",
     "Start every task with /factory. The work happens in .worktrees/<id>, never in this checkout on the default branch.",
     `Beats: sync → ${BEATS.join(" → ")}. A person confirms the card, approves the route, answers stop-and-ask questions, and merges; the factory never merges.`,

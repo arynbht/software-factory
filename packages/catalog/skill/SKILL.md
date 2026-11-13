@@ -20,7 +20,10 @@ judges the change and opens the PR. You don't edit code for a factory task yours
 
 - Never edit `.factory/**` (the ledger included) or anything in `.worktrees/`.
   The runtime and the sector agent own them. A hook refuses edits to
-  `.factory/**`, and to this checkout while it's on the default branch.
+  `.factory/**`, and to this checkout while it's on the default branch, whether
+  through an edit tool or a shell command. It also refuses git commands that
+  destroy work (force push, `reset --hard`, `clean -f`, `branch -D`). Don't work
+  round it; if the session starts with "factory guard: OFF", tell the person.
 - Every approval belongs to the person. Ask the question in the chat and wait for a
   clear yes. Only then run the command with `--yes`, which the ledger records as
   approved through you. Never pass `--yes` on your own judgment.

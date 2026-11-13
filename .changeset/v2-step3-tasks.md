@@ -1,6 +1,6 @@
 ---
 "@arynbht/factory-runtime": minor
-"@arynbht/factory-cli": minor
+"@arynbht/factory": minor
 ---
 
 Factory v2 step 3: task cards and the ledger. `factory task new|confirm|status|resume`.

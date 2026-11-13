@@ -23,11 +23,13 @@ fix:
   file: .github/workflows/ci.yml
   path: jobs.ci.steps
   mergeStrategy: append-if-missing
-  dedupeKey: name
+  # Deduplicate on the command, not the step name: a "Test" step that can't
+  # fail (`--if-present`) mustn't stop the real one being added.
+  dedupeKey: run
   byStack:
     node:
       name: Test
-      run: npm test --if-present
+      run: npm test
     python:
       name: Test
       run: pytest

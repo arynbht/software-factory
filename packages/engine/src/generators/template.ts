@@ -38,6 +38,8 @@ export interface TemplateVars {
   flags: Record<string, boolean>;
   packageManager: "npm" | "pnpm" | "yarn";
   defaultBranch: string;
+  /** Script names in package.json; CI runs only the checks the repo has. */
+  scripts: string[];
 }
 
 /** Build template variables from the profile (with sensible fallbacks). */
@@ -45,7 +47,7 @@ export function templateVars(
   profile: Profile | null,
   year: number,
   repo: Partial<
-    Pick<TemplateVars, "stack" | "packageManager" | "defaultBranch">
+    Pick<TemplateVars, "stack" | "packageManager" | "defaultBranch" | "scripts">
   > = {},
 ): TemplateVars {
   const project = profile?.project;
@@ -62,6 +64,7 @@ export function templateVars(
     flags: (profile?.flags as Record<string, boolean>) ?? {},
     packageManager: repo.packageManager ?? "npm",
     defaultBranch: repo.defaultBranch ?? "main",
+    scripts: repo.scripts ?? [],
   };
 }
 
@@ -74,7 +77,19 @@ export async function resolveTemplateVars(
     stack: await detectStacks(ctx),
     packageManager: await detectPackageManager(ctx),
     defaultBranch: await detectDefaultBranch(ctx.repoPath),
+    scripts: await detectScripts(ctx),
   });
+}
+
+async function detectScripts(ctx: AuditContext): Promise<string[]> {
+  try {
+    const pkg = JSON.parse((await ctx.readFile("package.json")) ?? "{}") as {
+      scripts?: Record<string, unknown>;
+    };
+    return Object.keys(pkg.scripts ?? {});
+  } catch {
+    return []; // unparseable package.json: no scripts to run
+  }
 }
 
 async function detectPackageManager(

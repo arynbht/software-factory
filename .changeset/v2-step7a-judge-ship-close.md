@@ -1,7 +1,7 @@
 ---
 "@arynbht/factory-runtime": minor
 "@arynbht/factory-engine": minor
-"@arynbht/factory-cli": minor
+"@arynbht/factory": minor
 ---
 
 Factory v2 step 7a: the judge, ship and close beats. `factory task judge <id>`

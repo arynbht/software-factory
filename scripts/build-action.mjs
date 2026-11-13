@@ -17,6 +17,10 @@ async function sourceHash() {
     resolve(root, "packages/catalog/src"),
     resolve(root, "packages/engine/src"),
     resolve(root, "packages/cli/src"),
+    // The CLI bundles the registry and the runtime too.
+    resolve(root, "packages/registry/src"),
+    resolve(root, "packages/registry/manifests"),
+    resolve(root, "packages/runtime/src"),
     resolve(root, "packages/catalog/controls"),
     resolve(root, "packages/catalog/gates"),
     resolve(root, "packages/catalog/templates"),
