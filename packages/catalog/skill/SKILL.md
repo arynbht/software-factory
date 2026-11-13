@@ -33,13 +33,20 @@ judges the change and opens the PR. You don't edit code for a factory task yours
 
 ## /factory status
 
-Run `factory task status` and show each open task with its next step.
+Run `factory task status` and show each open task with its next step. Tasks live
+on the repo's `factory/tasks` branch, so this lists the whole team's tasks.
 
 ## /factory resume <id>
 
 Run `factory task resume <id>`. It verifies the ledger and prints it with the next
-step. Carry on from that step in the flow below. If verification fails, stop and
-show the problems: a ledger that fails verification has been tampered with.
+step, and who holds the task. Carry on from that step in the flow below. If
+verification fails, stop and show the problems: a ledger that fails verification
+has been tampered with, or was signed with a key this machine doesn't have.
+
+A task is held by one machine at a time. If someone else holds it, say who and
+until when, and don't try to work round it. They can hand it over with
+`factory task release <id>`; run that yourself only when the person asks to hand
+their task over.
 
 ## /factory <task text or #issue>
 

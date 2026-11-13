@@ -9,20 +9,29 @@ import {
   buildTask,
   CardError,
   closeTask,
+  commitTask,
+  type CommitOptions,
+  holderName,
   isolateTask,
   judgeTask,
   confirmTask,
+  LEASE_MS,
   LedgerError,
   listTasks,
   loadTask,
+  localLease,
   newTask,
   nextStep,
   parseAcceptanceFlag,
+  parseCard,
   proveTask,
+  pullTasks,
+  reserveTaskId,
   routeTask,
   runTask,
   sha256,
   shipTask,
+  StoreError,
   type Task,
   TaskError,
   whoami,
@@ -51,13 +60,101 @@ async function guarded(action: () => Promise<number>): Promise<number> {
       err instanceof CardError ||
       err instanceof TaskError ||
       err instanceof LedgerError ||
-      err instanceof RegistryError
+      err instanceof RegistryError ||
+      err instanceof StoreError
     ) {
       console.error(`factory task: ${err.message}`);
       return 1;
     }
     throw err;
   }
+}
+
+/**
+ * Bring this checkout's task records up to the factory/tasks branch, saying
+ * which ones it kept because they hold work no push has carried yet. A
+ * read-only command carries on with the local copy when the branch can't be
+ * reached; a beat can't, since it has to take the task's lease.
+ */
+async function pull(
+  repo: string,
+  options: { readOnly?: boolean } = {},
+): Promise<void> {
+  try {
+    const { kept } = await pullTasks(repo);
+    for (const id of kept)
+      process.stderr.write(
+        `factory task: kept this machine's record of ${id}: it has work the branch doesn't, which its next beat pushes\n`,
+      );
+  } catch (err) {
+    if (!options.readOnly || !(err instanceof StoreError)) throw err;
+    process.stderr.write(
+      `factory task: ${err.message}; showing this machine's copy\n`,
+    );
+  }
+}
+
+/**
+ * Run one beat of task `id` against the tasks branch (§8): pull the record,
+ * take or renew this machine's lease (refused, before anything runs, while
+ * someone else holds it), run, and push what the beat wrote, even when it
+ * failed part-way, so the record never only lives here. A long beat renews
+ * its lease as it goes, so it isn't taken over mid-run.
+ */
+async function onTask<T>(
+  repo: string,
+  id: string,
+  beat: string,
+  action: (by: string) => Promise<T>,
+  finish: (result: T) => Partial<CommitOptions> = () => ({}),
+): Promise<T> {
+  const by = await whoami(repo);
+  const holder = holderName(by);
+  await pull(repo);
+  await commitTask(repo, id, { holder, message: `${id}: ${beat}` });
+  // One write at a time: the heartbeat and the final push never overlap.
+  let writes: Promise<unknown> = Promise.resolve();
+  const heartbeat = setInterval(() => {
+    writes = writes
+      .then(() =>
+        commitTask(repo, id, {
+          holder,
+          message: `${id}: ${beat} running`,
+          leaseOnly: true,
+        }),
+      )
+      .catch(() => undefined);
+  }, LEASE_MS / 4);
+  heartbeat.unref();
+  let result: T;
+  try {
+    result = await action(by);
+  } catch (err) {
+    clearInterval(heartbeat);
+    await writes;
+    // Push what it got through; the beat's own error is the one to report.
+    await commitTask(repo, id, {
+      holder,
+      message: `${id}: ${beat} failed`,
+    }).catch(() => undefined);
+    throw err;
+  }
+  clearInterval(heartbeat);
+  await writes;
+  await commitTask(repo, id, {
+    holder,
+    message: `${id}: ${beat} done`,
+    ...finish(result),
+  });
+  return result;
+}
+
+/** Other open tasks, after the pull, so isolate picks a port none of them holds. */
+async function openTaskIds(repo: string, id: string): Promise<string[]> {
+  // A closed task's port is free again.
+  return (await listTasks(repo))
+    .filter((t) => t.card.id !== id && nextStep(t) !== "done")
+    .map((t) => t.card.id);
 }
 
 function describe(task: Task): string {
@@ -100,7 +197,13 @@ export function runTaskNew(
       ...(flags.risk ? { risk: flags.risk } : {}),
       ...(flags.source ? { source: flags.source } : {}),
     } as Parameters<typeof newTask>[1];
-    const task = await newTask(repo, input, { by: await whoami(repo) });
+    const by = await whoami(repo);
+    // Refuse a bad card before an id is reserved for it on the branch.
+    parseCard({ ...input, id: "T-0000", owner: by, created: "2000-01-01" });
+    const holder = holderName(by);
+    const id = await reserveTaskId(repo, { holder });
+    const task = await newTask(repo, input, { by, id });
+    await commitTask(repo, id, { holder, message: `${id}: drafted` });
     process.stdout.write(
       `drafted ${task.card.id}: ${task.card.title}\n` +
         `review .factory/tasks/${task.card.id}/card.yml, then \`factory task confirm ${task.card.id}\`\n`,
@@ -119,6 +222,7 @@ export function runTaskConfirm(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
+    await pull(repo);
     const task = await loadTask(repo, id);
     process.stdout.write(`${stringify(task.card)}\n`);
     if (!flags.yes) {
@@ -136,8 +240,9 @@ export function runTaskConfirm(
         return 1;
       }
     }
-    const by = await whoami(repo);
-    await confirmTask(repo, id, { by: flags.yes ? `${by} (--yes)` : by });
+    await onTask(repo, id, "confirm", (by) =>
+      confirmTask(repo, id, { by: flags.yes ? `${by} (--yes)` : by }),
+    );
     process.stdout.write(`${id} confirmed; next: route\n`);
     return 0;
   });
@@ -146,7 +251,9 @@ export function runTaskConfirm(
 /** `factory task status`: every task, its beat, and whether its record is intact. */
 export function runTaskStatus(flags: { path?: string }): Promise<number> {
   return guarded(async () => {
-    const tasks = await listTasks(resolve(flags.path ?? "."));
+    const repo = resolve(flags.path ?? ".");
+    await pull(repo, { readOnly: true });
+    const tasks = await listTasks(repo);
     if (tasks.length === 0) {
       process.stdout.write('no tasks yet: `factory task new "<title>"`\n');
       return 0;
@@ -165,14 +272,52 @@ export function runTaskResume(
   flags: { path?: string },
 ): Promise<number> {
   return guarded(async () => {
-    const task = await loadTask(resolve(flags.path ?? "."), id);
+    const repo = resolve(flags.path ?? ".");
+    const holder = holderName(await whoami(repo));
+    await pull(repo, { readOnly: true });
+    const task = await loadTask(repo, id);
+    const lease = await localLease(repo, id);
+    const held =
+      lease && Date.parse(lease.expires) > Date.now() ? lease : undefined;
     if (task.problems.length > 0) {
       console.error(`factory task: ${id} fails verification; not resuming:`);
       for (const p of task.problems) console.error(`  - ${p}`);
+      if (held && held.holder !== holder)
+        console.error(
+          `  (${id} was recorded by ${held.holder}. A ledger signed on another machine only verifies with the same key: set FACTORY_LEDGER_KEY to the team's key.)`,
+        );
       return 1;
     }
     process.stdout.write(await readFile(task.ledger.mdPath, "utf8"));
+    if (held)
+      process.stdout.write(
+        `\nheld by ${held.holder} until ${held.expires}${held.holder === holder ? " (this machine)" : `; it can be taken over after that, or once they run \`factory task release ${id}\``}\n`,
+      );
     process.stdout.write(`\nnext: ${nextStep(task)}\n`);
+    return 0;
+  });
+}
+
+/**
+ * `factory task release <id>`: give up this machine's lease, so someone else
+ * can take the task over now instead of when the lease runs out.
+ */
+export function runTaskRelease(
+  id: string,
+  flags: { path?: string },
+): Promise<number> {
+  return guarded(async () => {
+    const repo = resolve(flags.path ?? ".");
+    const holder = holderName(await whoami(repo));
+    await pull(repo);
+    await commitTask(repo, id, {
+      holder,
+      message: `${id}: released`,
+      release: true,
+    });
+    process.stdout.write(
+      `${id} released: the next person to run one of its beats takes it over\n`,
+    );
     return 0;
   });
 }
@@ -187,7 +332,9 @@ export function runTaskRoute(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    const { routing } = await routeTask(repo, id, { by: await whoami(repo) });
+    const { routing } = await onTask(repo, id, "route", (by) =>
+      routeTask(repo, id, { by }),
+    );
     const out: string[] = ["sectors:"];
     for (const s of routing.scores) {
       const mark = routing.assembly.sectors.includes(s.sector) ? "in" : "  ";
@@ -218,6 +365,7 @@ export function runTaskApprove(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
+    await pull(repo);
     const task = await loadTask(repo, id);
     // Say what's wrong before asking anyone to approve anything.
     if (task.approved) {
@@ -247,11 +395,9 @@ export function runTaskApprove(
         return 1;
       }
     }
-    const by = await whoami(repo);
-    await approveRoute(repo, id, {
-      by: flags.yes ? `${by} (--yes)` : by,
-      shown,
-    });
+    await onTask(repo, id, "approve", (by) =>
+      approveRoute(repo, id, { by: flags.yes ? `${by} (--yes)` : by, shown }),
+    );
     process.stdout.write(`${id} route approved; next: isolate\n`);
     return 0;
   });
@@ -264,15 +410,13 @@ export function runTaskIsolate(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    // A closed task's port is free again.
-    const others = (await listTasks(repo))
-      .filter((t) => nextStep(t) !== "done")
-      .map((t) => t.card.id);
-    const { isolation } = await isolateTask(repo, id, {
-      by: await whoami(repo),
-      base: flags.base,
-      otherTasks: others,
-    });
+    const { isolation } = await onTask(repo, id, "isolate", async (by) =>
+      isolateTask(repo, id, {
+        by,
+        base: flags.base,
+        otherTasks: await openTaskIds(repo, id),
+      }),
+    );
     process.stdout.write(
       `${id}: worktree ${isolation.worktree} on ${isolation.branch} from ${isolation.baseRef} · port ${isolation.port} · db ${isolation.database}\nnext: \`factory task build ${id}\`\n`,
     );
@@ -290,10 +434,9 @@ export function runTaskBuild(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    const outcome = await buildTask(repo, id, {
-      by: await whoami(repo),
-      model: flags.model,
-    });
+    const outcome = await onTask(repo, id, "build", (by) =>
+      buildTask(repo, id, { by, model: flags.model }),
+    );
     for (const s of outcome.stops)
       process.stdout.write(`stop: ${s.trigger}: ${s.detail}\n`);
     process.stdout.write(`next: ${nextStep(outcome.task)}\n`);
@@ -313,11 +456,9 @@ export function runTaskAnswer(
       return 1;
     }
     const repo = resolve(flags.path ?? ".");
-    const task = await answerStops(repo, id, {
-      allow: Boolean(flags.allow),
-      note,
-      by: await whoami(repo),
-    });
+    const task = await onTask(repo, id, "answer", (by) =>
+      answerStops(repo, id, { allow: Boolean(flags.allow), note, by }),
+    );
     process.stdout.write(`next: ${nextStep(task)}\n`);
     return 0;
   });
@@ -330,9 +471,9 @@ export function runTaskProve(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    const { task, record } = await proveTask(repo, id, {
-      by: await whoami(repo),
-    });
+    const { task, record } = await onTask(repo, id, "prove", (by) =>
+      proveTask(repo, id, { by }),
+    );
     for (const line of record.lines) process.stdout.write(`${line}\n`);
     process.stdout.write(
       `proof ${record.passed ? "passed" : "failed"}; next: ${nextStep(task)}\n`,
@@ -351,11 +492,13 @@ export function runTaskJudge(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    const { task, record } = await judgeTask(repo, id, {
-      by: await whoami(repo),
-      model: flags.model,
-      log: (line) => process.stderr.write(`· ${line}\n`),
-    });
+    const { task, record } = await onTask(repo, id, "judge", (by) =>
+      judgeTask(repo, id, {
+        by,
+        model: flags.model,
+        log: (line) => process.stderr.write(`· ${line}\n`),
+      }),
+    );
     if (record.review) process.stdout.write(`${record.review.body}\n\n`);
     process.stdout.write(
       `judge ${record.verdict} (round ${record.round}); next: ${nextStep(task)}\n`,
@@ -375,7 +518,9 @@ export function runTaskShip(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    const { task, pr } = await shipTask(repo, id, { by: await whoami(repo) });
+    const { task, pr } = await onTask(repo, id, "ship", (by) =>
+      shipTask(repo, id, { by }),
+    );
     process.stdout.write(
       `${pr.reused ? "updated" : "opened"} draft PR #${pr.number}: ${pr.url}\nnext: ${nextStep(task)}\n`,
     );
@@ -390,16 +535,24 @@ export function runTaskClose(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    const { row } = await closeTask(repo, id, {
-      by: await whoami(repo),
-      // `--abandon` alone gives no reason; that's allowed.
-      abandon:
-        typeof flags.abandon === "string"
-          ? flags.abandon
-          : flags.abandon
-            ? ""
-            : undefined,
-    });
+    const { row } = await onTask(
+      repo,
+      id,
+      "close",
+      (by) =>
+        closeTask(repo, id, {
+          by,
+          // `--abandon` alone gives no reason; that's allowed.
+          abandon:
+            typeof flags.abandon === "string"
+              ? flags.abandon
+              : flags.abandon
+                ? ""
+                : undefined,
+        }),
+      // A closed task's lease is given up, and its row joins the history.
+      ({ row }) => ({ release: true, history: [JSON.stringify(row)] }),
+    );
     process.stdout.write(
       `${id} closed: ${row.outcome}${row.pr ? ` (PR #${row.pr})` : ""} · ${row.minutes} min · ${row.tokens} tokens · $${row.cost_usd.toFixed(2)}; ledger sealed\n`,
     );
@@ -418,20 +571,19 @@ export function runTaskRun(
 ): Promise<number> {
   return guarded(async () => {
     const repo = resolve(flags.path ?? ".");
-    const others = (await listTasks(repo))
-      .filter((t) => t.card.id !== id && nextStep(t) !== "done")
-      .map((t) => t.card.id);
-    const outcome = await runTask(repo, id, {
-      by: await whoami(repo),
-      model: flags.model,
-      base: flags.base,
-      otherTasks: others,
-      onEntry: (e) =>
-        process.stdout.write(
-          `${e.at.slice(11, 16)} ${e.beat}${e.section === "timeline" ? "" : ` (${e.section})`}: ${e.text}\n`,
-        ),
-      judge: { log: (line) => process.stderr.write(`· ${line}\n`) },
-    });
+    const outcome = await onTask(repo, id, "run", async (by) =>
+      runTask(repo, id, {
+        by,
+        model: flags.model,
+        base: flags.base,
+        otherTasks: await openTaskIds(repo, id),
+        onEntry: (e) =>
+          process.stdout.write(
+            `${e.at.slice(11, 16)} ${e.beat}${e.section === "timeline" ? "" : ` (${e.section})`}: ${e.text}\n`,
+          ),
+        judge: { log: (line) => process.stderr.write(`· ${line}\n`) },
+      }),
+    );
     process.stdout.write(`next: ${outcome.next}\n`);
     return outcome.ran.at(-1) === "ship" ? 0 : 2;
   });

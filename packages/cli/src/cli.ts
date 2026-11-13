@@ -21,6 +21,7 @@ import {
   runTaskJudge,
   runTaskNew,
   runTaskProve,
+  runTaskRelease,
   runTaskResume,
   runTaskRoute,
   runTaskRun,
@@ -341,6 +342,16 @@ export function buildProgram(): Command {
     .option("--path <path>", "path to the repo", ".")
     .action(async (id: string, flags: { path?: string }) => {
       process.exitCode = await runTaskResume(id, flags);
+    });
+  task
+    .command("release")
+    .description(
+      "Give up this machine's lease on a task so someone else can take it over",
+    )
+    .argument("<id>", "task id")
+    .option("--path <path>", "path to the repo", ".")
+    .action(async (id: string, flags: { path?: string }) => {
+      process.exitCode = await runTaskRelease(id, flags);
     });
 
   const skills = program
