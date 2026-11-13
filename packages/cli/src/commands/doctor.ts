@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { access } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import { resolveRepoSlug, githubToken, runTool } from "@arynbht/factory-engine";
+import { githubToken, resolveRepoSlug, runTool } from "@arynbht/factory-engine";
 import { skillsStatus } from "@arynbht/factory-registry";
 
 import { guardSelfTest } from "./hook.js";

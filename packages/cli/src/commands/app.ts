@@ -60,10 +60,10 @@ function openBrowser(url: string): void {
 }
 
 /** Where the App's settings live, for its owner. */
-const settingsUrl = (record: AppRecord, org?: string) =>
+const settingsUrl = (slug: string, org?: string) =>
   org
-    ? `https://github.com/organizations/${org}/settings/apps/${record.slug}`
-    : `https://github.com/settings/apps/${record.slug}`;
+    ? `https://github.com/organizations/${org}/settings/apps/${slug}`
+    : `https://github.com/settings/apps/${slug}`;
 
 function nextSteps(record: AppRecord, org?: string): string {
   return [
@@ -72,7 +72,7 @@ function nextSteps(record: AppRecord, org?: string): string {
     "",
     "Next:",
     `  1. Install it on the repos the factory works on: ${record.htmlUrl}/installations/new`,
-    `  2. Turn on device flow (General → "Enable Device Flow"), so the desktop app can sign in: ${settingsUrl(record, org)}`,
+    `  2. Turn on device flow (General → "Enable Device Flow"), so the desktop app can sign in: ${settingsUrl(record.slug, org)}`,
     "  3. For CI, add two repo secrets for actions/create-github-app-token:",
     `       FACTORY_APP_ID = ${record.id}`,
     `       FACTORY_APP_PRIVATE_KEY = the contents of app.pem`,
@@ -158,7 +158,7 @@ export async function runAppRegister(
               // The code is spent: say which App exists, so its owner can
               // generate a new private key for it rather than start over.
               throw new Error(
-                `${conversion.slug} (App ID ${conversion.id}) was created, but its credentials couldn't be saved: ${err.message}. Generate a new private key at ${conversion.html_url} and put it in ${join(factoryConfigDir(), "app.pem")}`,
+                `${conversion.slug} (App ID ${conversion.id}) was created, but its credentials couldn't be saved: ${err.message}. Generate a new private key at ${settingsUrl(conversion.slug, flags.org)} and put it in ${join(factoryConfigDir(), "app.pem")}`,
               );
             }),
           )
@@ -193,15 +193,18 @@ export async function runAppRegister(
       if (flags.open !== false) (deps.open ?? openBrowser)(start);
     });
   });
-  const timeout = setTimeout(() => server?.close(), 15 * 60 * 1000);
+  // Reject from the timer itself: "close" waits for the browser's keep-alive
+  // connections, so it can fire long after the deadline.
+  let timeout: NodeJS.Timeout | undefined;
   try {
     const record = await Promise.race([
       registered,
-      new Promise<never>((_, fail) =>
-        server?.on("close", () =>
-          fail(new Error("no answer from GitHub within 15 minutes")),
-        ),
-      ),
+      new Promise<never>((_, fail) => {
+        timeout = setTimeout(
+          () => fail(new Error("no answer from GitHub within 15 minutes")),
+          15 * 60 * 1000,
+        );
+      }),
     ]);
     process.stdout.write(`${nextSteps(record, flags.org)}\n`);
     return 0;
@@ -211,6 +214,7 @@ export async function runAppRegister(
   } finally {
     clearTimeout(timeout);
     server?.close();
+    server?.closeAllConnections();
   }
 }
 
