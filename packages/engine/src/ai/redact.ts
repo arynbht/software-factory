@@ -67,8 +67,11 @@ const SECRET_CONTENT = [
   /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|rediss|amqps?|ftp|ssh):\/\/[^\s:@/]+:[^\s:@/]+@/i,
   // Generic secret assignment, quoted or unquoted. An unquoted value must end
   // there (a dot is fine: passwords and JWTs have them), so
-  // `token = resolveToken(flags.token)` is code, not a credential.
-  /(?:api[_-]?key|secret|token|password|passwd|client[_-]?secret)\s*[:=]\s*(?:['"][^'"\s]{8,}['"]|[^\s'"()]{8,}(?=$|[\s,;'"]))/im,
+  // `token = resolveToken(flags.token)` is code, not a credential. So is a
+  // value that names another secret (`token: auth.token`) or a lone
+  // identifier in an object literal (`token: explicit,`): it refers to a
+  // secret rather than holding one.
+  /(?:api[_-]?key|secret|token|password|passwd|client[_-]?secret)\s*[:=]\s*(?:['"][^'"\s]{8,}['"]|(?!(?:[A-Za-z_$][\w$]*\.)+[\w$]*(?:key|secret|token|passw(?:or)?d)(?=$|[\s,;'"])|[A-Za-z_$]+,)[^\s'"()]{8,}(?=$|[\s,;'"]))/im,
 ];
 
 /** True if a file's contents look like they contain a secret. */

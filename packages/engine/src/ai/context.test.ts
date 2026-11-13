@@ -102,6 +102,22 @@ describe("redact guards", () => {
     expect(looksLikeSecret("password: correct.horse.battery")).toBe(true); // gitleaks:allow
   });
 
+  it("lets code that refers to a secret through", () => {
+    // A value naming another secret, as auth code passes tokens around.
+    expect(looksLikeSecret("    token: auth.token")).toBe(false);
+    expect(looksLikeSecret("  token: options.token,")).toBe(false);
+    expect(looksLikeSecret("client_secret: conversion.client_secret,")).toBe(
+      false,
+    );
+    expect(looksLikeSecret("{ apiKey: this.config.apiKey }")).toBe(false);
+    // A lone identifier in an object literal.
+    expect(looksLikeSecret("return { token: explicit, source };")).toBe(false);
+    // But a bare word that isn't followed by a comma, or a dotted value that
+    // doesn't end in a secret's name, still counts.
+    expect(looksLikeSecret("TOKEN=abcdefghijkl")).toBe(true); // gitleaks:allow
+    expect(looksLikeSecret("password: hunter.two.token9")).toBe(true); // gitleaks:allow
+  });
+
   it("detects binary content by a NUL byte", () => {
     expect(looksBinary("plain text file\nwith lines\n")).toBe(false);
     expect(looksBinary("PNG\x00\x00IHDR binary blob")).toBe(true);
