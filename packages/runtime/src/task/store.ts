@@ -27,11 +27,11 @@ import { hostname, tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
 
 import { TASK_ID } from "./card.js";
+import { TASKS_DIR } from "./tasks.js";
 
 export const TASKS_BRANCH = "factory/tasks";
 const LOCAL = `refs/heads/${TASKS_BRANCH}`;
 const REMOTE = `refs/remotes/origin/${TASKS_BRANCH}`;
-const TASKS_DIR = join(".factory", "tasks");
 /** A lease is good for this long after the holder last wrote the task. */
 export const LEASE_MS = 2 * 60 * 60 * 1000;
 /** How often a lost push race is retried on the new tip before giving up. */
@@ -300,8 +300,19 @@ export async function pullTasks(repo: string): Promise<{ kept: string[] }> {
       continue;
     }
     const dir = join(repo, TASKS_DIR, id);
+    const rels = await treeFiles(repo, tip, id);
+    // The branch is shared: a path that leaves the task's directory is refused.
+    const bad = rels.find(
+      (rel) =>
+        rel.split("/").some((part) => part === ".." || part === "") ||
+        /[\\:]/.test(rel),
+    );
+    if (bad !== undefined)
+      throw new StoreError(
+        `${id} on ${TASKS_BRANCH} has a path that leaves its directory: ${bad}`,
+      );
     await rm(dir, { recursive: true, force: true });
-    for (const rel of await treeFiles(repo, tip, id)) {
+    for (const rel of rels) {
       const path = join(dir, ...rel.split("/"));
       await mkdir(dirname(path), { recursive: true });
       await writeFile(path, (await readBlob(repo, tip, `${id}/${rel}`)) ?? "");
@@ -322,6 +333,11 @@ export interface CommitOptions {
   release?: boolean;
   /** Refuse unless the id is new on the branch (allocating it). */
   create?: boolean;
+  /**
+   * Renew the lease and nothing else: a heartbeat while a beat runs, which
+   * mustn't push files the beat is half-way through writing.
+   */
+  leaseOnly?: boolean;
 }
 
 /**
@@ -368,6 +384,21 @@ export async function commitTask(
         Date.parse(held.expires) > now.getTime()
       )
         throw new LeaseError(id, held);
+      // Taking a task over from whoever wrote it last: this machine's copy
+      // has to be the branch's, or it would overwrite what they pushed.
+      if (
+        held &&
+        held.holder !== options.holder &&
+        tip &&
+        !options.leaseOnly &&
+        !sameFiles(
+          await localFiles(repo, dir),
+          await branchFiles(repo, tip, id),
+        )
+      )
+        throw new StoreError(
+          `this machine's copy of ${id} isn't the branch's: ${held.holder} has written it since. Move ${TASKS_DIR}/${id} aside, and the next \`factory task status\` fetches theirs.`,
+        );
       // The lease is ours (or free): take or renew it.
       await mkdir(dir, { recursive: true });
       await writeFile(
@@ -379,14 +410,17 @@ export async function commitTask(
       await gitOk(repo, tip ? ["read-tree", tip] : ["read-tree", "--empty"], {
         env,
       });
-      await gitOk(
-        repo,
-        ["rm", "-r", "-q", "--cached", "--ignore-unmatch", "--", id],
-        {
-          env,
-        },
-      );
-      const files = await walk(dir);
+      // A lease renewal touches only the lease; anything else replaces the
+      // task's whole subtree with this machine's copy.
+      if (!options.leaseOnly)
+        await gitOk(
+          repo,
+          ["rm", "-r", "-q", "--cached", "--ignore-unmatch", "--", id],
+          { env },
+        );
+      const files = options.leaseOnly
+        ? [join(dir, "lease.json")]
+        : await walk(dir);
       const shas = (
         await gitOk(repo, ["hash-object", "-w", "--no-filters", "--", ...files])
       )

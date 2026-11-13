@@ -100,13 +100,19 @@ describe("the task store", { timeout: 30_000 }, () => {
       now: NOW,
     });
 
+    // As the CLI does: pull, take the lease, then run the beat.
     await pullTasks(b);
-    await writeTask(b, "T-0001", '{"seq":1}\n{"seq":2}\n');
     await expect(
       commitTask(b, "T-0001", { holder: "bob on b", message: "m", now: NOW }),
     ).rejects.toThrow(LeaseError);
 
     // Past the lease, the other machine takes the task over and carries on.
+    await commitTask(b, "T-0001", {
+      holder: "bob on b",
+      message: "m",
+      now: LATER,
+    });
+    await writeTask(b, "T-0001", '{"seq":1}\n{"seq":2}\n');
     await commitTask(b, "T-0001", {
       holder: "bob on b",
       message: "m",
@@ -182,6 +188,67 @@ describe("the task store", { timeout: 30_000 }, () => {
       '{"seq":1}\n{"seq":2}',
     );
     expect(await pullTasks(a)).toEqual({ kept: [] });
+  });
+
+  it("won't let a kept copy overwrite what someone else pushed since", async () => {
+    const { origin, a, b } = await twoMachines();
+    await writeTask(a, "T-0001", '{"seq":1}\n');
+    await commitTask(a, "T-0001", {
+      holder: "ann on a",
+      message: "m",
+      now: NOW,
+    });
+    // Ann writes offline; past her lease, Bob takes over and pushes.
+    await writeTask(a, "T-0001", '{"seq":1}\n{"ann":2}\n');
+    await pullTasks(b);
+    await commitTask(b, "T-0001", {
+      holder: "bob on b",
+      message: "m",
+      now: LATER,
+    });
+    await writeTask(b, "T-0001", '{"seq":1}\n{"bob":2}\n');
+    await commitTask(b, "T-0001", {
+      holder: "bob on b",
+      message: "m",
+      now: LATER,
+      release: true,
+    });
+    // Ann's copy is kept (it was never pushed), but can't replace Bob's.
+    expect(await pullTasks(a)).toEqual({ kept: ["T-0001"] });
+    await expect(
+      commitTask(a, "T-0001", {
+        holder: "ann on a",
+        message: "m",
+        now: new Date(LATER.getTime() + 60_000),
+      }),
+    ).rejects.toThrow(/isn't the branch's: bob on b has written it since/);
+    expect(git(origin, "show", `${TASKS_BRANCH}:T-0001/ledger.jsonl`)).toBe(
+      '{"seq":1}\n{"bob":2}',
+    );
+  });
+
+  it("renews only the lease on a heartbeat", async () => {
+    const { origin, a } = await twoMachines();
+    await writeTask(a, "T-0001", '{"seq":1}\n');
+    await commitTask(a, "T-0001", {
+      holder: "ann on a",
+      message: "m",
+      now: NOW,
+    });
+    await writeTask(a, "T-0001", '{"seq":1}\n{"half-written'); // mid-beat
+    await commitTask(a, "T-0001", {
+      holder: "ann on a",
+      message: "m",
+      now: LATER,
+      leaseOnly: true,
+    });
+    expect(git(origin, "show", `${TASKS_BRANCH}:T-0001/ledger.jsonl`)).toBe(
+      '{"seq":1}',
+    );
+    expect(
+      JSON.parse(git(origin, "show", `${TASKS_BRANCH}:T-0001/lease.json`))
+        .expires,
+    ).toBe("2026-11-12T15:00:00.000Z");
   });
 
   it("only puts tasks that exist on the branch", async () => {

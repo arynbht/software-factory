@@ -117,7 +117,11 @@ async function onTask<T>(
   const heartbeat = setInterval(() => {
     writes = writes
       .then(() =>
-        commitTask(repo, id, { holder, message: `${id}: ${beat} running` }),
+        commitTask(repo, id, {
+          holder,
+          message: `${id}: ${beat} running`,
+          leaseOnly: true,
+        }),
       )
       .catch(() => undefined);
   }, LEASE_MS / 4);
