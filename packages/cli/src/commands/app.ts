@@ -107,8 +107,18 @@ export async function runAppRegister(
   let server: Server | undefined;
   const registered = new Promise<AppRecord>((done, fail) => {
     server = createServer((req, res) => {
-      const url = new URL(req.url ?? "/", "http://localhost");
-      const base = `http://localhost:${(server?.address() as { port: number }).port}`;
+      const url = new URL(req.url ?? "/", "http://127.0.0.1");
+      const port = (server?.address() as { port: number }).port;
+      const base = `http://127.0.0.1:${port}`;
+      // Only this machine's own address: a page elsewhere that rebinds a
+      // DNS name to 127.0.0.1 mustn't read the state or the manifest.
+      if (
+        req.headers.host !== `127.0.0.1:${port}` &&
+        req.headers.host !== `localhost:${port}`
+      ) {
+        res.writeHead(421).end();
+        return;
+      }
       if (url.pathname === "/") {
         const manifest = appManifest({
           name,
@@ -143,7 +153,15 @@ export async function runAppRegister(
           return;
         }
         convertManifestCode(code, deps.fetch)
-          .then((conversion) => saveApp(conversion))
+          .then((conversion) =>
+            saveApp(conversion).catch((err: Error) => {
+              // The code is spent: say which App exists, so its owner can
+              // generate a new private key for it rather than start over.
+              throw new Error(
+                `${conversion.slug} (App ID ${conversion.id}) was created, but its credentials couldn't be saved: ${err.message}. Generate a new private key at ${conversion.html_url} and put it in ${join(factoryConfigDir(), "app.pem")}`,
+              );
+            }),
+          )
           .then((record) => {
             res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
             res.end(
@@ -168,9 +186,9 @@ export async function runAppRegister(
     server.on("error", fail);
     server.listen(Number(flags.port ?? 0), "127.0.0.1", () => {
       const address = server?.address() as { port: number };
-      const start = `http://localhost:${address.port}/`;
+      const start = `http://127.0.0.1:${address.port}/`;
       process.stdout.write(
-        `Registering ${name} on GitHub${flags.org ? ` under ${flags.org}` : ""}. Open ${start} and confirm on GitHub (opening it now).\n`,
+        `Registering ${name} on GitHub${flags.org ? ` under ${flags.org}` : ""}. Open ${start} and confirm on GitHub${flags.open === false ? "" : " (opening it now)"}.\n`,
       );
       if (flags.open !== false) (deps.open ?? openBrowser)(start);
     });
@@ -244,7 +262,13 @@ export async function runAppToken(
     );
     return 1;
   }
-  const minted = await installationToken(app, slug, deps);
+  const minted = await installationToken(app, slug, deps).catch(
+    (err: Error) => err,
+  );
+  if (minted instanceof Error) {
+    console.error(`factory app: ${minted.message}`);
+    return 1;
+  }
   if (!minted) {
     console.error(
       `factory app: ${app.slug} isn't installed on ${slug.owner}/${slug.repo}: ${app.htmlUrl}/installations/new`,

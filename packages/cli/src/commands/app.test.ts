@@ -1,5 +1,6 @@
 import { generateKeyPairSync } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { get } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -66,6 +67,15 @@ describe("factory app register", () => {
       { fetch: github, open: (url) => (start = url) },
     );
     await vi.waitFor(() => expect(start).not.toBe(""));
+
+    // A page that rebinds its own DNS name to this machine gets nothing.
+    const rebound = await new Promise<number>((done) =>
+      get(start, { headers: { host: "evil.example" } }, (res) => {
+        res.resume();
+        done(res.statusCode ?? 0);
+      }),
+    );
+    expect(rebound).toBe(421);
 
     // The page posts the manifest to the org's registration URL.
     const html = await (await fetch(start)).text();
