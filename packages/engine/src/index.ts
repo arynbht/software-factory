@@ -49,7 +49,20 @@ export {
 export type { EvidenceEntry } from "./evidence.js";
 export { parseRepoSlug } from "./github/slug.js";
 export type { RepoSlug } from "./github/slug.js";
-export { resolveToken } from "./github/token.js";
+export { githubToken, resolveToken, type TokenSource } from "./github/token.js";
+export {
+  APP_PERMISSIONS,
+  AppError,
+  appJwt,
+  appManifest,
+  type AppRecord,
+  convertManifestCode,
+  factoryConfigDir,
+  installationToken,
+  loadApp,
+  registrationUrl,
+  saveApp,
+} from "./github/app.js";
 export { openOrReusePr } from "./github/pr.js";
 export type { OpenPrParams, PrResult } from "./github/pr.js";
 export { openFixPr, FixPrError } from "./fix-pr.js";

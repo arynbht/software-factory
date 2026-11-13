@@ -7,6 +7,7 @@ import { join } from "node:path";
 
 import {
   buildContext,
+  githubToken,
   openOrReusePr,
   type OpenPrParams,
   type PrResult,
@@ -266,10 +267,13 @@ export async function shipTask(
 
   let openPr = options.openPr;
   if (!openPr) {
-    const gh = await buildContext(repoPath).github();
+    const auth = await githubToken(repoPath);
+    const gh = auth
+      ? await buildContext(repoPath, { token: auth.token }).github()
+      : null;
     if (!gh)
       throw new TaskError(
-        "shipping needs a GitHub token (GITHUB_TOKEN or `gh auth login`) and an origin remote on GitHub",
+        "shipping needs GitHub: the factory's App installed on the repo, GITHUB_TOKEN or `gh auth login`, and an origin remote on GitHub",
       );
     openPr = (params) => openOrReusePr(gh, params);
   }

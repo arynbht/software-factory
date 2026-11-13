@@ -4,7 +4,7 @@ import {
   AiError,
   buildContext,
   createAiClient,
-  resolveToken,
+  githubToken,
 } from "@arynbht/factory-engine";
 import {
   JUDGE_DEFAULT_MODEL,
@@ -83,10 +83,10 @@ export async function runReview(
         );
         return 1;
       }
-      const token = resolveToken(flags.token);
+      const token = (await githubToken(repo, flags.token))?.token;
       if (!token) {
         console.error(
-          "factory review: a GitHub token is needed for --pr (GITHUB_TOKEN or `gh auth login`).",
+          "factory review: --pr needs GitHub: the factory's App installed on the repo, GITHUB_TOKEN, or `gh auth login`.",
         );
         return 1;
       }

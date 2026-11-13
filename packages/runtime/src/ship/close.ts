@@ -5,7 +5,7 @@
 import { access, appendFile, mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { buildContext } from "@arynbht/factory-engine";
+import { buildContext, githubToken } from "@arynbht/factory-engine";
 import { simpleGit } from "simple-git";
 import { parse } from "yaml";
 
@@ -97,10 +97,13 @@ const kTokens = (n: number) =>
   n >= 1000 ? `${Math.round(n / 1000)}k tokens` : `${n} tokens`;
 
 async function githubPrState(repoPath: string, pr: number): Promise<PrState> {
-  const gh = await buildContext(repoPath).github();
+  const auth = await githubToken(repoPath);
+  const gh = auth
+    ? await buildContext(repoPath, { token: auth.token }).github()
+    : null;
   if (!gh)
     throw new TaskError(
-      "closing needs to see the PR: a GitHub token (GITHUB_TOKEN or `gh auth login`) and an origin remote",
+      "closing needs to see the PR: the factory's App installed on the repo, GITHUB_TOKEN or `gh auth login`, and an origin remote",
     );
   const { data } = await gh.octokit.rest.pulls.get({
     owner: gh.owner,
