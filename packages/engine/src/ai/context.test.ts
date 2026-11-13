@@ -110,6 +110,8 @@ describe("redact guards", () => {
       false,
     );
     expect(looksLikeSecret("{ apiKey: this.config.apiKey }")).toBe(false);
+    // Quoted as code in Markdown or a template literal.
+    expect(looksLikeSecret("the value (`token: auth.token`) is")).toBe(false);
     // A lone identifier in an object literal.
     expect(looksLikeSecret("return { token: explicit, source };")).toBe(false);
     // But a bare word that isn't followed by a comma, or a dotted value that

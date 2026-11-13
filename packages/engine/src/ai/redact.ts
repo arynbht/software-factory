@@ -71,7 +71,7 @@ const SECRET_CONTENT = [
   // value that names another secret (`token: auth.token`) or a lone
   // identifier in an object literal (`token: explicit,`): it refers to a
   // secret rather than holding one.
-  /(?:api[_-]?key|secret|token|password|passwd|client[_-]?secret)\s*[:=]\s*(?:['"][^'"\s]{8,}['"]|(?!(?:[A-Za-z_$][\w$]*\.)+[\w$]*(?:key|secret|token|passw(?:or)?d)(?=$|[\s,;'"])|[A-Za-z_$]+,)[^\s'"()]{8,}(?=$|[\s,;'"]))/im,
+  /(?:api[_-]?key|secret|token|password|passwd|client[_-]?secret)\s*[:=]\s*(?:['"][^'"\s]{8,}['"]|(?!(?:[A-Za-z_$][\w$]*\.)+[\w$]*(?:key|secret|token|passw(?:or)?d)(?=$|[\s,;'"`])|[A-Za-z_$]+,)[^\s'"()]{8,}(?=$|[\s,;'"]))/im,
 ];
 
 /** True if a file's contents look like they contain a secret. */
