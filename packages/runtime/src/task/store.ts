@@ -73,7 +73,11 @@ function git(
         stderr: Buffer.concat(err).toString("utf8"),
       }),
     );
-    child.stdin.end(options.input ?? "");
+    // git exits without reading stdin when it doesn't need it; the closed
+    // pipe (EPIPE on Linux) is no error of ours.
+    child.stdin.on("error", () => undefined);
+    if (options.input === undefined) child.stdin.end();
+    else child.stdin.end(options.input);
   });
 }
 
@@ -181,6 +185,7 @@ async function readBlob(
   const res = await new Promise<{ code: number; data: Buffer }>((done) => {
     const child = spawn("git", ["cat-file", "blob", `${rev}:${path}`], {
       cwd: repo,
+      stdio: ["ignore", "pipe", "ignore"],
       windowsHide: true,
     });
     const chunks: Buffer[] = [];
