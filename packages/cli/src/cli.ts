@@ -1,6 +1,12 @@
 import { Command, Option } from "commander";
 
 import { type AiFlags, runAi, runAiUsage } from "./commands/ai.js";
+import {
+  type AppRegisterFlags,
+  runAppRegister,
+  runAppStatus,
+  runAppToken,
+} from "./commands/app.js";
 import { type AuditFlags, runAudit } from "./commands/audit.js";
 import { type BuildFlags, runBuildCommand } from "./commands/build.js";
 import { runCi } from "./commands/ci.js";
@@ -352,6 +358,46 @@ export function buildProgram(): Command {
     .option("--path <path>", "path to the repo", ".")
     .action(async (id: string, flags: { path?: string }) => {
       process.exitCode = await runTaskRelease(id, flags);
+    });
+
+  const app = program
+    .command("app")
+    .description(
+      "The factory's GitHub App: its identity in the repos it works on",
+    );
+  app
+    .command("register")
+    .description(
+      "Create the factory's GitHub App from its manifest, in one click, and keep its credentials on this machine",
+    )
+    .argument("[path]", "a repo whose owner names the App", ".")
+    .option(
+      "--org <org>",
+      "register it under an organization, not your account",
+    )
+    .option("--name <name>", "the App's name (unique across GitHub)")
+    .option("--port <port>", "the local port GitHub sends you back to")
+    .option("--no-open", "print the link instead of opening the browser")
+    .action(async (path: string, flags: AppRegisterFlags) => {
+      process.exitCode = await runAppRegister(path, flags);
+    });
+  app
+    .command("status")
+    .description(
+      "Show the registered App, and whether the factory acts as it here",
+    )
+    .argument("[path]", "path to the repo", ".")
+    .action(async (path: string) => {
+      process.exitCode = await runAppStatus(path);
+    });
+  app
+    .command("token")
+    .description(
+      "Print an installation token for this repo (for scripts and CI)",
+    )
+    .argument("[path]", "path to the repo", ".")
+    .action(async (path: string) => {
+      process.exitCode = await runAppToken(path);
     });
 
   const skills = program

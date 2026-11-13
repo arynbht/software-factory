@@ -2,11 +2,7 @@ import { spawn } from "node:child_process";
 import { access } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import {
-  resolveRepoSlug,
-  resolveToken,
-  runTool,
-} from "@arynbht/factory-engine";
+import { githubToken, resolveRepoSlug, runTool } from "@arynbht/factory-engine";
 import { skillsStatus } from "@arynbht/factory-registry";
 
 import { guardSelfTest } from "./hook.js";
@@ -127,19 +123,29 @@ export async function doctorChecks(
   );
 
   const slug = isRepo ? await resolveRepoSlug(root) : null;
-  const auth = options.token === undefined ? resolveToken() : options.token;
+  const auth =
+    options.token === undefined
+      ? slug
+        ? await githubToken(root)
+        : null
+      : options.token
+        ? { token: options.token, source: "explicit" as const }
+        : null;
   checks.push(
     slug && auth
       ? {
           name: "github",
           status: "ok",
-          detail: `${slug.owner}/${slug.repo}, with a token`,
+          detail:
+            auth.source === "app"
+              ? `${slug.owner}/${slug.repo}, as the factory's App`
+              : `${slug.owner}/${slug.repo}, as you (${auth.source} token); with the factory's App, reviews and evidence come from the factory: \`factory app status\``,
         }
       : {
           name: "github",
           status: "warn",
           detail: slug
-            ? "no GitHub token (GITHUB_TOKEN or `gh auth login`): ship and close can't run"
+            ? "no way to reach GitHub (the factory's App, GITHUB_TOKEN or `gh auth login`): ship and close can't run"
             : "no GitHub origin remote: ship and close can't run",
         },
   );

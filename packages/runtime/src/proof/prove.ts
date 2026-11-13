@@ -10,12 +10,12 @@ import { join } from "node:path";
 import {
   allowlistedEnv,
   buildContext,
+  githubToken,
   installDeps,
   Octokit,
   packageManager,
   QUIET_LOG,
   resolveRepoSlug,
-  resolveToken,
   runTool,
 } from "@arynbht/factory-engine";
 import { simpleGit } from "simple-git";
@@ -266,7 +266,7 @@ async function uiProof(
 /** The default publisher: the repo's GitHub, when there's a token and an origin. */
 function githubPublisher(repoPath: string, task: string): Publish {
   return async (files) => {
-    const token = resolveToken();
+    const token = (await githubToken(repoPath))?.token;
     const slug = await resolveRepoSlug(repoPath);
     if (!token || !slug) return null;
     const gh = new Octokit({ auth: token, log: QUIET_LOG });
