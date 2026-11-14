@@ -1,0 +1,14 @@
+# factory skills (managed by `factory skills sync`)
+/code-review-and-quality
+/constraint-driven-development
+/differential-review
+/fp-check
+/incremental-implementation
+/planning-and-task-breakdown
+/playwright-cli
+/shipping-and-launch
+/skill-creator
+/spec-driven-development
+/test-driven-development
+/webapp-testing
+# end factory skills

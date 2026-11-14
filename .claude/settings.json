@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "factory hook session-start || echo factory: the session-start hook could not run, so the factory CLI is probably not on PATH. Until it is, the guard blocks every edit and command. Install it in a terminal, then run factory doctor."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "factory hook guard || exit 2"
+          }
+        ]
+      }
+    ]
+  }
+}
