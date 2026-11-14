@@ -42,6 +42,7 @@
 - 2026-11-14 02:34 asked: protected_path: packages/cli/src/commands/init.test.ts — modifies a test that existed at base
 - 2026-11-14 02:35 answered: allowed — The changed assertions encoded the old --force behaviour this card replaces; the new ones are stricter (factory.yml byte-for-byte kept, template beside it).
 - 2026-11-14 02:52 asked: judge: tier 1 failed in round 3; look at the change
+- 2026-11-14 02:56 answered: denied — Your change is right. The judge was at fault: it ran the base's version of the allowed init.test.ts, fixed in #159. Change nothing this round; the judge runs again.
 
 ## Proof
 
