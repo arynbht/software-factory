@@ -286,6 +286,29 @@ describe("build", () => {
     expect(outcome.stops.map((s) => s.trigger)).toEqual(["protected_path"]);
   });
 
+  it("asks a person when the agent changed nothing, with what it said", async () => {
+    const id = await approvedTask();
+    await isolateTask(repo, id, { ...by, base: "main" });
+    const calls: AgentCall[] = [];
+    const agent = async (call: AgentCall) => {
+      calls.push(call);
+      if (call.mode === "plan")
+        return JSON.stringify({ steps: ["Ask before changing the test"] });
+      return "I haven't changed anything: the test needs the owner's approval first.";
+    };
+    const outcome = await buildTask(repo, id, { ...by, agent });
+    expect(outcome.stops).toEqual([
+      {
+        trigger: "no_change",
+        detail:
+          "I haven't changed anything: the test needs the owner's approval first.",
+      },
+    ]);
+    expect(nextStep(outcome.task)).toMatch(/^stop-and-ask/);
+    // The agent is told it can't ask mid-round, and to make the change instead.
+    expect(calls[1]?.prompt).toContain("You can't ask during the round.");
+  });
+
   it("replans, never runs, a plan whose budget stop was denied", async () => {
     const id = await approvedTask();
     await isolateTask(repo, id, { ...by, base: "main" });

@@ -13,7 +13,8 @@ export type StopTrigger =
   | "schema_change"
   | "protected_path"
   | "sensitive_path"
-  | "budget_exhausted";
+  | "budget_exhausted"
+  | "no_change";
 
 export interface Stop {
   trigger: StopTrigger;

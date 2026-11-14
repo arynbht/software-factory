@@ -144,6 +144,34 @@ describe("judge tier 1", () => {
     expect(other.verdict).toBe("needs-human");
   }, 60_000);
 
+  it("switches to the change even when the base's checks wrote into the clone", async () => {
+    const r = await repo();
+    // Like a build that writes over a committed bundle, plus a file git doesn't track.
+    await r.write(
+      "package.json",
+      JSON.stringify(
+        {
+          name: "demo",
+          private: true,
+          scripts: {
+            lint: "node lint.cjs",
+            test: `node -e "require('fs').writeFileSync('dist/out.js','built');require('fs').writeFileSync('dist/extra.js','built')"`,
+          },
+        },
+        null,
+        2,
+      ),
+    );
+    await r.write("dist/out.js", "committed\n");
+    await r.commit("a build that writes into dist");
+    await simpleGit(r.dir).raw(["branch", "-f", "base"]);
+    await r.write("dist/extra.js", "committed at head\n");
+    await r.write("src/feature.js", "module.exports = 2;\n");
+    await r.commit("feature");
+    const result = await judge(r.dir);
+    expect(result.verdict).toBe("pass");
+  }, 60_000);
+
   it("marks a change to .factory/waivers.yml needs-human", async () => {
     const r = await repo();
     await r.write(".factory/waivers.yml", "[]\n");

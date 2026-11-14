@@ -108,7 +108,7 @@ export async function assemblePrompt(options: {
     [
       "# Operating rules",
       `- Budget: at most ${assembly.budget.steps} plan steps.`,
-      `- Stop and ask before: ${[...stops, "deleting or changing an existing test", "changing lint, CI or .factory files"].join("; ")}.`,
+      `- A person is asked, after your round, about: ${[...stops, "deleting or changing an existing test", "changing lint, CI or .factory files"].join("; ")}. You can't ask during the round. When the plan needs one of these, make the change: the runtime finds it in the diff and asks before anything ships. Only when a person must decide before you can start, change nothing and put the question in your reply's first line.`,
       `- Protected paths (never edit): ${[...PROTECTED.factoryState, ...PROTECTED.ciConfig, ...PROTECTED.lintConfig].join(", ")}.`,
       `- Proof: this task's proof is \`${assembly.proof}\`, produced by a tool after you finish; make sure it can be.`,
       `- Checks the judge runs: ${assembly.checks.join(", ")}.`,

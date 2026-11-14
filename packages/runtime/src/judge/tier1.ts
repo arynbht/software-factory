@@ -193,8 +193,11 @@ export async function runTier1(options: Tier1Options): Promise<Tier1Result> {
     log("running checks at base");
     const baseResults = await runChecks(workDir, options);
 
-    // The change, judged by the base's rules.
-    await clone.raw(["checkout", "--quiet", "--detach", head]);
+    // The change, judged by the base's rules. The base's checks may have
+    // written into tracked or untracked files (a build into a committed dist);
+    // the clone is ours, so throw that away rather than refuse to switch.
+    await clone.raw(["checkout", "--quiet", "--force", "--detach", head]);
+    await clone.raw(["clean", "-fdq"]);
     await restoreProtected(clone, workDir, diff, mergeBase);
     if (scriptsChanged) await restoreScripts(workDir, baseScripts);
     const depsChanged = diff.some(
