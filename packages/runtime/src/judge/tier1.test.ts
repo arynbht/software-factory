@@ -144,6 +144,46 @@ describe("judge tier 1", () => {
     expect(other.verdict).toBe("needs-human");
   }, 60_000);
 
+  it("runs an allowed change to an existing test as changed, not as it was at base", async () => {
+    const r = await repo();
+    await r.write(
+      "package.json",
+      JSON.stringify(
+        {
+          name: "demo",
+          private: true,
+          scripts: { lint: "node lint.cjs", test: "node test/app.test.js" },
+        },
+        null,
+        2,
+      ),
+    );
+    const check = (n: number) =>
+      `if (require("../src/app.js") !== ${n}) process.exit(1);\n`;
+    await r.write("test/app.test.js", check(1));
+    await r.commit("a test of app.js");
+    await simpleGit(r.dir).raw(["branch", "-f", "base"]);
+    // The card changes the behaviour, so the test that pinned it changes too.
+    await r.write("src/app.js", "module.exports = 2;\n");
+    await r.write("test/app.test.js", check(2));
+    await r.commit("app is 2 now");
+    const run = (allowed: boolean) =>
+      runTier1({
+        repoPath: r.dir,
+        base: "base",
+        install: false,
+        checks: ["quality.tests.pass"],
+        allowed: () => allowed,
+      });
+    expect((await run(true)).verdict).toBe("pass");
+    // Unanswered, the base's test still judges it (and a person is asked).
+    const unanswered = await run(false);
+    expect(unanswered.verdict).toBe("needs-human");
+    expect(
+      unanswered.checks.find((c) => c.id === "quality.tests.pass")?.head,
+    ).toBe("red");
+  }, 60_000);
+
   it("switches to the change even when the base's checks wrote into the clone", async () => {
     const r = await repo();
     // Like a build that writes over a committed bundle, plus a file git doesn't track.
