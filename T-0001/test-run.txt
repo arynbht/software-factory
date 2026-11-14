@@ -1,0 +1,336 @@
+pnpm run test · exit 1
+new tests:
+  none
+
+
+> software-factory@0.0.0 test C:\Users\arynb\Documents\Projects\Software Factory - Dev\.worktrees\T-0001
+> vitest run
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/arynb/Documents/Projects/Software Factory - Dev/.worktrees/T-0001[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+ [31m❯[39m packages/runtime/src/router/route.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/generators/template.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/detectors/workflow-checks.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/runtime/src/ship/ship.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/runtime/src/router/task-route.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/runtime/src/task/run.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/runtime/src/agent/agent.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/runtime/src/proof/proof.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/cli/src/commands/init.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/runtime/src/judge/tier2.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/cli/src/commands/fix.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/runtime/src/judge/tier1.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/cli/src/commands/hook.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/generators/merge.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/fix-pr.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/ai/context.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/ai/generate.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/detectors/github-api.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/generators/real-repo.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/engine/src/floorplan/swarm.test.ts [2m([22m[2m16 tests[22m[2m)[22m[90m 24[2mms[22m[39m
+ [31m❯[39m packages/cli/src/commands/ai.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/evidence.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/evaluate.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/orchestrate/build.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/registry/src/skills.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/cli/src/commands/ci.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/engine/src/ai/client.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 99[2mms[22m[39m
+ [32m✓[39m packages/engine/src/generators/apply.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 109[2mms[22m[39m
+ [31m❯[39m packages/engine/src/stack.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/cli/src/commands/app.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/profile.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/cli/src/commands/task.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/engine/src/paths.test.ts [2m([22m[2m11 tests[22m[2m)[22m[90m 22[2mms[22m[39m
+ [31m❯[39m packages/engine/src/waivers.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/generators/claude.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/generators/github-setting.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/cli/src/commands/audit.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/catalog/src/schema.test.ts [2m([22m[2m15 tests[22m[2m)[22m[90m 12[2mms[22m[39m
+ [32m✓[39m apps/desktop/src/main/auth/device-flow.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m packages/engine/src/github/app.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 40[2mms[22m[39m
+ [31m❯[39m packages/engine/src/orchestrate/verify.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/metrics.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/engine/src/state.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 63[2mms[22m[39m
+ [31m❯[39m packages/cli/src/commands/config-commands.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/engine/src/floorplan/store.test.ts [2m([22m[2m13 tests[22m[2m)[22m[90m 41[2mms[22m[39m
+ [31m❯[39m packages/engine/src/quality.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/cli/src/report.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [31m❯[39m packages/engine/src/detectors/file-exists.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/runtime/src/judge/protected.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/engine/src/ai/claude-cli.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+ [31m❯[39m packages/engine/src/gates.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/engine/src/ai/usage.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 33[2mms[22m[39m
+ [31m❯[39m packages/engine/src/github/token.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/applicability.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m apps/desktop/src/main/update/check.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m packages/engine/src/ai/git-context.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [31m❯[39m packages/cli/src/commands/build.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/engine/src/detectors/exec.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1025[2mms[22m[39m
+   [33m[2m✓[22m[39m runTool[2m > [22mresolves and runs a .cmd shim (npm) on Windows [33m522[2mms[22m[39m
+ [31m❯[39m packages/cli/src/commands/multi.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/generators/command.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/cli/src/commands/status.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/detectors/file-yaml-path.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/github/pr.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/engine/src/floorplan/doc.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m packages/engine/src/detectors/path.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m packages/engine/src/fs-atomic.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 40[2mms[22m[39m
+ [32m✓[39m packages/engine/src/ci.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 125[2mms[22m[39m
+ [32m✓[39m packages/engine/src/orchestrate/plan.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m packages/engine/src/history.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [31m❯[39m apps/desktop/src/main/engine/audit.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/engine/src/dates.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m packages/runtime/src/task/tasks.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1401[2mms[22m[39m
+   [33m[2m✓[22m[39m the ledger can't be rewritten outside the runtime[2m > [22mlives outside every task worktree, where the agent works [33m964[2mms[22m[39m
+ [31m❯[39m packages/engine/src/detectors/file-json-path.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/generators/run.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/detectors/file-matches.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/cli/src/commands/metrics.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/engine/src/github/slug.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [31m❯[39m packages/engine/src/ai/prompts.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m apps/desktop/src/main/engine/gates.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/detectors/command.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/detectors/catalog-regex.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/catalog/src/profile.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [31m❯[39m apps/desktop/src/main/engine/docs.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m apps/desktop/src/main/engine/fix.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m packages/engine/src/detectors/scorecard.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m apps/desktop/src/main/engine/ai.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32m✓[39m packages/catalog/src/gate.test.ts [2m([22m[2m4 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m packages/catalog/src/validate.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 57[2mms[22m[39m
+ [32m✓[39m packages/catalog/src/index.test.ts [2m([22m[2m1 test[22m[2m)[22m[90m 1[2mms[22m[39m
+ [32m✓[39m packages/engine/src/orchestrate/worktree.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 966[2mms[22m[39m
+   [33m[2m✓[22m[39m worktree git[2m > [22mcommits without running an in-repo hook the agent could edit [33m966[2mms[22m[39m
+ [32m✓[39m packages/runtime/src/task/store.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 22157[2mms[22m[39m
+   [33m[2m✓[22m[39m the task store[2m > [22mputs a task on the branch, where another machine picks it up [33m2596[2mms[22m[39m
+   [33m[2m✓[22m[39m the task store[2m > [22mkeeps a second machine off a task until the lease expires or is released [33m4957[2mms[22m[39m
+   [33m[2m✓[22m[39m the task store[2m > [22mkeeps this machine's copy of a task it holds when pulling [33m1273[2mms[22m[39m
+   [33m[2m✓[22m[39m the task store[2m > [22mnever deletes a record no push has carried, even after its lease expired [33m2379[2mms[22m[39m
+   [33m[2m✓[22m[39m the task store[2m > [22mwon't let a kept copy overwrite what someone else pushed since [33m3448[2mms[22m[39m
+   [33m[2m✓[22m[39m the task store[2m > [22mrenews only the lease on a heartbeat [33m1578[2mms[22m[39m
+   [33m[2m✓[22m[39m the task store[2m > [22monly puts tasks that exist on the branch [33m463[2mms[22m[39m
+   [33m[2m✓[22m[39m the task store[2m > [22mgives two machines different ids, and refuses to reuse one [33m2268[2mms[22m[39m
+   [33m[2m✓[22m[39m the task store[2m > [22mappends history rows once each, beside the tasks [33m2498[2mms[22m[39m
+   [33m[2m✓[22m[39m the task store[2m > [22mkeeps the branch local in a repo with no origin [33m696[2mms[22m[39m
+
+[2m Test Files [22m [1m[31m61 failed[39m[22m[2m | [22m[1m[32m30 passed[39m[22m[90m (91)[39m
+[2m      Tests [22m [1m[32m210 passed[39m[22m[90m (210)[39m
+[2m   Start at [22m 19:17:14
+[2m   Duration [22m 24.26s[2m (transform 3.83s, setup 0ms, collect 5.77s, tests 26.30s, environment 18ms, prepare 24.20s)[22m
+
+ ELIFECYCLE  Test failed. See above for more details.
+
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+[31m⎯⎯⎯⎯⎯⎯[1m[7m Failed Suites 61 [27m[22m⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m packages/registry/src/skills.test.ts[2m [ packages/registry/src/skills.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/config-commands.test.ts[2m [ packages/cli/src/commands/config-commands.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/hook.test.ts[2m [ packages/cli/src/commands/hook.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/runtime/src/ship/ship.test.ts[2m [ packages/runtime/src/ship/ship.test.ts ][22m
+[31m[1mError[22m: Failed to resolve entry for package "@arynbht/factory-engine". The package may have incorrect main/module/exports specified in its package.json.[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/arynb/Documents/Projects/Software Factory - Dev/.worktrees/T-0001/packages/registry/src/scan.ts[39m
+[90m [2m❯[22m packageEntryFailure ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46638:15[22m[39m
+[90m [2m❯[22m resolvePackageEntry ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46635:3[22m[39m
+[90m [2m❯[22m tryNodeResolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46451:16[22m[39m
+[90m [2m❯[22m ResolveIdContext.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46201:19[22m[39m
+[90m [2m❯[22m PluginContainer.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49018:17[22m[39m
+[90m [2m❯[22m TransformPluginContext.resolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49178:15[22m[39m
+[90m [2m❯[22m normalizeUrl ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64300:26[22m[39m
+[90m [2m❯[22m ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/61]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/applicability.test.ts[2m [ packages/engine/src/applicability.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/gates.test.ts[2m [ packages/engine/src/gates.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/stack.test.ts[2m [ packages/engine/src/stack.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/detectors/catalog-regex.test.ts[2m [ packages/engine/src/detectors/catalog-regex.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m apps/desktop/src/main/engine/audit.test.ts[2m [ apps/desktop/src/main/engine/audit.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m apps/desktop/src/main/engine/fix.test.ts[2m [ apps/desktop/src/main/engine/fix.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m apps/desktop/src/main/engine/gates.test.ts[2m [ apps/desktop/src/main/engine/gates.test.ts ][22m
+[31m[1mError[22m: Failed to resolve entry for package "@arynbht/factory-catalog". The package may have incorrect main/module/exports specified in its package.json.[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/arynb/Documents/Projects/Software Factory - Dev/.worktrees/T-0001/packages/engine/src/applicability.ts[39m
+[90m [2m❯[22m packageEntryFailure ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46638:15[22m[39m
+[90m [2m❯[22m resolvePackageEntry ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46635:3[22m[39m
+[90m [2m❯[22m tryNodeResolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46451:16[22m[39m
+[90m [2m❯[22m ResolveIdContext.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46201:19[22m[39m
+[90m [2m❯[22m PluginContainer.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49018:17[22m[39m
+[90m [2m❯[22m TransformPluginContext.resolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49178:15[22m[39m
+[90m [2m❯[22m normalizeUrl ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64300:26[22m[39m
+[90m [2m❯[22m ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/61]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/evaluate.test.ts[2m [ packages/engine/src/evaluate.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/evidence.test.ts[2m [ packages/engine/src/evidence.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/fix-pr.test.ts[2m [ packages/engine/src/fix-pr.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/metrics.test.ts[2m [ packages/engine/src/metrics.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/quality.test.ts[2m [ packages/engine/src/quality.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/multi.test.ts[2m [ packages/cli/src/commands/multi.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/runtime/src/judge/protected.test.ts[2m [ packages/runtime/src/judge/protected.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/runtime/src/judge/tier1.test.ts[2m [ packages/runtime/src/judge/tier1.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/ai/context.test.ts[2m [ packages/engine/src/ai/context.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/ai/generate.test.ts[2m [ packages/engine/src/ai/generate.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/detectors/command.test.ts[2m [ packages/engine/src/detectors/command.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/detectors/file-exists.test.ts[2m [ packages/engine/src/detectors/file-exists.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/detectors/file-json-path.test.ts[2m [ packages/engine/src/detectors/file-json-path.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/detectors/file-matches.test.ts[2m [ packages/engine/src/detectors/file-matches.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/detectors/file-yaml-path.test.ts[2m [ packages/engine/src/detectors/file-yaml-path.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/detectors/github-api.test.ts[2m [ packages/engine/src/detectors/github-api.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/detectors/scorecard.test.ts[2m [ packages/engine/src/detectors/scorecard.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/detectors/workflow-checks.test.ts[2m [ packages/engine/src/detectors/workflow-checks.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/github/pr.test.ts[2m [ packages/engine/src/github/pr.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/github/token.test.ts[2m [ packages/engine/src/github/token.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/generators/claude.test.ts[2m [ packages/engine/src/generators/claude.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/generators/command.test.ts[2m [ packages/engine/src/generators/command.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/generators/github-setting.test.ts[2m [ packages/engine/src/generators/github-setting.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/generators/merge.test.ts[2m [ packages/engine/src/generators/merge.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/generators/real-repo.test.ts[2m [ packages/engine/src/generators/real-repo.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/generators/run.test.ts[2m [ packages/engine/src/generators/run.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/generators/template.test.ts[2m [ packages/engine/src/generators/template.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/orchestrate/build.test.ts[2m [ packages/engine/src/orchestrate/build.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/orchestrate/verify.test.ts[2m [ packages/engine/src/orchestrate/verify.test.ts ][22m
+[31m[1mError[22m: Failed to resolve entry for package "@arynbht/factory-catalog". The package may have incorrect main/module/exports specified in its package.json.[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/arynb/Documents/Projects/Software Factory - Dev/.worktrees/T-0001/packages/engine/src/evidence.ts[39m
+[90m [2m❯[22m packageEntryFailure ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46638:15[22m[39m
+[90m [2m❯[22m resolvePackageEntry ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46635:3[22m[39m
+[90m [2m❯[22m tryNodeResolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46451:16[22m[39m
+[90m [2m❯[22m ResolveIdContext.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46201:19[22m[39m
+[90m [2m❯[22m PluginContainer.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49018:17[22m[39m
+[90m [2m❯[22m TransformPluginContext.resolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49178:15[22m[39m
+[90m [2m❯[22m normalizeUrl ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64300:26[22m[39m
+[90m [2m❯[22m ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/61]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/profile.test.ts[2m [ packages/engine/src/profile.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/waivers.test.ts[2m [ packages/engine/src/waivers.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/audit.test.ts[2m [ packages/cli/src/commands/audit.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/fix.test.ts[2m [ packages/cli/src/commands/fix.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/init.test.ts[2m [ packages/cli/src/commands/init.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/status.test.ts[2m [ packages/cli/src/commands/status.test.ts ][22m
+[31m[1mError[22m: Failed to resolve entry for package "@arynbht/factory-catalog". The package may have incorrect main/module/exports specified in its package.json.[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/arynb/Documents/Projects/Software Factory - Dev/.worktrees/T-0001/packages/engine/src/profile.ts[39m
+[90m [2m❯[22m packageEntryFailure ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46638:15[22m[39m
+[90m [2m❯[22m resolvePackageEntry ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46635:3[22m[39m
+[90m [2m❯[22m tryNodeResolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46451:16[22m[39m
+[90m [2m❯[22m ResolveIdContext.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46201:19[22m[39m
+[90m [2m❯[22m PluginContainer.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49018:17[22m[39m
+[90m [2m❯[22m TransformPluginContext.resolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49178:15[22m[39m
+[90m [2m❯[22m normalizeUrl ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64300:26[22m[39m
+[90m [2m❯[22m ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/61]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/ai.test.ts[2m [ packages/cli/src/commands/ai.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/app.test.ts[2m [ packages/cli/src/commands/app.test.ts ][22m
+[31m[1mError[22m: Failed to resolve entry for package "@arynbht/factory-engine". The package may have incorrect main/module/exports specified in its package.json.[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/arynb/Documents/Projects/Software Factory - Dev/.worktrees/T-0001/packages/cli/src/commands/ai.test.ts[39m
+[90m [2m❯[22m packageEntryFailure ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46638:15[22m[39m
+[90m [2m❯[22m resolvePackageEntry ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46635:3[22m[39m
+[90m [2m❯[22m tryNodeResolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46451:16[22m[39m
+[90m [2m❯[22m ResolveIdContext.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46201:19[22m[39m
+[90m [2m❯[22m PluginContainer.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49018:17[22m[39m
+[90m [2m❯[22m TransformPluginContext.resolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49178:15[22m[39m
+[90m [2m❯[22m normalizeUrl ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64300:26[22m[39m
+[90m [2m❯[22m ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/61]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/build.test.ts[2m [ packages/cli/src/commands/build.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/metrics.test.ts[2m [ packages/cli/src/commands/metrics.test.ts ][22m
+[31m[1mError[22m: Failed to resolve entry for package "@arynbht/factory-engine". The package may have incorrect main/module/exports specified in its package.json.[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/arynb/Documents/Projects/Software Factory - Dev/.worktrees/T-0001/packages/cli/src/commands/build.ts[39m
+[90m [2m❯[22m packageEntryFailure ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46638:15[22m[39m
+[90m [2m❯[22m resolvePackageEntry ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46635:3[22m[39m
+[90m [2m❯[22m tryNodeResolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46451:16[22m[39m
+[90m [2m❯[22m ResolveIdContext.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46201:19[22m[39m
+[90m [2m❯[22m PluginContainer.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49018:17[22m[39m
+[90m [2m❯[22m TransformPluginContext.resolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49178:15[22m[39m
+[90m [2m❯[22m normalizeUrl ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64300:26[22m[39m
+[90m [2m❯[22m ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/61]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/ci.test.ts[2m [ packages/cli/src/commands/ci.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/engine/src/ai/prompts.test.ts[2m [ packages/engine/src/ai/prompts.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m apps/desktop/src/main/engine/ai.test.ts[2m [ apps/desktop/src/main/engine/ai.test.ts ][22m
+[31m[1mError[22m: Failed to resolve entry for package "@arynbht/factory-catalog". The package may have incorrect main/module/exports specified in its package.json.[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/arynb/Documents/Projects/Software Factory - Dev/.worktrees/T-0001/packages/cli/src/commands/ci.ts[39m
+[90m [2m❯[22m packageEntryFailure ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46638:15[22m[39m
+[90m [2m❯[22m resolvePackageEntry ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46635:3[22m[39m
+[90m [2m❯[22m tryNodeResolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46451:16[22m[39m
+[90m [2m❯[22m ResolveIdContext.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46201:19[22m[39m
+[90m [2m❯[22m PluginContainer.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49018:17[22m[39m
+[90m [2m❯[22m TransformPluginContext.resolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49178:15[22m[39m
+[90m [2m❯[22m normalizeUrl ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64300:26[22m[39m
+[90m [2m❯[22m ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/61]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m packages/cli/src/commands/task.test.ts[2m [ packages/cli/src/commands/task.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/runtime/src/agent/agent.test.ts[2m [ packages/runtime/src/agent/agent.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/runtime/src/proof/proof.test.ts[2m [ packages/runtime/src/proof/proof.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/runtime/src/router/route.test.ts[2m [ packages/runtime/src/router/route.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/runtime/src/router/task-route.test.ts[2m [ packages/runtime/src/router/task-route.test.ts ][22m
+[31m[1m[7m FAIL [27m[22m[39m packages/runtime/src/task/run.test.ts[2m [ packages/runtime/src/task/run.test.ts ][22m
+[31m[1mError[22m: Failed to resolve entry for package "@arynbht/factory-registry". The package may have incorrect main/module/exports specified in its package.json.[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/arynb/Documents/Projects/Software Factory - Dev/.worktrees/T-0001/packages/cli/src/commands/task.ts[39m
+[90m [2m❯[22m packageEntryFailure ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46638:15[22m[39m
+[90m [2m❯[22m resolvePackageEntry ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46635:3[22m[39m
+[90m [2m❯[22m tryNodeResolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46451:16[22m[39m
+[90m [2m❯[22m ResolveIdContext.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46201:19[22m[39m
+[90m [2m❯[22m PluginContainer.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49018:17[22m[39m
+[90m [2m❯[22m TransformPluginContext.resolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49178:15[22m[39m
+[90m [2m❯[22m normalizeUrl ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64300:26[22m[39m
+[90m [2m❯[22m ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/61]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m packages/runtime/src/judge/tier2.test.ts[2m [ packages/runtime/src/judge/tier2.test.ts ][22m
+[31m[1mError[22m: Failed to resolve entry for package "@arynbht/factory-engine". The package may have incorrect main/module/exports specified in its package.json.[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/arynb/Documents/Projects/Software Factory - Dev/.worktrees/T-0001/packages/runtime/src/judge/review.ts[39m
+[90m [2m❯[22m packageEntryFailure ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46638:15[22m[39m
+[90m [2m❯[22m resolvePackageEntry ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46635:3[22m[39m
+[90m [2m❯[22m tryNodeResolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46451:16[22m[39m
+[90m [2m❯[22m ResolveIdContext.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46201:19[22m[39m
+[90m [2m❯[22m PluginContainer.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49018:17[22m[39m
+[90m [2m❯[22m TransformPluginContext.resolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49178:15[22m[39m
+[90m [2m❯[22m normalizeUrl ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64300:26[22m[39m
+[90m [2m❯[22m ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/61]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m apps/desktop/src/main/engine/docs.test.ts[2m [ apps/desktop/src/main/engine/docs.test.ts ][22m
+[31m[1mError[22m: Failed to resolve entry for package "@arynbht/factory-engine". The package may have incorrect main/module/exports specified in its package.json.[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/arynb/Documents/Projects/Software Factory - Dev/.worktrees/T-0001/apps/desktop/src/main/engine/docs.ts[39m
+[90m [2m❯[22m packageEntryFailure ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46638:15[22m[39m
+[90m [2m❯[22m resolvePackageEntry ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46635:3[22m[39m
+[90m [2m❯[22m tryNodeResolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46451:16[22m[39m
+[90m [2m❯[22m ResolveIdContext.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m46201:19[22m[39m
+[90m [2m❯[22m PluginContainer.resolveId ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49018:17[22m[39m
+[90m [2m❯[22m TransformPluginContext.resolve ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49178:15[22m[39m
+[90m [2m❯[22m normalizeUrl ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64300:26[22m[39m
+[90m [2m❯[22m ../../../Software%20Factory%20-%20Dev/.worktrees/T-0001/node_modules/.pnpm/vite@5.4.21_@types+node@22.20.5/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/61]⎯[22m[39m
+
