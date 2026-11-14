@@ -1,0 +1,39 @@
+id: T-0001
+title: Keep a customised factory.yml when init runs with --force
+type: fix
+source: prompt
+description: "init --force replaces .github/workflows/factory.yml with the
+  template whenever it differs, keeping only a .bak. --force is also the only
+  way past an existing profile, so re-running init on the factory repo dropped
+  its required 'factory' check name, swapped its local action for @v1 and
+  loosened its gate. Spec §12: a file a person changed gets the factory's
+  version beside it as name.factory.ext. Treat factory.yml like the other
+  generated files: write the template beside a different one, with or without
+  --force."
+acceptance:
+  - id: A1
+    text: init --force on a repo whose factory.yml differs from the template leaves
+      factory.yml byte-for-byte unchanged and writes
+      .github/workflows/factory.factory.yml with the template
+    verify: unit
+  - id: A2
+    text: init with or without --force on a repo with no factory.yml writes
+      factory.yml from the template
+    verify: unit
+  - id: A3
+    text: init's output names the sibling file and says to merge it by hand
+    verify: unit
+out_of_scope: []
+touches:
+  - packages/cli/src/commands/init.ts
+  - packages/cli/src/commands/init.test.ts
+  - packages/action/dist/**
+  - .changeset/*.md
+pages: []
+constraints:
+  - A change under packages/cli needs 'pnpm action:build' with the rebuilt
+    packages/action/dist committed, and a changeset in .changeset/ for
+    @arynbht/factory (patch).
+risk: low
+owner: arynbht@gmail.com
+created: 2026-11-14
