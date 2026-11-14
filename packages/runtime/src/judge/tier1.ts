@@ -82,8 +82,9 @@ export interface Tier1Options {
    */
   env?: readonly string[] | undefined;
   /**
-   * Protected changes a person already allowed (at build). They're still put
-   * back to base for the checks, but they don't make the verdict `needs-human`.
+   * Protected changes a person already allowed (at build). They don't make
+   * the verdict `needs-human`, and the checks run on them as changed: the
+   * rest of the protected paths are still put back to base.
    */
   allowed?: ((finding: ProtectedFinding) => boolean) | undefined;
   /** Install dependencies in the clone before checking (default true). */
@@ -160,6 +161,14 @@ export async function runTier1(options: Tier1Options): Promise<Tier1Result> {
   const headScripts = await scriptsAt(repo, head);
   const scriptsChanged = !deepEqual(baseScripts, headScripts);
   const protectedFindings = findProtected(diff, added, scriptsChanged);
+  // A person approved these: judge them as the change has them. Put back to
+  // base, an approved test change would fail against the code it was changed
+  // for, every round.
+  const allowedFindings = protectedFindings.filter(
+    (f) => options.allowed?.(f) ?? false,
+  );
+  const keep = new Set(allowedFindings.map((f) => f.path));
+  const keepScripts = allowedFindings.some((f) => f.reason === "scripts");
 
   // A unique directory per run (two judges on one task never collide), outside
   // the repo so it never shows up in `git status` or the repo's own audits.
@@ -198,8 +207,14 @@ export async function runTier1(options: Tier1Options): Promise<Tier1Result> {
     // the clone is ours, so throw that away rather than refuse to switch.
     await clone.raw(["checkout", "--quiet", "--force", "--detach", head]);
     await clone.raw(["clean", "-fdq"]);
-    await restoreProtected(clone, workDir, diff, mergeBase);
-    if (scriptsChanged) await restoreScripts(workDir, baseScripts);
+    await restoreProtected(
+      clone,
+      workDir,
+      diff.filter((e) => !keep.has(e.path)),
+      mergeBase,
+    );
+    if (scriptsChanged && !keepScripts)
+      await restoreScripts(workDir, baseScripts);
     const depsChanged = diff.some(
       (e) => e.path === "package.json" || LOCKFILES.includes(e.path),
     );
@@ -241,11 +256,13 @@ export async function runTier1(options: Tier1Options): Promise<Tier1Result> {
       checks.some((c) => c.outcome === "fail") ||
       (headInstall !== null && !headInstall.ok && !(baseInstall?.ok === false));
 
-    const unanswered = protectedFindings.filter(
-      (f) => !(options.allowed?.(f) ?? false),
-    );
     return {
-      verdict: unanswered.length > 0 ? "needs-human" : failed ? "fail" : "pass",
+      verdict:
+        protectedFindings.length > allowedFindings.length
+          ? "needs-human"
+          : failed
+            ? "fail"
+            : "pass",
       base,
       head,
       mergeBase,
