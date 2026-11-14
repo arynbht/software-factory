@@ -32,3 +32,4 @@
 ## Stop-and-ask
 
 - 2026-11-14 02:34 asked: protected_path: packages/cli/src/commands/init.test.ts — modifies a test that existed at base
+- 2026-11-14 02:35 answered: allowed — The changed assertions encoded the old --force behaviour this card replaces; the new ones are stricter (factory.yml byte-for-byte kept, template beside it).
