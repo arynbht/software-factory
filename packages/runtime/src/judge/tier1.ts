@@ -81,6 +81,11 @@ export interface Tier1Options {
    * shell reaches the repo's scripts: no tokens, no API keys.
    */
   env?: readonly string[] | undefined;
+  /**
+   * Protected changes a person already allowed (at build). They're still put
+   * back to base for the checks, but they don't make the verdict `needs-human`.
+   */
+  allowed?: ((finding: ProtectedFinding) => boolean) | undefined;
   /** Install dependencies in the clone before checking (default true). */
   install?: boolean | undefined;
   now?: Date | undefined;
@@ -233,9 +238,11 @@ export async function runTier1(options: Tier1Options): Promise<Tier1Result> {
       checks.some((c) => c.outcome === "fail") ||
       (headInstall !== null && !headInstall.ok && !(baseInstall?.ok === false));
 
+    const unanswered = protectedFindings.filter(
+      (f) => !(options.allowed?.(f) ?? false),
+    );
     return {
-      verdict:
-        protectedFindings.length > 0 ? "needs-human" : failed ? "fail" : "pass",
+      verdict: unanswered.length > 0 ? "needs-human" : failed ? "fail" : "pass",
       base,
       head,
       mergeBase,
