@@ -1,0 +1,52 @@
+{
+  "task": "T-0002",
+  "round": 1,
+  "verdict": "failed",
+  "head": "b68aac70b0c38732f6425337d8af3221140c3c23",
+  "base": "fb62ec8c20793b0a8d8ffa4f097eff02653e4f5d",
+  "tier1": {
+    "verdict": "fail",
+    "checks": [
+      {
+        "id": "quality.tests.pass",
+        "title": "Tests pass",
+        "base": "green",
+        "head": "red",
+        "outcome": "fail",
+        "message": "`npm test` exited 1 (expected 0)\n    \u001b[90m251| \u001b[39m    \u001b[34mexpect\u001b[39m(\u001b[35mawait\u001b[39m \u001b[34mread\u001b[39m(\u001b[32m\".factory\"\u001b[39m\u001b[33m,\u001b[39m \u001b[32m\"profile.yml\"\u001b[39m))\u001b[33m.\u001b[39m\u001b[34mtoContain\u001b[39m(\u001b[32m\"type: lib\u001b[39m…\n    \u001b[90m252| \u001b[39m    \u001b[34mexpect\u001b[39m(\u001b[35mawait\u001b[39m \u001b[34mread\u001b[39m(\u001b[32m\".factory\"\u001b[39m\u001b[33m,\u001b[39m \u001b[32m\"profile.yml.bak\"\u001b[39m))\u001b[33m.\u001b[39m\u001b[34mtoBe\u001b[39m(profile)\u001b[33m;\u001b[39m\n    \u001b[90m253| \u001b[39m    \u001b[34mexpect\u001b[39m(\u001b[35mawait\u001b[39m \u001b[34mread\u001b[39m(\u001b[32m\".github\"\u001b[39m\u001b[33m,\u001b[39m \u001b[32m\"workflows\"\u001b[39m\u001b[33m,\u001b[39m \u001b[32m\"factory.yml\"\u001b[39m))\u001b[33m.\u001b[39m\u001b[34mtoContai\u001b[39m…\n    \u001b[90m   | \u001b[39m                                                              \u001b[31m^\u001b[39m\n    \u001b[90m254| \u001b[39m      \u001b[32m\"gate: build\"\u001b[39m\u001b[33m,\u001b[39m\n    \u001b[90m255| \u001b[39m    )\u001b[33m;\u001b[39m\n\n\u001b[31m\u001b[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯\u001b[22m\u001b[39m"
+      },
+      {
+        "id": "quality.coverage.floor",
+        "title": "Coverage at or above the floor",
+        "base": "green",
+        "head": "red",
+        "outcome": "fail",
+        "message": "coverage is configured, but the test run wrote no coverage/coverage-summary.json"
+      },
+      {
+        "id": "quality.lint.clean",
+        "title": "Lint passes",
+        "base": "green",
+        "head": "green",
+        "outcome": "pass",
+        "message": "`npm run lint` exited 0"
+      },
+      {
+        "id": "quality.typecheck.clean",
+        "title": "Typecheck passes",
+        "base": "green",
+        "head": "green",
+        "outcome": "pass",
+        "message": "`npm run typecheck` exited 0"
+      }
+    ],
+    "protected": [
+      {
+        "reason": "existing-test",
+        "path": "packages/cli/src/commands/init.test.ts",
+        "detail": "modifies a test that existed at base"
+      }
+    ],
+    "notes": []
+  }
+}
