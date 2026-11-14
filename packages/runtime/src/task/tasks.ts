@@ -214,6 +214,24 @@ export async function confirmTask(
 const ASKED = /^asked: /;
 export const ANSWERED = /^answered: (allowed|denied)(?: — (.*))?$/;
 
+/**
+ * Stop-and-ask questions a person allowed, so a rebuild doesn't ask again and
+ * the judge doesn't ask about a protected change the build already asked about.
+ */
+export function allowedStops(task: Task): Set<string> {
+  const allowed = new Set<string>();
+  let pending: string[] = [];
+  for (const e of task.entries.filter((e) => e.section === "stop")) {
+    if (ASKED.test(e.text)) pending.push(e.text.replace(ASKED, ""));
+    const m = ANSWERED.exec(e.text);
+    if (m) {
+      if (m[1] === "allowed") for (const p of pending) allowed.add(p);
+      pending = [];
+    }
+  }
+  return allowed;
+}
+
 /** Stop-and-ask questions raised since the last answer (§7.2). */
 export function openStops(task: Task): string[] {
   const stops = task.entries.filter((e) => e.section === "stop");

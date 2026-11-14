@@ -122,6 +122,28 @@ describe("judge tier 1", () => {
     );
   }, 60_000);
 
+  it("doesn't ask again about a protected change a person allowed", async () => {
+    const r = await repo();
+    await r.write(".factory/waivers.yml", "[]\n");
+    await r.commit("waive");
+    const allowed = await runTier1({
+      repoPath: r.dir,
+      base: "base",
+      install: false,
+      allowed: (f) => f.path === ".factory/waivers.yml",
+    });
+    // Still listed, so the PR says a person approved it, but the checks decide.
+    expect(allowed.protected[0]?.path).toBe(".factory/waivers.yml");
+    expect(allowed.verdict).toBe("pass");
+    const other = await runTier1({
+      repoPath: r.dir,
+      base: "base",
+      install: false,
+      allowed: (f) => f.path === "package.json",
+    });
+    expect(other.verdict).toBe("needs-human");
+  }, 60_000);
+
   it("switches to the change even when the base's checks wrote into the clone", async () => {
     const r = await repo();
     // Like a build that writes over a committed bundle, plus a file git doesn't track.

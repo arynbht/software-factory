@@ -18,6 +18,7 @@ import { parse } from "yaml";
 import { loadIsolation } from "../agent/isolate.js";
 import { AssemblySchema } from "../router/route.js";
 import {
+  allowedStops,
   JUDGE_VERDICT,
   judgeVerdicts,
   loadTask,
@@ -27,6 +28,7 @@ import {
   TaskError,
   TASKS_DIR,
 } from "../task/tasks.js";
+import { type ProtectedFinding, protectedDetail } from "./protected.js";
 import { MAX_ROUNDS, type ReviewOutcome, reviewLocal } from "./review.js";
 import { runTier1, type Tier1Options, type Tier1Result } from "./tier1.js";
 import { JUDGE_DEFAULT_MODEL } from "./tier2.js";
@@ -150,11 +152,15 @@ export async function judgeTask(
     task.ledger.append({ beat: "judge", section, text, by, at: options.now });
 
   log(`tier 1: ${assembly.checks.join(", ")}`);
+  const allowed = allowedStops(task);
+  const wasAllowed = (f: ProtectedFinding) =>
+    allowed.has(`protected_path: ${protectedDetail(f)}`);
   const tier1 = await (options.tier1 ?? runTier1)({
     repoPath,
     base: isolation.base,
     head,
     checks: assembly.checks,
+    allowed: wasAllowed,
     log,
   });
   const ran = tier1.checks.filter((c) => c.outcome !== "n/a");
@@ -172,7 +178,10 @@ export async function judgeTask(
       `tier 1 ${tier1.verdict === "fail" ? "fail" : "note"}: ${oneLine(note)}`,
     );
   for (const p of tier1.protected)
-    await append("judge", `protected: ${p.path} — ${p.detail}`);
+    await append(
+      "judge",
+      `protected: ${protectedDetail(p)}${wasAllowed(p) ? " (allowed at build)" : ""}`,
+    );
 
   const record: JudgeRecord = {
     task: id,
@@ -192,7 +201,7 @@ export async function judgeTask(
   if (tier1.verdict === "needs-human") {
     // §8.2: a change to what judges it goes to a person; tier 2 doesn't run.
     record.verdict = "needs a human";
-    why = `${tier1.protected.length} protected change(s)`;
+    why = `${tier1.protected.filter((p) => !wasAllowed(p)).length} protected change(s)`;
   } else if (tier1.verdict === "fail") {
     // Fix the deterministic failures before paying for a review.
     record.verdict = round > MAX_ROUNDS ? "needs a human" : "failed";

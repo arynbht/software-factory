@@ -25,7 +25,7 @@ import {
 } from "../router/task-route.js";
 import { confirmTask, newTask, nextStep } from "../task/tasks.js";
 import { type EvidenceClient, publishEvidence } from "./evidence.js";
-import { proveTask } from "./prove.js";
+import { newTestNames, proveTask } from "./prove.js";
 import { startServer } from "./server.js";
 import { browserAvailable } from "./shoot.js";
 
@@ -217,14 +217,56 @@ describe("test-run proof", { timeout: 120_000 }, () => {
         );
       },
     );
-    const { task, record } = await proveTask(repo, id, by);
+    const uploaded: string[] = [];
+    const { task, record } = await proveTask(repo, id, {
+      ...by,
+      publish: async (files) => {
+        uploaded.push(...files);
+        return files.map((file) => ({ file, url: `https://e/${file}` }));
+      },
+    });
     expect(record.passed).toBe(true);
-    expect(record.tests?.added).toEqual(["src/total.test.js"]);
+    expect(record.tests?.added).toEqual(["src/total.test.js: sums"]);
     expect(record.lines[0]).toMatch(
-      /^tests passed \(pnpm run test, exit 0\) · new tests: src\/total\.test\.js/,
+      /^tests passed \(pnpm run test, exit 0\) · new tests: src\/total\.test\.js: sums/,
+    );
+    // The whole run goes to the evidence branch.
+    expect(uploaded).toHaveLength(1);
+    expect(uploaded[0]).toMatch(/test-run\.txt$/);
+    expect(await readFile(uploaded[0]!, "utf8")).toContain(
+      "new tests:\n  src/total.test.js: sums",
+    );
+    expect(record.lines).toContain(
+      `evidence: the test run on the evidence branch: https://e/${uploaded[0]}`,
     );
     expect(nextStep(task)).toBe("judge");
     await expect(proveTask(repo, id, by)).rejects.toThrow("isn't ready");
+  });
+
+  it("names tests added to a test file that existed at base", () => {
+    const names = newTestNames(
+      [
+        { status: "M", path: "test/greet.test.js" },
+        { status: "A", path: "test/empty.test.js" },
+        { status: "M", path: "src/greet.js" },
+      ],
+      new Map([
+        [
+          "test/greet.test.js",
+          [
+            'test("greets with a custom greeting", () => {',
+            "  assert.equal(greet('Ada', 'Hi'), 'Hi, Ada!');",
+            "it.only('falls back to Hello', () => {});",
+          ],
+        ],
+        ["src/greet.js", ['test("not a test file", () => {});']],
+      ]),
+    );
+    expect(names).toEqual([
+      "test/greet.test.js: greets with a custom greeting",
+      "test/greet.test.js: falls back to Hello",
+      "test/empty.test.js",
+    ]);
   });
 
   it("a failing test fails the proof and goes back to build, told why", async () => {

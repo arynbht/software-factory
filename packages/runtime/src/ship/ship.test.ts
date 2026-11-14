@@ -38,7 +38,7 @@ import {
   TASKS_DIR,
 } from "../task/tasks.js";
 import { closeTask, usageTotals } from "./close.js";
-import { prTitle, shipTask } from "./ship.js";
+import { type PostReviewParams, prTitle, shipTask } from "./ship.js";
 
 const made: string[] = [];
 const tmp = async (prefix: string) => {
@@ -246,6 +246,7 @@ describe("judge, ship, close", { timeout: 180_000 }, () => {
     // Ship: a draft PR whose body comes from the card, proof and judge.
     const pushed: string[] = [];
     const opened: OpenPrParams[] = [];
+    const reviews: PostReviewParams[] = [];
     const shipped = await shipTask(repo, id, {
       ...by,
       push: async (i) => {
@@ -259,7 +260,27 @@ describe("judge, ship, close", { timeout: 180_000 }, () => {
           reused: false,
         };
       },
+      postReview: async (p) => {
+        reviews.push(p);
+        return "https://github.com/o/r/pull/12#pullrequestreview-1";
+      },
     });
+    // The verdict goes on the PR as the judge's review, on the judged head.
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0]).toMatchObject({
+      pr: 12,
+      head: judged.record.head,
+      needsHuman: false,
+    });
+    expect(reviews[0]!.body).toMatch(
+      new RegExp(
+        `^<!-- factory-task-review ${id} head=${judged.record.head} -->`,
+      ),
+    );
+    expect(reviews[0]!.body).toContain("review round 1");
+    expect(shipped.task.entries.map((e) => e.text)).toContain(
+      "judge review posted: https://github.com/o/r/pull/12#pullrequestreview-1",
+    );
     expect(pushed).toEqual([`fix/${id.toLowerCase()}`]);
     const pr = opened[0]!;
     expect(pr).toMatchObject({
@@ -381,6 +402,7 @@ describe("judge, ship, close", { timeout: 180_000 }, () => {
     });
     expect(nextStep(answered)).toBe("ship");
     const opened: OpenPrParams[] = [];
+    const reviews: PostReviewParams[] = [];
     await shipTask(repo, id, {
       ...by,
       push: async () => undefined,
@@ -388,7 +410,13 @@ describe("judge, ship, close", { timeout: 180_000 }, () => {
         opened.push(p);
         return { number: 3, url: "u", reused: false };
       },
+      postReview: async (p) => {
+        reviews.push(p);
+        return null;
+      },
     });
+    // A person shipped past the judge: the PR is labelled for them.
+    expect(reviews[0]?.needsHuman).toBe(true);
     expect(opened[0]?.body).toContain("Blocking findings a person accepted:");
     expect(opened[0]?.body).toContain(
       "| A1 | total sums a list | unit | ❌ unmet",

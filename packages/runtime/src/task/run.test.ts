@@ -156,6 +156,7 @@ describe("runTask", { timeout: 180_000 }, () => {
           titles.push(p.title);
           return { number: 7, url: "https://x/pull/7", reused: false };
         },
+        postReview: async () => "https://x/pull/7#pullrequestreview-1",
       },
     });
     expect(outcome.ran).toEqual(["isolate", "build", "prove", "judge", "ship"]);

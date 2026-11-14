@@ -15,11 +15,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CardError } from "./card.js";
 import { Ledger } from "./ledger.js";
 import {
+  allowedStops,
   confirmTask,
   listTasks,
   loadTask,
   newTask,
   nextStep,
+  type Task,
 } from "./tasks.js";
 
 const made: string[] = [];
@@ -212,5 +214,23 @@ describe("the ledger can't be rewritten outside the runtime", () => {
     expect(real.entries.map((e) => e.text).join(" ")).not.toContain(
       "all green",
     );
+  });
+});
+
+describe("allowedStops", () => {
+  const stop = (text: string) => ({ section: "stop", text });
+  it("collects what a person allowed, not what they denied or haven't answered", () => {
+    const task = {
+      entries: [
+        stop("asked: protected_path: test/a.test.js — modifies a test"),
+        stop("answered: allowed — only adds tests"),
+        stop("asked: new_dependency: left-pad"),
+        stop("answered: denied — no new dependencies"),
+        stop("asked: schema_change: users"),
+      ],
+    } as unknown as Task;
+    expect([...allowedStops(task)]).toEqual([
+      "protected_path: test/a.test.js — modifies a test",
+    ]);
   });
 });

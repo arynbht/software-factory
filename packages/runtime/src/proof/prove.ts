@@ -22,7 +22,7 @@ import { simpleGit } from "simple-git";
 import { parse } from "yaml";
 
 import { isTestFile } from "../judge/protected.js";
-import { parseNameStatus } from "../judge/tier1.js";
+import { parseAddedLines, parseNameStatus } from "../judge/tier1.js";
 import { loadIsolation, type Isolation } from "../agent/isolate.js";
 import { AssemblySchema, type ProofType } from "../router/route.js";
 import {
@@ -82,9 +82,34 @@ async function baseCheckout(repoPath: string, base: string): Promise<string> {
   return dir;
 }
 
+const TEST_NAME = /\b(?:it|test)(?:\.\w+)?\(\s*(["'`])(.+?)\1/;
+
+/**
+ * The tests a change adds, by name (§11: "new tests named"): every `it(…)` or
+ * `test(…)` on an added line of a test file, whether the file is new or
+ * existed at base. A new test file with no name we can read is listed by path.
+ */
+export function newTestNames(
+  files: readonly { status: string; path: string }[],
+  addedLines: Map<string, string[]>,
+): string[] {
+  const out: string[] = [];
+  for (const f of files) {
+    if (f.status === "D" || !isTestFile(f.path)) continue;
+    const names = (addedLines.get(f.path) ?? [])
+      .map((l) => TEST_NAME.exec(l)?.[2])
+      .filter((n): n is string => n !== undefined);
+    if (names.length > 0) out.push(...names.map((n) => `${f.path}: ${n}`));
+    else if (f.status === "A") out.push(f.path);
+  }
+  return out;
+}
+
 async function testRun(
   isolation: Isolation,
   kind: ProofType,
+  publish: Publish,
+  proofDir: string,
 ): Promise<ProofRecord> {
   const dir = isolation.worktree;
   const lines: string[] = [];
@@ -116,21 +141,40 @@ async function testRun(
     lines.push(`tests couldn't run: ${tail((err as Error).message)}`);
     return { task: isolation.task, kind, passed: false, lines };
   }
-  const added = parseNameStatus(
-    await simpleGit(dir).raw([
-      "diff",
-      "--name-status",
-      "-M",
-      isolation.base,
-      "HEAD",
-    ]),
-  )
-    .filter((e) => e.status === "A" && isTestFile(e.path))
-    .map((e) => e.path);
+  const git = simpleGit(dir);
+  const added = newTestNames(
+    parseNameStatus(
+      await git.raw(["diff", "--name-status", "-M", isolation.base, "HEAD"]),
+    ),
+    parseAddedLines(
+      await git.raw(["diff", "-U0", "--no-color", isolation.base, "HEAD"]),
+    ),
+  );
   const passed = res.exitCode === 0;
   lines.push(
-    `tests ${passed ? "passed" : "failed"} (${pm} run test, exit ${res.exitCode}) · new tests: ${added.join(", ") || "none"}`,
+    `tests ${passed ? "passed" : "failed"} (${pm} run test, exit ${res.exitCode}) · new tests: ${added.join("; ") || "none"}`,
     `output: ${tail(`${res.stdout}\n${res.stderr}`)}`,
+  );
+
+  // The whole run goes to the evidence branch, beside any screenshots.
+  const log = join(proofDir, "test-run.txt");
+  await mkdir(proofDir, { recursive: true });
+  await writeFile(
+    log,
+    `${pm} run test · exit ${res.exitCode}\nnew tests:\n${added.map((a) => `  ${a}`).join("\n") || "  none"}\n\n${res.stdout}\n${res.stderr}`,
+    "utf8",
+  );
+  let published: Awaited<ReturnType<Publish>> = null;
+  let notPushed = "no GitHub token or origin remote";
+  try {
+    published = await publish([log]);
+  } catch (err) {
+    notPushed = `upload failed: ${tail((err as Error).message, 200)}`;
+  }
+  lines.push(
+    published?.[0]
+      ? `evidence: the test run on the evidence branch: ${published[0].url}`
+      : `evidence: the test run in ${TASKS_DIR}/${isolation.task}/proof/test-run.txt (not pushed: ${notPushed})`,
   );
   return {
     task: isolation.task,
@@ -298,17 +342,13 @@ export async function proveTask(
   if (!isolation) throw new TaskError(`task ${id} has no worktree`);
   const assembly = AssemblySchema.parse(parse(task.assemblyText ?? ""));
 
+  const proofDir = join(repoPath, TASKS_DIR, id, "proof");
+  const publish = options.publish ?? githubPublisher(repoPath, id);
   const record =
     assembly.proof === "ui-screenshots"
-      ? await uiProof(
-          repoPath,
-          task,
-          isolation,
-          options.publish ?? githubPublisher(repoPath, id),
-        )
-      : await testRun(isolation, assembly.proof);
+      ? await uiProof(repoPath, task, isolation, publish)
+      : await testRun(isolation, assembly.proof, publish, proofDir);
 
-  const proofDir = join(repoPath, TASKS_DIR, id, "proof");
   await mkdir(proofDir, { recursive: true });
   await writeFile(
     join(proofDir, "proof.json"),

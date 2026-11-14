@@ -1,0 +1,75 @@
+# Pinned skills for this repo. Edit with `factory skills add|update`.
+version: 1
+skills:
+  - name: code-review-and-quality
+    source: addyosmani/agent-skills/skills/code-review-and-quality
+    pin: 301b02b12bff98e4688e6984af6556802322bbde
+    hash: sha256:99c1241d837e786f5fd10230e73a21911bb6abd2671914a38b98f948fa2c04f0
+    scope: always
+    mirror: arynbht/agent-skills/skills/code-review-and-quality
+  - name: constraint-driven-development
+    source: addyosmani/agent-skills/skills/constraint-driven-development
+    pin: 301b02b12bff98e4688e6984af6556802322bbde
+    hash: sha256:5c2dcebe5a2359afc54d3efbdb481c7afd7521c6cb20e4af596cbd6da5d94227
+    scope: always
+    mirror: arynbht/agent-skills/skills/constraint-driven-development
+  - name: differential-review
+    source: trailofbits/skills/plugins/differential-review/skills/differential-review
+    pin: e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff
+    hash: sha256:9c15c845af144f21626c3c3cd94a886ec0b033a5df42300e20a1eae4673ddaa0
+    scope: always
+    mirror: arynbht/trailofbits-skills/plugins/differential-review/skills/differential-review
+  - name: fp-check
+    source: trailofbits/skills/plugins/fp-check/skills/fp-check
+    pin: e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff
+    hash: sha256:7200d10aa80a3c3fc859720eaddc22d72e35f6378a01eb5625ce9ea8450fd661
+    scope: always
+    mirror: arynbht/trailofbits-skills/plugins/fp-check/skills/fp-check
+  - name: incremental-implementation
+    source: addyosmani/agent-skills/skills/incremental-implementation
+    pin: 301b02b12bff98e4688e6984af6556802322bbde
+    hash: sha256:b6a791172452145768a86a16b78253153a1b47e04687e2a16eb9260f874e73ab
+    scope: always
+    mirror: arynbht/agent-skills/skills/incremental-implementation
+  - name: planning-and-task-breakdown
+    source: addyosmani/agent-skills/skills/planning-and-task-breakdown
+    pin: 301b02b12bff98e4688e6984af6556802322bbde
+    hash: sha256:3db676a1bf0dfe4233768f541c8364022e88fb62e70ad4aab3aba8fac7de1dfc
+    scope: always
+    mirror: arynbht/agent-skills/skills/planning-and-task-breakdown
+  - name: playwright-cli
+    source: microsoft/playwright-cli/skills/playwright-cli
+    pin: ce9b41b619c588c7dc0e89217d3469a70374acdd
+    hash: sha256:f4be5508fdcec8f3a4cf6698c861088e2bb2af57a8c8a6d3ee0f2604e9105110
+    scope: always
+    mirror: arynbht/playwright-cli/skills/playwright-cli
+  - name: shipping-and-launch
+    source: addyosmani/agent-skills/skills/shipping-and-launch
+    pin: 301b02b12bff98e4688e6984af6556802322bbde
+    hash: sha256:38142bf94e2d52377b1c0c1c62efd132303cfcdbc34a8aead14d658e2223cdbb
+    scope: always
+    mirror: arynbht/agent-skills/skills/shipping-and-launch
+  - name: skill-creator
+    source: anthropics/skills/skills/skill-creator
+    pin: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
+    hash: sha256:ad4f350be137206c6cb509aaaccf80960fd216db6ad6ef8e6f1d8920acb860b6
+    scope: always
+    mirror: arynbht/anthropics-skills/skills/skill-creator
+  - name: spec-driven-development
+    source: addyosmani/agent-skills/skills/spec-driven-development
+    pin: 301b02b12bff98e4688e6984af6556802322bbde
+    hash: sha256:962752b58f16f8fe1fcc7d638385b8cd7261595113a903e0233544807301a42f
+    scope: always
+    mirror: arynbht/agent-skills/skills/spec-driven-development
+  - name: test-driven-development
+    source: addyosmani/agent-skills/skills/test-driven-development
+    pin: 301b02b12bff98e4688e6984af6556802322bbde
+    hash: sha256:7c8229bdd75758eddb1cec1988d3fe34612d6270f93531ee01eb52a2071b18a3
+    scope: always
+    mirror: arynbht/agent-skills/skills/test-driven-development
+  - name: webapp-testing
+    source: anthropics/skills/skills/webapp-testing
+    pin: 2c5958ecac7cee2b583967a2c4981d0f4a75c579
+    hash: sha256:564acfdb5fc84463905a3c4e2562cb325ae6ffaf2a4bac92d93777373363501f
+    scope: always
+    mirror: arynbht/anthropics-skills/skills/webapp-testing
