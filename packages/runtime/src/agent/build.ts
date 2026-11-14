@@ -20,6 +20,7 @@ import { z } from "zod";
 
 import { AssemblySchema } from "../router/route.js";
 import {
+  allowedStops,
   ANSWERED,
   loadTask,
   openStops,
@@ -122,23 +123,6 @@ export const claudeAgent: AgentRunner = async (call) => {
 const PLAN_SYSTEM =
   'Plan the task below before anyone edits a file. Read what you need; change nothing. Reply with ONLY a JSON object: {"steps": ["one concrete step", ...]}. Keep within the budget in the operating rules.';
 const PlanSchema = z.object({ steps: z.array(z.string().min(1)).min(1) });
-
-/** Details a person already allowed, so a rebuild doesn't ask again. */
-function allowedDetails(task: Task): Set<string> {
-  const allowed = new Set<string>();
-  const stops = task.entries.filter((e) => e.section === "stop");
-  let pending: string[] = [];
-  for (const e of stops) {
-    if (e.text.startsWith("asked: "))
-      pending.push(e.text.slice("asked: ".length));
-    const m = ANSWERED.exec(e.text);
-    if (m) {
-      if (m[1] === "allowed") for (const p of pending) allowed.add(p);
-      pending = [];
-    }
-  }
-  return allowed;
-}
 
 const ROUND_END = /^build (done|paused)/;
 const PLAN_START = /^build started/;
@@ -343,7 +327,7 @@ export async function buildTask(
   const head = (await wt.revparse(["HEAD"])).trim();
 
   task = await loadTask(repoPath, id);
-  const allowed = allowedDetails(task);
+  const allowed = allowedStops(task);
   const stops = (
     await findStops(isolation.worktree, isolation.base, head, assembly)
   ).filter((s) => !allowed.has(`${s.trigger}: ${s.detail}`));

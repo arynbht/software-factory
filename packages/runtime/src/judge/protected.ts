@@ -105,6 +105,13 @@ const isCiConfig = matcher(PROTECTED.ciConfig);
 export const isTestFile = matcher(PROTECTED.tests);
 
 /**
+ * How a protected change is asked about, at build and in the judge: the same
+ * text in both, so a person who allowed it at build isn't asked again.
+ */
+export const protectedDetail = (f: ProtectedFinding) =>
+  `${f.path} — ${f.detail}`;
+
+/**
  * Changes the agent must not make on its own: anything here marks the result
  * `needs-human`. Added test files are fine (they're how a change proves itself);
  * changing or deleting a test that existed at base is not.

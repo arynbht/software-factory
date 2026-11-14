@@ -4,7 +4,7 @@
 import picomatch from "picomatch";
 import { type SimpleGit, simpleGit } from "simple-git";
 
-import { findProtected } from "../judge/protected.js";
+import { findProtected, protectedDetail } from "../judge/protected.js";
 import { parseAddedLines, parseNameStatus } from "../judge/tier1.js";
 import type { Assembly } from "../router/route.js";
 
@@ -154,7 +154,7 @@ export async function findStops(
     if (before !== (await scripts(head, entry.path))) scriptsChanged = true;
   }
   for (const f of findProtected(diff, added, scriptsChanged)) {
-    stops.push({ trigger: "protected_path", detail: f.detail });
+    stops.push({ trigger: "protected_path", detail: protectedDetail(f) });
   }
   return stops;
 }
