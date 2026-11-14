@@ -7,6 +7,7 @@ import { join } from "node:path";
 
 import {
   buildContext,
+  type GitHubClient,
   githubToken,
   openOrReusePr,
   type OpenPrParams,
@@ -208,6 +209,41 @@ export function renderPrBody(input: PrBodyInput): string {
   return `${out.join("\n")}\n`;
 }
 
+/** Marks the judge's review on a factory PR, with the task and the head it judged. */
+export const TASK_REVIEW_MARKER = "<!-- factory-task-review";
+
+/**
+ * The judge's verdict as one PR review (§10): the tier 2 review when it ran,
+ * after a line on tier 1 and any protected change a person allowed.
+ */
+export function renderTaskReview(task: Task, judge: JudgeRecord): string {
+  const ran = judge.tier1.checks.filter((c) => c.outcome !== "n/a");
+  const pass = ran.filter(
+    (c) => c.outcome === "pass" || c.outcome === "fixed",
+  ).length;
+  const out = [
+    `${TASK_REVIEW_MARKER} ${task.card.id} head=${judge.head} -->`,
+    `**Factory judge** · ${task.card.id} · round ${judge.round} · ${judge.verdict}`,
+    "",
+    `- Tier 1: ${pass}/${ran.length} checks pass`,
+    ...judge.tier1.protected.map(
+      (p) =>
+        `- Protected change, approved by a person: \`${p.path}\` — ${p.detail}`,
+    ),
+  ];
+  if (judge.review) out.push("", judge.review.body.trim());
+  else out.push("- Tier 2: didn't run; a person decided this round");
+  return `${out.join("\n")}\n`;
+}
+
+export interface PostReviewParams {
+  pr: number;
+  head: string;
+  body: string;
+  /** Labels the PR `factory:needs-human`, for the shell and the status issue. */
+  needsHuman: boolean;
+}
+
 export interface ShipOptions {
   by: string;
   now?: Date | undefined;
@@ -215,6 +251,45 @@ export interface ShipOptions {
   push?: ((isolation: Isolation) => Promise<void>) | undefined;
   /** Open or update the PR (default: the repo's GitHub via its token). */
   openPr?: ((params: OpenPrParams) => Promise<PrResult>) | undefined;
+  /**
+   * Post the judge's review (default: as the App, or whoever the token is).
+   * Returns its URL, or null when this head already has one.
+   */
+  postReview?:
+    ((params: PostReviewParams) => Promise<string | null>) | undefined;
+}
+
+export const NEEDS_HUMAN_LABEL = "factory:needs-human";
+
+/** Post the judge's review once per head; GitHub won't let the App approve its own PR, so it's a comment. */
+async function postTaskReview(
+  gh: GitHubClient,
+  params: PostReviewParams,
+): Promise<string | null> {
+  const { owner, repo, octokit } = gh;
+  const reviews = await octokit.paginate(octokit.rest.pulls.listReviews, {
+    owner,
+    repo,
+    pull_number: params.pr,
+  });
+  const marker = params.body.split("\n")[0]!;
+  if (reviews.some((r) => r.body?.startsWith(marker))) return null;
+  const { data } = await octokit.rest.pulls.createReview({
+    owner,
+    repo,
+    pull_number: params.pr,
+    commit_id: params.head,
+    event: "COMMENT",
+    body: params.body,
+  });
+  if (params.needsHuman)
+    await octokit.rest.issues.addLabels({
+      owner,
+      repo,
+      issue_number: params.pr,
+      labels: [NEEDS_HUMAN_LABEL],
+    });
+  return data.html_url;
 }
 
 /** The PR's base branch, from the ref the worktree was cut from. */
@@ -266,7 +341,8 @@ export async function shipTask(
   const base = baseBranch(isolation);
 
   let openPr = options.openPr;
-  if (!openPr) {
+  let postReview = options.postReview;
+  if (!openPr || !postReview) {
     const auth = await githubToken(repoPath);
     const gh = auth
       ? await buildContext(repoPath, { token: auth.token }).github()
@@ -275,7 +351,8 @@ export async function shipTask(
       throw new TaskError(
         "shipping needs GitHub: the factory's App installed on the repo, GITHUB_TOKEN or `gh auth login`, and an origin remote on GitHub",
       );
-    openPr = (params) => openOrReusePr(gh, params);
+    openPr ??= (params) => openOrReusePr(gh, params);
+    postReview ??= (params) => postTaskReview(gh, params);
   }
   await (
     options.push ??
@@ -288,6 +365,22 @@ export async function shipTask(
     body,
     draft: true,
   });
+  // Before the ship entry: if posting fails, shipping again reuses the PR and
+  // posts it then.
+  const reviewUrl = await postReview({
+    pr: pr.number,
+    head,
+    body: renderTaskReview(task, judge),
+    needsHuman: judge.verdict === "needs a human",
+  });
+  if (reviewUrl)
+    await task.ledger.append({
+      beat: "ship",
+      section: "judge",
+      text: `judge review posted: ${reviewUrl}`,
+      by: `factory runtime (for ${options.by})`,
+      at: options.now,
+    });
   await task.ledger.append({
     beat: "ship",
     section: "timeline",
