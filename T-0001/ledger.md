@@ -14,6 +14,8 @@
 - 2026-11-14 00:17 prove: proof failed · test-run (factory runtime (for arynbht@gmail.com))
 - 2026-11-14 00:19 build: build done · commit 18dcd99561bc · 4 file(s) this round · 279276 tokens · $0.39 · I'm stopping here without making the fix. Two things need you, and I've left a stray change in `packages/action/dist/` that I couldn't undo. (factory runtime (for arynbht@gmail.com))
 - 2026-11-14 00:20 prove: proof passed · test-run (factory runtime (for arynbht@gmail.com))
+- 2026-11-14 00:30 close: worktree C:\Users\arynb\Documents\Projects\Software Factory - Dev\.worktrees\T-0001 kept: it couldn't be removed; remove it by hand · branch fix/t-0001 kept (factory runtime (for arynbht@gmail.com))
+- 2026-11-14 00:30 close: ledger sealed · abandoned (factory runtime (for arynbht@gmail.com))
 
 ## Plan
 
@@ -40,3 +42,7 @@
 - 2026-11-14 00:20 tests passed (pnpm run test, exit 0) · new tests: none
 - 2026-11-14 00:20 output: …: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
 - 2026-11-14 00:20 evidence: the test run on the evidence branch: https://github.com/arynbht/software-factory/blob/evidence/T-0001/test-run.txt?raw=true
+
+## Outcome
+
+- 2026-11-14 00:30 abandoned: First self-run found four runtime/repo problems (no-change round went to prove; tests need a build; tsc overwrote the action bundle; judge checkout crash). Fixed in #158; retry this task after it merges. · 15m · 366k tokens · $0.87
