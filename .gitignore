@@ -12,8 +12,10 @@ out/
 release/
 
 # The composite action ships a committed, bundled dist (standard for Actions).
+# tsc writes the package's own output to lib/, so a build never touches it.
 !packages/action/dist/
 !packages/action/dist/**
+packages/action/lib/
 
 # Test / coverage
 coverage/

@@ -18,7 +18,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
-    "test": "vitest run",
+    "test": "tsc --build && vitest run",
     "test:watch": "vitest",
     "catalog:validate": "tsx packages/catalog/src/validate.cli.ts",
     "catalog:site": "tsx packages/catalog/src/site.cli.ts",

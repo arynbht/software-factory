@@ -344,9 +344,27 @@ export async function buildTask(
 
   task = await loadTask(repoPath, id);
   const allowed = allowedDetails(task);
-  const stops = (
-    await findStops(isolation.worktree, isolation.base, head, assembly)
-  ).filter((s) => !allowed.has(`${s.trigger}: ${s.detail}`));
+  const found = await findStops(
+    isolation.worktree,
+    isolation.base,
+    head,
+    assembly,
+  );
+  // The agent did nothing and the branch still changes nothing: it couldn't
+  // or wouldn't start. (Undoing a denied change is doing something.) Proving
+  // the base would only fail or pass for nothing, so a person reads why and
+  // answers (deny with a note to say what to do).
+  if (
+    !staged &&
+    !(await wt.raw(["diff", "--name-only", isolation.base, head])).trim()
+  )
+    found.push({
+      trigger: "no_change",
+      detail:
+        reply.text.trim().split("\n")[0]?.slice(0, 300) ||
+        "the agent changed nothing and said nothing",
+    });
+  const stops = found.filter((s) => !allowed.has(`${s.trigger}: ${s.detail}`));
   for (const s of stops) await log("stop", `asked: ${s.trigger}: ${s.detail}`);
   await log(
     "timeline",
